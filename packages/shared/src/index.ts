@@ -11,3 +11,7 @@ export * from './entities/eventoFronteira.js';
 export * from './entities/documentoEmbarque.js';
 export * from './entities/statusViagemHistorico.js';
 export * from './entities/validacaoPreEmbarque.js';
+export * from './entities/frete.js';
+export * from './entities/freteLancamento.js';
+export * from './entities/statusFreteHistorico.js';
+export * from './entities/pagamentoFrete.js';

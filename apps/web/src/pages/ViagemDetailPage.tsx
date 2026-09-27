@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { ClipboardCheck, History, MapPinned, ShieldAlert } from 'lucide-react';
+import { ClipboardCheck, History, MapPinned, ShieldAlert, Wallet } from 'lucide-react';
 import { useViagemDetail } from '../hooks/useViagemDetail.js';
 import { useViagemStatusHistory } from '../hooks/useViagemStatusHistory.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
@@ -58,6 +58,12 @@ export default function ViagemDetailPage() {
           className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
         >
           <ClipboardCheck className="h-4 w-4" /> Validação pré-embarque
+        </Link>
+        <Link
+          to={`/viagens/${viagem.id}/frete`}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
+        >
+          <Wallet className="h-4 w-4" /> Fechamento financeiro do frete
         </Link>
       </div>
 

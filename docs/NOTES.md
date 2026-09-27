@@ -44,10 +44,43 @@ Operacional)** em cima da mesma entidade `viagens` — ver seção dedicada no
   offline-first (IndexedDB) do Módulo 1 foi reaproveitada para o registro
   de etapas de fronteira (`create-evento-fronteira`), sem uma segunda fila.
 
-## 3. Controle Financeiro do Frete
-- Tabelas: `fretes`, `pagamentos_frete`.
-- Pendente: fechamento de viagem, saldo do frete, aprovação financeira,
-  conformidade com a Lei 15.485/2026 (pagamento em até 30 dias úteis).
+## 3. Controle Financeiro do Frete — IMPLEMENTADO
+
+Uma terceira sessão implementou **integralmente o Módulo 3 (Controle
+Financeiro do Frete)** em cima da entidade `viagens` (Módulos 1/2) — ver a
+seção dedicada no `README.md` para o detalhamento completo de rotas, schema e
+telas. Resumo:
+
+- **Frete contratado** (`fretes`, relação 1:1 com `viagens` via índice único
+  parcial em `viagem_id`): promovido de stub (migration 0001) a tabela
+  operacional completa na `0004_modulo3_financeiro_frete.sql`. Só pode ser
+  criado quando a viagem já está `ENTREGUE` ou `ENCERRADA`.
+- **Fechamento da viagem** (máquina de estados explícita, critério #1):
+  `ABERTO -> EM_CONFERENCIA -> APROVADO -> PAGO`, com `REJEITADO` como
+  retrabalho de volta a `EM_CONFERENCIA`. Transições inexistentes retornam
+  422; transições existentes fora do papel do usuário retornam 403 (novo
+  `ForbiddenTransitionError`) — só ADMIN/SUPERADMIN aprovam financeiramente e
+  confirmam pagamento (`PAPEIS_TRANSICAO_FECHAMENTO_FRETE`). Toda transição
+  grava uma linha em `status_frete_historico`.
+- **Saldo do frete** (critério #3): calculado dinamicamente (nunca
+  persistido) a partir de `frete_lancamentos` (adiantamento/desconto/multa) e
+  `pagamentos_frete` confirmados — `GET /fretes/:id/saldo`.
+- **Frete de retorno vazio** (critério #4): colunas `retorno_vazio`,
+  `valor_custo_retorno_vazio` e `valor_frete_retorno` em `fretes`, prontas
+  para alimentar os indicadores de eficiência de frota do Módulo 4 (km
+  vazio) sem implementá-los aqui.
+- **Descoberta durante esta sessão**: o helper `handleDomainError` usado nos
+  controllers dos Módulos 1/2 (`viagens`, `fronteira`, `eventosRisco`,
+  `veiculos`, `motoristas`, `documentosEmbarque`, `validacaoPreEmbarque`,
+  `apolices`) sempre responde `400` via `Problems.badRequest(...).status(...)`
+  — chamar `.status()` depois de `.send()` não tem efeito no Fastify (`send`
+  já serializa o status code), então **todo `DomainError` desses módulos hoje
+  volta como HTTP 400**, mesmo quando deveria ser 404/409/422. Confirmado com
+  um teste isolado (`reply.status(400).send(...); reply.status(422)` →
+  `res.statusCode` continua `400`). O módulo 3 usa um helper corrigido
+  (`sendProblem(reply, error.status, ...)`), mas os módulos 1/2 não foram
+  alterados (fora do escopo desta sessão) — ver tarefa sinalizada
+  separadamente para corrigir os controllers antigos.
 
 ## 4. Controle de Frota e Jornada (foco ADI 5322)
 - Tabelas: `jornadas_motorista`, `registros_ponto`.

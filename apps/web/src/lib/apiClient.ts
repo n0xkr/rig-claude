@@ -2,6 +2,7 @@
  * Cliente HTTP fino para a API Rigabras. Centraliza base URL, headers de
  * autenticação e o parse de erros no formato RFC 7807.
  */
+import type { UserRole } from '@rigabras/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3333/api/v1';
 
@@ -24,6 +25,28 @@ export class ApiError extends Error {
 
 function getAccessToken(): string | null {
   return localStorage.getItem('rigabras_access_token');
+}
+
+/**
+ * Decodifica (sem verificar assinatura) o papel (`role`) do usuário a partir
+ * do access token JWT armazenado localmente, para uso exclusivo de gating de
+ * UI (ex: esconder o botão "Aprovar financeiramente" para quem não é
+ * ADMIN/SUPERADMIN — Módulo 3, critério #4). A autorização real sempre é
+ * reforçada pelo backend (middleware RBAC + RLS do Supabase); isto é apenas
+ * uma conveniência de UX, nunca um controle de acesso.
+ */
+export function getCurrentUserRole(): UserRole | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const payloadSegment = token.split('.')[1];
+    if (!payloadSegment) return null;
+    const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(normalized)) as { role?: UserRole };
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

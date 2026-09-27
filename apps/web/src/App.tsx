@@ -1,11 +1,14 @@
 import { Route, Routes, Link } from 'react-router-dom';
-import { Truck, Gauge } from 'lucide-react';
+import { Truck, Gauge, Wallet } from 'lucide-react';
 import ViagensListPage from './pages/ViagensListPage.js';
 import ViagemFormPage from './pages/ViagemFormPage.js';
 import ViagemDetailPage from './pages/ViagemDetailPage.js';
 import FronteiraTravessiaPage from './pages/FronteiraTravessiaPage.js';
 import FronteiraKpiPage from './pages/FronteiraKpiPage.js';
 import ValidacaoPage from './pages/ValidacaoPage.js';
+import ViagemFechamentoPage from './pages/ViagemFechamentoPage.js';
+import FreteDetailPage from './pages/FreteDetailPage.js';
+import FretesListPage from './pages/FretesListPage.js';
 
 export default function App() {
   return (
@@ -22,6 +25,12 @@ export default function App() {
           >
             <Gauge className="h-4 w-4" /> KPIs de fronteira
           </Link>
+          <Link
+            to="/fretes"
+            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+          >
+            <Wallet className="h-4 w-4" /> Financeiro do frete
+          </Link>
         </div>
       </header>
       <main>
@@ -32,7 +41,10 @@ export default function App() {
           <Route path="/viagens/:id" element={<ViagemDetailPage />} />
           <Route path="/viagens/:id/fronteira" element={<FronteiraTravessiaPage />} />
           <Route path="/viagens/:id/validacao-pre-embarque" element={<ValidacaoPage />} />
+          <Route path="/viagens/:id/frete" element={<ViagemFechamentoPage />} />
           <Route path="/fronteira/kpis" element={<FronteiraKpiPage />} />
+          <Route path="/fretes" element={<FretesListPage />} />
+          <Route path="/fretes/:id" element={<FreteDetailPage />} />
         </Routes>
       </main>
     </div>

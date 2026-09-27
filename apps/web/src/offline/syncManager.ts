@@ -75,6 +75,48 @@ export async function queueCreateEventoFronteira(
   void trySync();
 }
 
+/**
+ * Enfileira a criação do frete contratado de uma viagem (Módulo 3, critério
+ * #1 — "Frete contratado"), reaproveitando a mesma fila offline. Apenas o
+ * registro do cabeçalho comercial é enfileirável: transições de fechamento,
+ * lançamentos financeiros e pagamentos exigem validação de saldo/estado em
+ * tempo real no servidor e por isso nunca são enfileirados (mesmo padrão do
+ * Módulo 2, que só enfileira a criação de eventos de fronteira, nunca a
+ * mudança de status da viagem).
+ */
+export async function queueCreateFrete(
+  viagemId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'create-frete',
+    payload,
+    targetId: viagemId,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
+/** Enfileira a edição do cabeçalho comercial de um frete já existente. */
+export async function queueUpdateFrete(
+  freteId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'update-frete',
+    payload,
+    targetId: freteId,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
 async function sendMutation(mutation: QueuedMutation): Promise<void> {
   if (mutation.kind === 'create-viagem') {
     await api.post('/viagens', mutation.payload);
@@ -82,6 +124,10 @@ async function sendMutation(mutation: QueuedMutation): Promise<void> {
     await api.patch(`/viagens/${mutation.targetId}`, mutation.payload);
   } else if (mutation.kind === 'create-evento-fronteira' && mutation.targetId) {
     await api.post(`/viagens/${mutation.targetId}/fronteira/eventos`, mutation.payload);
+  } else if (mutation.kind === 'create-frete' && mutation.targetId) {
+    await api.post(`/viagens/${mutation.targetId}/frete`, mutation.payload);
+  } else if (mutation.kind === 'update-frete' && mutation.targetId) {
+    await api.patch(`/fretes/${mutation.targetId}`, mutation.payload);
   }
 }
 

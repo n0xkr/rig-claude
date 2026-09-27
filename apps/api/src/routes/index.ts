@@ -18,6 +18,7 @@ import {
   documentosEmbarqueDirectRoutes,
   documentosEmbarqueNestedRoutes,
 } from '../modules/documentosEmbarque/documentosEmbarque.routes.js';
+import { fretesDirectRoutes, fretesNestedRoutes } from '../modules/fretes/fretes.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -29,6 +30,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(fronteiraNestedRoutes, { prefix: `${API_PREFIX}/viagens` });
   await app.register(validacaoPreEmbarqueRoutes, { prefix: `${API_PREFIX}/viagens` });
   await app.register(documentosEmbarqueNestedRoutes, { prefix: `${API_PREFIX}/viagens` });
+  await app.register(fretesNestedRoutes, { prefix: `${API_PREFIX}/viagens` });
   await app.register(veiculosRoutes, { prefix: `${API_PREFIX}/veiculos` });
   await app.register(motoristasRoutes, { prefix: `${API_PREFIX}/motoristas` });
   await app.register(eventosRiscoDirectRoutes, { prefix: `${API_PREFIX}/eventos-risco` });
@@ -37,4 +39,5 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(documentosEmbarqueDirectRoutes, {
     prefix: `${API_PREFIX}/documentos-embarque`,
   });
+  await app.register(fretesDirectRoutes, { prefix: `${API_PREFIX}/fretes` });
 }

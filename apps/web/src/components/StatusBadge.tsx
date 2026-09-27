@@ -1,4 +1,4 @@
-import type { StatusViagem, SeveridadeRisco } from '@rigabras/shared';
+import type { StatusViagem, SeveridadeRisco, StatusFechamentoFrete } from '@rigabras/shared';
 
 const STATUS_STYLES: Record<StatusViagem, string> = {
   PROGRAMADA: 'bg-slate-700 text-slate-200',
@@ -36,6 +36,25 @@ export function SeveridadeBadge({ severidade }: { severidade: SeveridadeRisco })
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${SEVERIDADE_STYLES[severidade]}`}
     >
       {severidade}
+    </span>
+  );
+}
+
+const STATUS_FECHAMENTO_FRETE_STYLES: Record<StatusFechamentoFrete, string> = {
+  ABERTO: 'bg-slate-700 text-slate-200',
+  EM_CONFERENCIA: 'bg-amber-900/60 text-amber-200',
+  APROVADO: 'bg-teal-900/60 text-teal-200',
+  REJEITADO: 'bg-red-900/60 text-red-200',
+  PAGO: 'bg-emerald-900/60 text-emerald-200',
+};
+
+/** Badge do status de fechamento financeiro do frete (Módulo 3, critério #1). */
+export function FreteStatusBadge({ status }: { status: StatusFechamentoFrete }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_FECHAMENTO_FRETE_STYLES[status]}`}
+    >
+      {status.replaceAll('_', ' ')}
     </span>
   );
 }

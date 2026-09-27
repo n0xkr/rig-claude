@@ -96,3 +96,67 @@ export type TipoDocumentoEmbarque = z.infer<typeof TipoDocumentoEmbarqueSchema>;
 /** Severidade de um achado (finding) da validação pré-embarque. */
 export const SeveridadeAchadoValidacaoSchema = z.enum(['INFO', 'AVISO', 'BLOQUEANTE']);
 export type SeveridadeAchadoValidacao = z.infer<typeof SeveridadeAchadoValidacaoSchema>;
+
+// ============================================================================
+// Módulo 3 — Controle Financeiro do Frete
+// ============================================================================
+
+/**
+ * Máquina de estados explícita do fechamento da viagem (critério #1 do
+ * Módulo 3): ABERTO -> EM_CONFERENCIA (conferência operacional) -> APROVADO
+ * (aprovação financeira) -> PAGO (pagamento), com REJEITADO como caminho de
+ * retrabalho de volta a EM_CONFERENCIA.
+ */
+export const StatusFechamentoFreteSchema = z.enum([
+  'ABERTO',
+  'EM_CONFERENCIA',
+  'APROVADO',
+  'REJEITADO',
+  'PAGO',
+]);
+export type StatusFechamentoFrete = z.infer<typeof StatusFechamentoFreteSchema>;
+
+/** Transições válidas da máquina de estados de fechamento do frete. */
+export const TRANSICOES_STATUS_FECHAMENTO_FRETE: Record<
+  StatusFechamentoFrete,
+  StatusFechamentoFrete[]
+> = {
+  ABERTO: ['EM_CONFERENCIA'],
+  EM_CONFERENCIA: ['APROVADO', 'REJEITADO'],
+  APROVADO: ['PAGO', 'REJEITADO'],
+  REJEITADO: ['EM_CONFERENCIA'],
+  PAGO: [],
+};
+
+/**
+ * Papéis autorizados a executar cada transição (critério #4 — RBAC). A
+ * conferência operacional (ABERTO -> EM_CONFERENCIA, REJEITADO ->
+ * EM_CONFERENCIA e o próprio EM_CONFERENCIA -> REJEITADO quando o operador
+ * encontra um problema) pode ser feita por OPERADOR; a aprovação financeira
+ * (-> APROVADO) e o pagamento (-> PAGO), assim como uma rejeição após
+ * aprovação (APROVADO -> REJEITADO), ficam restritos a ADMIN/SUPERADMIN.
+ */
+export const PAPEIS_TRANSICAO_FECHAMENTO_FRETE: Record<
+  StatusFechamentoFrete,
+  Partial<Record<StatusFechamentoFrete, UserRole[]>>
+> = {
+  ABERTO: { EM_CONFERENCIA: ['SUPERADMIN', 'ADMIN', 'OPERADOR'] },
+  EM_CONFERENCIA: {
+    APROVADO: ['SUPERADMIN', 'ADMIN'],
+    REJEITADO: ['SUPERADMIN', 'ADMIN', 'OPERADOR'],
+  },
+  APROVADO: {
+    PAGO: ['SUPERADMIN', 'ADMIN'],
+    REJEITADO: ['SUPERADMIN', 'ADMIN'],
+  },
+  REJEITADO: { EM_CONFERENCIA: ['SUPERADMIN', 'ADMIN', 'OPERADOR'] },
+  PAGO: {},
+};
+
+/** Tipo de lançamento financeiro que reduz o saldo do frete a receber/pagar. */
+export const TipoLancamentoFreteSchema = z.enum(['ADIANTAMENTO', 'DESCONTO', 'MULTA']);
+export type TipoLancamentoFrete = z.infer<typeof TipoLancamentoFreteSchema>;
+
+/** Status de um pagamento individual dentro do ledger de pagamentos do frete. */
+export const StatusPagamentoFreteSchema = z.enum(['PENDENTE', 'CONFIRMADO', 'CANCELADO']);
+export type StatusPagamentoFrete = z.infer<typeof StatusPagamentoFreteSchema>;
