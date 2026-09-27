@@ -17,3 +17,4 @@ packages/shared/dist/
 playwright-report/
 test-results/
 supabase/.temp/
+.mcp.json
