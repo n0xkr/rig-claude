@@ -20,6 +20,52 @@ export interface Session {
  * próprio da API para desacoplar o backend do formato interno do Supabase.
  */
 export class AuthService {
+  /**
+   * Autocadastro: cria o usuário no Supabase Auth e o respectivo `profiles`
+   * já `ativo`, papel padrão `VISITANTE` (o menos privilegiado do RBAC —
+   * promoção a OPERADOR/ADMIN é feita manualmente por um admin depois).
+   */
+  async register(email: string, password: string, nomeCompleto: string): Promise<Session> {
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (error || !data.user) {
+      const isConflict = error?.status === 422 || /already been registered/i.test(error?.message ?? '');
+      throw new DomainError(
+        'Falha no cadastro',
+        isConflict ? 409 : 400,
+        isConflict ? 'Este e-mail já está cadastrado' : (error?.message ?? 'Não foi possível criar a conta'),
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: data.user.id,
+        email,
+        nome_completo: nomeCompleto,
+        role: 'VISITANTE',
+        ativo: true,
+      })
+      .select('id, email, role, nome_completo, ativo')
+      .single();
+
+    if (profileError || !profile) {
+      // Reverte o usuário de Auth para não deixar uma conta órfã sem profile.
+      await supabaseAdmin.auth.admin.deleteUser(data.user.id);
+      throw new DomainError('Falha no cadastro', 500, 'Não foi possível criar o perfil do usuário');
+    }
+
+    return this.issueSession({
+      id: profile.id,
+      email: profile.email,
+      role: profile.role as UserRole,
+      nome_completo: profile.nome_completo,
+    });
+  }
+
   async login(email: string, password: string): Promise<Session> {
     const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
     if (error || !data.user) {

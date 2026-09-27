@@ -22,6 +22,8 @@
  * (`eventos_fronteira` -> `viagem:viagens(*)`).
  */
 
+import { randomUUID } from 'node:crypto';
+
 type Row = Record<string, unknown>;
 
 interface Filter {
@@ -356,6 +358,17 @@ export interface FakeSupabaseClient {
       email: string;
       password: string;
     }): Promise<{ data: { user: { id: string } | null }; error: { message: string } | null }>;
+    admin: {
+      createUser(input: {
+        email: string;
+        password: string;
+        email_confirm?: boolean;
+      }): Promise<{
+        data: { user: { id: string } | null };
+        error: { message: string; status?: number } | null;
+      }>;
+      deleteUser(id: string): Promise<{ error: { message: string } | null }>;
+    };
   };
 }
 
@@ -371,6 +384,25 @@ export function createFakeSupabaseClient(store: FakeSupabaseStore): FakeSupabase
           return { data: { user: null }, error: { message: 'Invalid login credentials' } };
         }
         return { data: { user: { id: user.id } }, error: null };
+      },
+      admin: {
+        async createUser({ email, password }) {
+          if (store.authUsers.has(email)) {
+            return {
+              data: { user: null },
+              error: { message: 'A user with this email address has already been registered', status: 422 },
+            };
+          }
+          const id = randomUUID();
+          store.authUsers.set(email, { id, email, password });
+          return { data: { user: { id } }, error: null };
+        },
+        async deleteUser(id: string) {
+          for (const [email, user] of store.authUsers) {
+            if (user.id === id) store.authUsers.delete(email);
+          }
+          return { error: null };
+        },
       },
     },
   };

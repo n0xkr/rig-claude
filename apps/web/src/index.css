@@ -8,8 +8,28 @@ body,
   height: 100%;
 }
 
+body {
+  background-color: #0a0f1e;
+  background-image:
+    radial-gradient(circle at 15% -10%, rgba(34, 197, 94, 0.16), transparent 45%),
+    radial-gradient(circle at 100% 0%, rgba(250, 204, 21, 0.1), transparent 40%);
+  background-attachment: fixed;
+}
+
 @layer components {
   .input {
-    @apply w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none;
+    @apply w-full rounded-md border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition-colors duration-200 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green/50;
+  }
+
+  .card-glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.03] shadow-depth backdrop-blur-xl;
+  }
+
+  .brand-text-gradient {
+    @apply bg-brand-gradient bg-clip-text text-transparent;
+  }
+
+  .btn-brand {
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-brand-greendark via-brand-green to-brand-yellowdark bg-[length:200%_auto] px-4 py-2 text-sm font-semibold text-slate-950 shadow-glow-green transition-all duration-300 hover:bg-right hover:shadow-glow-yellow disabled:cursor-not-allowed disabled:opacity-50;
   }
 }

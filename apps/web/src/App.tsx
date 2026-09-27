@@ -1,8 +1,20 @@
 import { Route, Routes, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Truck, Gauge, Wallet, Wrench, Clock, Warehouse, UploadCloud, LogOut } from 'lucide-react';
+import {
+  Gauge,
+  Wallet,
+  Wrench,
+  Clock,
+  Warehouse,
+  UploadCloud,
+  LogOut,
+  LayoutDashboard,
+} from 'lucide-react';
 import { AuthGate } from './components/AuthGate.js';
 import { getCurrentUserRole } from './lib/apiClient.js';
+import logo from './assets/logo-rigabras.jpg';
 import LoginPage from './pages/LoginPage.js';
+import RegisterPage from './pages/RegisterPage.js';
+import DashboardPage from './pages/DashboardPage.js';
 import ViagensListPage from './pages/ViagensListPage.js';
 import ViagemFormPage from './pages/ViagemFormPage.js';
 import ViagemDetailPage from './pages/ViagemDetailPage.js';
@@ -56,16 +68,22 @@ function LogoutButton() {
 
 export default function App() {
   const location = useLocation();
-  const isLoginRoute = location.pathname === '/login';
+  const isPublicRoute = location.pathname === '/login' || location.pathname === '/registro';
 
   return (
     <div className="min-h-screen bg-slate-950">
-      {!isLoginRoute && (
-        <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+      {!isPublicRoute && (
+        <header className="border-b border-white/10 bg-slate-950/80 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3">
-            <Link to="/viagens" className="flex items-center gap-2 font-semibold text-white">
-              <Truck className="h-6 w-6 text-rigabras-500" />
-              Rigabras — TMS Operacional
+            <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-white">
+              <img src={logo} alt="Rigabras" className="h-7 w-7 rounded-lg shadow-glow-green" />
+              Rig<span className="brand-text-gradient">abras</span>
+            </Link>
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <LayoutDashboard className="h-4 w-4" /> Painel
             </Link>
             <Link
               to="/fronteira/kpis"
@@ -110,6 +128,15 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/registro" element={<RegisterPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <AuthGate>
+                <DashboardPage />
+              </AuthGate>
+            }
+          />
           <Route
             path="/"
             element={
