@@ -1,19 +1,19 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { LoginSchema } from "@rigabras/shared";
-import { AuthService } from "./auth.service.js";
-import { parseOrProblem } from "../../middleware/validate.js";
-import { Problems } from "../../lib/problemDetails.js";
-import { DomainError } from "../../lib/errors.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { LoginSchema } from '@rigabras/shared';
+import { AuthService } from './auth.service.js';
+import { parseOrProblem } from '../../middleware/validate.js';
+import { Problems } from '../../lib/problemDetails.js';
+import { DomainError } from '../../lib/errors.js';
 
 const service = new AuthService();
-const REFRESH_COOKIE = "rigabras_refresh_token";
+const REFRESH_COOKIE = 'rigabras_refresh_token';
 
 function setRefreshCookie(reply: FastifyReply, token: string): void {
   reply.setCookie(REFRESH_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/api/v1/auth",
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/api/v1/auth',
     maxAge: 60 * 60 * 24 * 7,
   });
 }
@@ -37,7 +37,7 @@ export const AuthController = {
   async refresh(request: FastifyRequest, reply: FastifyReply) {
     const token = request.cookies[REFRESH_COOKIE];
     if (!token) {
-      return Problems.unauthorized(reply, "Refresh token ausente");
+      return Problems.unauthorized(reply, 'Refresh token ausente');
     }
     try {
       const session = await service.refresh(token);
@@ -52,7 +52,7 @@ export const AuthController = {
   },
 
   async logout(_request: FastifyRequest, reply: FastifyReply) {
-    reply.clearCookie(REFRESH_COOKIE, { path: "/api/v1/auth" });
+    reply.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
     return reply.status(204).send();
   },
 };

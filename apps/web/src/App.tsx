@@ -1,8 +1,8 @@
-import { Route, Routes, Link } from "react-router-dom";
-import { Truck } from "lucide-react";
-import ViagensListPage from "./pages/ViagensListPage.js";
-import ViagemFormPage from "./pages/ViagemFormPage.js";
-import ViagemDetailPage from "./pages/ViagemDetailPage.js";
+import { Route, Routes, Link } from 'react-router-dom';
+import { Truck } from 'lucide-react';
+import ViagensListPage from './pages/ViagensListPage.js';
+import ViagemFormPage from './pages/ViagemFormPage.js';
+import ViagemDetailPage from './pages/ViagemDetailPage.js';
 
 export default function App() {
   return (

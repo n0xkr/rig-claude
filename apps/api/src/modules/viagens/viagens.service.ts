@@ -1,8 +1,8 @@
-import type { CreateViagemInput, UpdateViagemInput, Viagem } from "@rigabras/shared";
-import { TRANSICOES_STATUS_VIAGEM, type StatusViagem } from "@rigabras/shared";
-import { ViagensRepository, type ListViagensFilter } from "./viagens.repository.js";
-import { ConflictError, InvalidStateTransitionError, NotFoundError } from "../../lib/errors.js";
-import { writeAuditLog } from "../../lib/auditLog.js";
+import type { CreateViagemInput, UpdateViagemInput, Viagem } from '@rigabras/shared';
+import { TRANSICOES_STATUS_VIAGEM, type StatusViagem } from '@rigabras/shared';
+import { ViagensRepository, type ListViagensFilter } from './viagens.repository.js';
+import { ConflictError, InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
+import { writeAuditLog } from '../../lib/auditLog.js';
 
 export class ViagensService {
   constructor(private readonly repo: ViagensRepository = new ViagensRepository()) {}
@@ -13,11 +13,15 @@ export class ViagensService {
 
   async getById(id: string): Promise<Viagem> {
     const viagem = await this.repo.findById(id);
-    if (!viagem) throw new NotFoundError("viagem", id);
+    if (!viagem) throw new NotFoundError('viagem', id);
     return viagem;
   }
 
-  async create(input: CreateViagemInput, userId: string | null, ip: string | null): Promise<Viagem> {
+  async create(
+    input: CreateViagemInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<Viagem> {
     if (input.numero_crt) {
       const existing = await this.repo.findByCrt(input.numero_crt);
       if (existing) {
@@ -27,8 +31,8 @@ export class ViagensService {
     const created = await this.repo.create(input, userId);
     await writeAuditLog({
       userId,
-      action: "CREATE",
-      entity: "viagens",
+      action: 'CREATE',
+      entity: 'viagens',
       entityId: created.id,
       changes: { after: created },
       ip,
@@ -46,8 +50,8 @@ export class ViagensService {
     const updated = await this.repo.update(id, input);
     await writeAuditLog({
       userId,
-      action: "UPDATE",
-      entity: "viagens",
+      action: 'UPDATE',
+      entity: 'viagens',
       entityId: id,
       changes: { before, after: updated },
       ip,
@@ -81,8 +85,8 @@ export class ViagensService {
     const updated = await this.repo.update(id, patch);
     await writeAuditLog({
       userId,
-      action: "STATUS_CHANGE",
-      entity: "viagens",
+      action: 'STATUS_CHANGE',
+      entity: 'viagens',
       entityId: id,
       changes: { from: current.status, to: nextStatus },
       ip,
@@ -93,14 +97,21 @@ export class ViagensService {
   async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
     await this.getById(id);
     await this.repo.softDelete(id);
-    await writeAuditLog({ userId, action: "DELETE", entity: "viagens", entityId: id, changes: null, ip });
+    await writeAuditLog({
+      userId,
+      action: 'DELETE',
+      entity: 'viagens',
+      entityId: id,
+      changes: null,
+      ip,
+    });
   }
 }
 
 const STATUS_TIMESTAMP_FIELD: Partial<Record<StatusViagem, string>> = {
-  EM_COLETA: "data_coleta",
-  EM_TRANSITO: "data_inicio_viagem",
-  NA_FRONTEIRA: "data_chegada_fronteira",
-  ENTREGUE: "data_entrega",
-  ENCERRADA: "data_encerramento",
+  EM_COLETA: 'data_coleta',
+  EM_TRANSITO: 'data_inicio_viagem',
+  NA_FRONTEIRA: 'data_chegada_fronteira',
+  ENTREGUE: 'data_entrega',
+  ENCERRADA: 'data_encerramento',
 };

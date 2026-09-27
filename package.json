@@ -14,9 +14,12 @@
     "typecheck": "pnpm --recursive run typecheck",
     "test": "pnpm --recursive run test",
     "dev:api": "pnpm --filter @rigabras/api run dev",
-    "dev:web": "pnpm --filter @rigabras/web run dev"
+    "dev:web": "pnpm --filter @rigabras/web run dev",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "prettier": "^3.3.3"
   }
 }

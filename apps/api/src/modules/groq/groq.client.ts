@@ -1,7 +1,7 @@
-import Groq from "groq-sdk";
-import { RiskAnalysisResultSchema, type RiskAnalysisResult } from "@rigabras/shared";
-import { env, isGroqConfigured } from "../../config/env.js";
-import { logger } from "../../config/logger.js";
+import Groq from 'groq-sdk';
+import { RiskAnalysisResultSchema, type RiskAnalysisResult } from '@rigabras/shared';
+import { env, isGroqConfigured } from '../../config/env.js';
+import { logger } from '../../config/logger.js';
 
 /**
  * Wrapper de integração real com a Groq (OpenAI-compatible SDK). Se
@@ -56,30 +56,33 @@ export async function analyzeViagemRisk(context: ViagemRiskContext): Promise<Ris
     model: env.GROQ_MODEL,
     temperature: 0.2,
     max_tokens: 800,
-    response_format: { type: "json_object" },
+    response_format: { type: 'json_object' },
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Dados da viagem:\n${userPrompt}` },
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Dados da viagem:\n${userPrompt}` },
     ],
   });
 
   const raw = completion.choices[0]?.message?.content;
   if (!raw) {
-    throw new Error("Resposta vazia da Groq");
+    throw new Error('Resposta vazia da Groq');
   }
 
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(raw);
   } catch (parseError) {
-    logger.error({ raw, parseError }, "Falha ao fazer parse do JSON retornado pela Groq");
-    throw new Error("Resposta da Groq não é um JSON válido");
+    logger.error({ raw, parseError }, 'Falha ao fazer parse do JSON retornado pela Groq');
+    throw new Error('Resposta da Groq não é um JSON válido');
   }
 
   const result = RiskAnalysisResultSchema.safeParse(parsedJson);
   if (!result.success) {
-    logger.error({ raw, issues: result.error.issues }, "Resposta da Groq não corresponde ao schema esperado");
-    throw new Error("Resposta da Groq não corresponde ao schema de RiskAnalysisResult");
+    logger.error(
+      { raw, issues: result.error.issues },
+      'Resposta da Groq não corresponde ao schema esperado',
+    );
+    throw new Error('Resposta da Groq não corresponde ao schema de RiskAnalysisResult');
   }
 
   return result.data;
@@ -87,7 +90,9 @@ export async function analyzeViagemRisk(context: ViagemRiskContext): Promise<Ris
 
 export class GroqNotConfiguredError extends Error {
   constructor() {
-    super("GROQ_API_KEY não configurada - análise de risco por IA está desabilitada neste ambiente");
-    this.name = "GroqNotConfiguredError";
+    super(
+      'GROQ_API_KEY não configurada - análise de risco por IA está desabilitada neste ambiente',
+    );
+    this.name = 'GroqNotConfiguredError';
   }
 }

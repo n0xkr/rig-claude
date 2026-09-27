@@ -1,13 +1,16 @@
-import type { FastifyInstance } from "fastify";
-import { authRoutes } from "../modules/auth/auth.routes.js";
-import { viagensRoutes } from "../modules/viagens/viagens.routes.js";
-import { veiculosRoutes } from "../modules/veiculos/veiculos.routes.js";
-import { motoristasRoutes } from "../modules/motoristas/motoristas.routes.js";
-import { eventosRiscoDirectRoutes, eventosRiscoNestedRoutes } from "../modules/eventosRisco/eventosRisco.routes.js";
-import { apolicesRoutes } from "../modules/apolices/apolices.routes.js";
-import { groqRoutes } from "../modules/groq/groq.routes.js";
+import type { FastifyInstance } from 'fastify';
+import { authRoutes } from '../modules/auth/auth.routes.js';
+import { viagensRoutes } from '../modules/viagens/viagens.routes.js';
+import { veiculosRoutes } from '../modules/veiculos/veiculos.routes.js';
+import { motoristasRoutes } from '../modules/motoristas/motoristas.routes.js';
+import {
+  eventosRiscoDirectRoutes,
+  eventosRiscoNestedRoutes,
+} from '../modules/eventosRisco/eventosRisco.routes.js';
+import { apolicesRoutes } from '../modules/apolices/apolices.routes.js';
+import { groqRoutes } from '../modules/groq/groq.routes.js';
 
-const API_PREFIX = "/api/v1";
+const API_PREFIX = '/api/v1';
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(authRoutes, { prefix: `${API_PREFIX}/auth` });

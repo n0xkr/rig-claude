@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * Payload enviado ao endpoint de análise de risco via Groq, e o formato
@@ -10,7 +10,7 @@ export const RiskAnalysisRequestSchema = z.object({
 export type RiskAnalysisRequest = z.infer<typeof RiskAnalysisRequestSchema>;
 
 export const RiskAnalysisResultSchema = z.object({
-  riskLevel: z.enum(["BAIXA", "MEDIA", "ALTA", "CRITICA"]),
+  riskLevel: z.enum(['BAIXA', 'MEDIA', 'ALTA', 'CRITICA']),
   isAnomaly: z.boolean(),
   reasoning: z.string(),
   recommendedActions: z.array(z.string()).default([]),

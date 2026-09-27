@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { TipoVeiculoSchema } from "../enums.js";
+import { z } from 'zod';
+import { TipoVeiculoSchema } from '../enums.js';
 
 export const VeiculoSchema = z.object({
   id: z.string().uuid(),

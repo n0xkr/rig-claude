@@ -1,13 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import {
-  ChangeStatusViagemSchema,
-  CreateViagemSchema,
-  UpdateViagemSchema,
-} from "@rigabras/shared";
-import { ViagensService } from "./viagens.service.js";
-import { parseOrProblem } from "../../middleware/validate.js";
-import { Problems } from "../../lib/problemDetails.js";
-import { DomainError } from "../../lib/errors.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { ChangeStatusViagemSchema, CreateViagemSchema, UpdateViagemSchema } from '@rigabras/shared';
+import { ViagensService } from './viagens.service.js';
+import { parseOrProblem } from '../../middleware/validate.js';
+import { Problems } from '../../lib/problemDetails.js';
+import { DomainError } from '../../lib/errors.js';
 
 const service = new ViagensService();
 
@@ -68,7 +64,12 @@ export const ViagensController = {
     const body = parseOrProblem(ChangeStatusViagemSchema, request.body, reply);
     if (!body) return;
     try {
-      const updated = await service.changeStatus(id, body.status, request.user?.sub ?? null, request.ip);
+      const updated = await service.changeStatus(
+        id,
+        body.status,
+        request.user?.sub ?? null,
+        request.ip,
+      );
       return reply.send(updated);
     } catch (error) {
       if (handleDomainError(error, reply)) return;

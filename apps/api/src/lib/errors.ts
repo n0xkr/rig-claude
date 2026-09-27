@@ -5,7 +5,7 @@ export class DomainError extends Error {
     public readonly detail?: string,
   ) {
     super(message);
-    this.name = "DomainError";
+    this.name = 'DomainError';
   }
 }
 
@@ -17,14 +17,14 @@ export class NotFoundError extends DomainError {
 
 export class ConflictError extends DomainError {
   constructor(detail: string) {
-    super("Conflito de estado", 409, detail);
+    super('Conflito de estado', 409, detail);
   }
 }
 
 export class InvalidStateTransitionError extends DomainError {
   constructor(from: string, to: string) {
     super(
-      "Transição de status inválida",
+      'Transição de status inválida',
       422,
       `Não é permitido transicionar de "${from}" para "${to}"`,
     );

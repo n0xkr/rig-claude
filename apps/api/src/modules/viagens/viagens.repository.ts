@@ -1,7 +1,7 @@
-import type { CreateViagemInput, UpdateViagemInput, Viagem } from "@rigabras/shared";
-import { supabaseAdmin } from "../../config/supabase.js";
+import type { CreateViagemInput, UpdateViagemInput, Viagem } from '@rigabras/shared';
+import { supabaseAdmin } from '../../config/supabase.js';
 
-const TABLE = "viagens";
+const TABLE = 'viagens';
 
 export interface ListViagensFilter {
   status?: string;
@@ -13,16 +13,16 @@ export class ViagensRepository {
   async list(filter: ListViagensFilter): Promise<{ data: Viagem[]; nextCursor: string | null }> {
     let query = supabaseAdmin
       .from(TABLE)
-      .select("*")
-      .is("deleted_at", null)
-      .order("id", { ascending: false })
+      .select('*')
+      .is('deleted_at', null)
+      .order('id', { ascending: false })
       .limit(filter.limit + 1);
 
     if (filter.status) {
-      query = query.eq("status", filter.status);
+      query = query.eq('status', filter.status);
     }
     if (filter.cursor) {
-      query = query.lt("id", filter.cursor);
+      query = query.lt('id', filter.cursor);
     }
 
     const { data, error } = await query;
@@ -38,9 +38,9 @@ export class ViagensRepository {
   async findById(id: string): Promise<Viagem | null> {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select("*")
-      .eq("id", id)
-      .is("deleted_at", null)
+      .select('*')
+      .eq('id', id)
+      .is('deleted_at', null)
       .maybeSingle();
     if (error) throw error;
     return (data as Viagem | null) ?? null;
@@ -49,9 +49,9 @@ export class ViagensRepository {
   async findByCrt(numeroCrt: string): Promise<Viagem | null> {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
-      .select("*")
-      .eq("numero_crt", numeroCrt)
-      .is("deleted_at", null)
+      .select('*')
+      .eq('numero_crt', numeroCrt)
+      .is('deleted_at', null)
       .maybeSingle();
     if (error) throw error;
     return (data as Viagem | null) ?? null;
@@ -61,7 +61,7 @@ export class ViagensRepository {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .insert({ ...input, created_by: createdBy })
-      .select("*")
+      .select('*')
       .single();
     if (error) throw error;
     return data as Viagem;
@@ -71,9 +71,9 @@ export class ViagensRepository {
     const { data, error } = await supabaseAdmin
       .from(TABLE)
       .update(input)
-      .eq("id", id)
-      .is("deleted_at", null)
-      .select("*")
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('*')
       .single();
     if (error) throw error;
     return data as Viagem;
@@ -83,7 +83,7 @@ export class ViagensRepository {
     const { error } = await supabaseAdmin
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq('id', id);
     if (error) throw error;
   }
 }

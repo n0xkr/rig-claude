@@ -1,31 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
-import type { Viagem, CreateViagemInput } from "@rigabras/shared";
-import { api, ApiError } from "../lib/apiClient.js";
-import { queueCreateViagem } from "../offline/syncManager.js";
+import { useCallback, useEffect, useState } from 'react';
+import type { Viagem, CreateViagemInput } from '@rigabras/shared';
+import { api, ApiError } from '../lib/apiClient.js';
+import { queueCreateViagem } from '../offline/syncManager.js';
 
 interface ListResponse {
   data: Viagem[];
   nextCursor: string | null;
 }
 
-export type LoadState = "idle" | "loading" | "success" | "error";
+export type LoadState = 'idle' | 'loading' | 'success' | 'error';
 
 export function useViagensList(status?: string) {
-  const [state, setState] = useState<LoadState>("idle");
+  const [state, setState] = useState<LoadState>('idle');
   const [viagens, setViagens] = useState<Viagem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setState("loading");
+    setState('loading');
     setError(null);
     try {
-      const query = status ? `?status=${status}` : "";
+      const query = status ? `?status=${status}` : '';
       const result = await api.get<ListResponse>(`/viagens${query}`);
       setViagens(result.data);
-      setState("success");
+      setState('success');
     } catch (err) {
-      setError(err instanceof ApiError ? err.problem.detail ?? err.problem.title : "Erro inesperado");
-      setState("error");
+      setError(
+        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+      );
+      setState('error');
     }
   }, [status]);
 
@@ -44,11 +46,11 @@ export function useCreateViagem() {
     setSubmitting(true);
     setError(null);
     try {
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
         await queueCreateViagem(input);
         return { queued: true };
       }
-      await api.post<Viagem>("/viagens", input);
+      await api.post<Viagem>('/viagens', input);
       return { queued: false };
     } catch (err) {
       if (err instanceof TypeError) {
@@ -56,7 +58,9 @@ export function useCreateViagem() {
         await queueCreateViagem(input);
         return { queued: true };
       }
-      setError(err instanceof ApiError ? err.problem.detail ?? err.problem.title : "Erro inesperado");
+      setError(
+        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+      );
       throw err;
     } finally {
       setSubmitting(false);

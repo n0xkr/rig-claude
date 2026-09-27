@@ -1,9 +1,9 @@
-import { supabaseAdmin } from "../config/supabase.js";
-import { logger } from "../config/logger.js";
+import { supabaseAdmin } from '../config/supabase.js';
+import { logger } from '../config/logger.js';
 
 export interface AuditLogEntry {
   userId: string | null;
-  action: "CREATE" | "UPDATE" | "DELETE" | "STATUS_CHANGE";
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'STATUS_CHANGE';
   entity: string;
   entityId: string | null;
   changes: Record<string, unknown> | null;
@@ -16,7 +16,7 @@ export interface AuditLogEntry {
  * um erro no logger estruturado.
  */
 export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
-  const { error } = await supabaseAdmin.from("audit_logs").insert({
+  const { error } = await supabaseAdmin.from('audit_logs').insert({
     user_id: entry.userId,
     action: entry.action,
     entity: entry.entity,
@@ -25,6 +25,6 @@ export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
     ip: entry.ip,
   });
   if (error) {
-    logger.error({ err: error, entry }, "Falha ao gravar audit_log");
+    logger.error({ err: error, entry }, 'Falha ao gravar audit_log');
   }
 }

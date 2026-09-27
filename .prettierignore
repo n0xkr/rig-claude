@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+.turbo
+pnpm-lock.yaml
+*.min.js
+supabase/.temp
+apps/web/public
+docs
+*.md
+!README.md

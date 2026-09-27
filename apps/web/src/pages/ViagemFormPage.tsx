@@ -1,23 +1,23 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { WifiOff } from "lucide-react";
-import type { CreateViagemInput } from "@rigabras/shared";
-import { useCreateViagem } from "../hooks/useViagens.js";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { WifiOff } from 'lucide-react';
+import type { CreateViagemInput } from '@rigabras/shared';
+import { useCreateViagem } from '../hooks/useViagens.js';
 
-const PAISES = ["AR", "BO", "CL", "PY", "UY", "PE"] as const;
+const PAISES = ['AR', 'BO', 'CL', 'PY', 'UY', 'PE'] as const;
 
 export default function ViagemFormPage() {
   const navigate = useNavigate();
   const { create, submitting, error } = useCreateViagem();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [form, setForm] = useState({
-    numero_crt: "",
-    placa_cavalo: "",
-    origem: "Uruguaiana/RS",
-    destino: "",
-    pais_destino: "AR" as (typeof PAISES)[number],
-    peso_kg: "",
-    valor_frete: "",
+    numero_crt: '',
+    placa_cavalo: '',
+    origem: 'Uruguaiana/RS',
+    destino: '',
+    pais_destino: 'AR' as (typeof PAISES)[number],
+    peso_kg: '',
+    valor_frete: '',
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,16 +32,16 @@ export default function ViagemFormPage() {
       pais_destino: form.pais_destino,
       peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
       valor_frete: form.valor_frete ? Number(form.valor_frete) : undefined,
-      status: "PROGRAMADA",
+      status: 'PROGRAMADA',
     };
 
     try {
       const { queued } = await create(payload);
       if (queued) {
-        setFeedback("Sem conexão: viagem salva localmente e será sincronizada automaticamente.");
+        setFeedback('Sem conexão: viagem salva localmente e será sincronizada automaticamente.');
         return;
       }
-      navigate("/viagens");
+      navigate('/viagens');
     } catch {
       // erro já é exposto via `error` do hook
     }
@@ -90,7 +90,9 @@ export default function ViagemFormPage() {
           <select
             className="input"
             value={form.pais_destino}
-            onChange={(e) => setForm((f) => ({ ...f, pais_destino: e.target.value as (typeof PAISES)[number] }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, pais_destino: e.target.value as (typeof PAISES)[number] }))
+            }
           >
             {PAISES.map((p) => (
               <option key={p} value={p}>
@@ -130,7 +132,7 @@ export default function ViagemFormPage() {
           disabled={submitting}
           className="w-full rounded-md bg-rigabras-500 px-4 py-2 font-medium text-white hover:bg-blue-600 disabled:opacity-50"
         >
-          {submitting ? "Salvando..." : "Criar viagem"}
+          {submitting ? 'Salvando...' : 'Criar viagem'}
         </button>
       </form>
     </div>

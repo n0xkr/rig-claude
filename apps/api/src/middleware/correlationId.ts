@@ -1,5 +1,5 @@
-import type { FastifyInstance } from "fastify";
-import { randomUUID } from "node:crypto";
+import type { FastifyInstance } from 'fastify';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Middleware de Correlation-ID (critério #9): gera (ou propaga, se o cliente
@@ -8,10 +8,11 @@ import { randomUUID } from "node:crypto";
  * ponta.
  */
 export function registerCorrelationId(app: FastifyInstance): void {
-  app.addHook("onRequest", async (request, reply) => {
-    const incoming = request.headers["x-correlation-id"];
-    const correlationId = typeof incoming === "string" && incoming.length > 0 ? incoming : randomUUID();
+  app.addHook('onRequest', async (request, reply) => {
+    const incoming = request.headers['x-correlation-id'];
+    const correlationId =
+      typeof incoming === 'string' && incoming.length > 0 ? incoming : randomUUID();
     request.id = correlationId;
-    reply.header("x-correlation-id", correlationId);
+    reply.header('x-correlation-id', correlationId);
   });
 }

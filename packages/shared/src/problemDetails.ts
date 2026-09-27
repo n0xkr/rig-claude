@@ -1,10 +1,10 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * RFC 7807 Problem Details - formato padrão de erro da API (critério #5).
  */
 export const ProblemDetailsSchema = z.object({
-  type: z.string().default("about:blank"),
+  type: z.string().default('about:blank'),
   title: z.string(),
   status: z.number().int(),
   detail: z.string().optional(),
@@ -21,7 +21,12 @@ export const PAGINATION_DEFAULTS = {
 
 export const PaginationQuerySchema = z.object({
   cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().positive().max(PAGINATION_DEFAULTS.maxLimit).default(PAGINATION_DEFAULTS.limit),
+  limit: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(PAGINATION_DEFAULTS.maxLimit)
+    .default(PAGINATION_DEFAULTS.limit),
 });
 export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
 

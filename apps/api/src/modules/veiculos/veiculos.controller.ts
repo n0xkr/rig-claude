@@ -1,9 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { CreateVeiculoSchema, UpdateVeiculoSchema } from "@rigabras/shared";
-import { VeiculosService } from "./veiculos.service.js";
-import { parseOrProblem } from "../../middleware/validate.js";
-import { Problems } from "../../lib/problemDetails.js";
-import { DomainError } from "../../lib/errors.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { CreateVeiculoSchema, UpdateVeiculoSchema } from '@rigabras/shared';
+import { VeiculosService } from './veiculos.service.js';
+import { parseOrProblem } from '../../middleware/validate.js';
+import { Problems } from '../../lib/problemDetails.js';
+import { DomainError } from '../../lib/errors.js';
 
 const service = new VeiculosService();
 
@@ -34,7 +34,9 @@ export const VeiculosController = {
     const body = parseOrProblem(CreateVeiculoSchema, request.body, reply);
     if (!body) return;
     try {
-      return reply.status(201).send(await service.create(body, request.user?.sub ?? null, request.ip));
+      return reply
+        .status(201)
+        .send(await service.create(body, request.user?.sub ?? null, request.ip));
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

@@ -1,12 +1,12 @@
-import { randomUUID } from "./uuid.js";
-import { api } from "../lib/apiClient.js";
+import { randomUUID } from './uuid.js';
+import { api } from '../lib/apiClient.js';
 import {
   enqueueMutation,
   listQueuedMutations,
   removeMutation,
   updateMutationAttempt,
   type QueuedMutation,
-} from "./db.js";
+} from './db.js';
 
 const MAX_ATTEMPTS = 5;
 let syncing = false;
@@ -29,7 +29,7 @@ async function notifyListeners(): Promise<void> {
 export async function queueCreateViagem(payload: Record<string, unknown>): Promise<void> {
   await enqueueMutation({
     id: randomUUID(),
-    kind: "create-viagem",
+    kind: 'create-viagem',
     payload,
     createdAt: new Date().toISOString(),
     attempts: 0,
@@ -38,10 +38,13 @@ export async function queueCreateViagem(payload: Record<string, unknown>): Promi
   void trySync();
 }
 
-export async function queueUpdateViagem(targetId: string, payload: Record<string, unknown>): Promise<void> {
+export async function queueUpdateViagem(
+  targetId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
   await enqueueMutation({
     id: randomUUID(),
-    kind: "update-viagem",
+    kind: 'update-viagem',
     payload,
     targetId,
     createdAt: new Date().toISOString(),
@@ -52,9 +55,9 @@ export async function queueUpdateViagem(targetId: string, payload: Record<string
 }
 
 async function sendMutation(mutation: QueuedMutation): Promise<void> {
-  if (mutation.kind === "create-viagem") {
-    await api.post("/viagens", mutation.payload);
-  } else if (mutation.kind === "update-viagem" && mutation.targetId) {
+  if (mutation.kind === 'create-viagem') {
+    await api.post('/viagens', mutation.payload);
+  } else if (mutation.kind === 'update-viagem' && mutation.targetId) {
     await api.patch(`/viagens/${mutation.targetId}`, mutation.payload);
   }
 }
@@ -65,7 +68,7 @@ async function sendMutation(mutation: QueuedMutation): Promise<void> {
  * inspeção manual (não são descartadas silenciosamente).
  */
 export async function trySync(): Promise<void> {
-  if (syncing || typeof navigator !== "undefined" && !navigator.onLine) return;
+  if (syncing || (typeof navigator !== 'undefined' && !navigator.onLine)) return;
   syncing = true;
   try {
     const pending = await listQueuedMutations();
@@ -75,7 +78,10 @@ export async function trySync(): Promise<void> {
         await sendMutation(mutation);
         await removeMutation(mutation.id);
       } catch (error) {
-        await updateMutationAttempt(mutation.id, error instanceof Error ? error.message : "erro desconhecido");
+        await updateMutationAttempt(
+          mutation.id,
+          error instanceof Error ? error.message : 'erro desconhecido',
+        );
       }
     }
   } finally {
@@ -85,8 +91,8 @@ export async function trySync(): Promise<void> {
 }
 
 export function startOfflineSync(): void {
-  if (typeof window === "undefined") return;
-  window.addEventListener("online", () => void trySync());
+  if (typeof window === 'undefined') return;
+  window.addEventListener('online', () => void trySync());
   void trySync();
   // Revalida periodicamente (ex: SW ativo, mas evento 'online' perdido).
   setInterval(() => void trySync(), 30_000);

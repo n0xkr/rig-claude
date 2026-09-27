@@ -1,4 +1,4 @@
-import { AlertTriangle, Inbox, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Inbox, Loader2, RefreshCw } from 'lucide-react';
 
 export function LoadingSkeleton({ rows = 5 }: { rows?: number }) {
   return (
@@ -55,7 +55,7 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-export function Spinner({ label = "Carregando..." }: { label?: string }) {
+export function Spinner({ label = 'Carregando...' }: { label?: string }) {
   return (
     <span className="inline-flex items-center gap-2 text-sm text-slate-400">
       <Loader2 className="h-4 w-4 animate-spin" /> {label}

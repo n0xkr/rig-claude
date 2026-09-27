@@ -1,13 +1,13 @@
-import { z } from "zod";
-import { SeveridadeRiscoSchema, StatusEventoRiscoSchema } from "../enums.js";
+import { z } from 'zod';
+import { SeveridadeRiscoSchema, StatusEventoRiscoSchema } from '../enums.js';
 
 export const EventoRiscoSchema = z.object({
   id: z.string().uuid(),
   viagem_id: z.string().uuid(),
   tipo: z.string().min(2).max(100),
-  severidade: SeveridadeRiscoSchema.default("BAIXA"),
+  severidade: SeveridadeRiscoSchema.default('BAIXA'),
   descricao: z.string().min(3),
-  status: StatusEventoRiscoSchema.default("ABERTO"),
+  status: StatusEventoRiscoSchema.default('ABERTO'),
   origem_deteccao: z.string().nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),

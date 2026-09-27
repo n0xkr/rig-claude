@@ -1,8 +1,12 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { supabaseAdmin } from "../../config/supabase.js";
-import { analyzeViagemRisk, GroqNotConfiguredError, type ViagemRiskContext } from "./groq.client.js";
-import { Problems } from "../../lib/problemDetails.js";
-import { logger } from "../../config/logger.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { supabaseAdmin } from '../../config/supabase.js';
+import {
+  analyzeViagemRisk,
+  GroqNotConfiguredError,
+  type ViagemRiskContext,
+} from './groq.client.js';
+import { Problems } from '../../lib/problemDetails.js';
+import { logger } from '../../config/logger.js';
 
 export const GroqController = {
   /**
@@ -14,12 +18,12 @@ export const GroqController = {
     const { id } = request.params as { id: string };
 
     const { data: viagem, error: viagemError } = await supabaseAdmin
-      .from("viagens")
+      .from('viagens')
       .select(
-        "numero_crt, origem, destino, pais_destino, status, data_programacao, data_coleta, data_inicio_viagem",
+        'numero_crt, origem, destino, pais_destino, status, data_programacao, data_coleta, data_inicio_viagem',
       )
-      .eq("id", id)
-      .is("deleted_at", null)
+      .eq('id', id)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (viagemError || !viagem) {
@@ -27,11 +31,11 @@ export const GroqController = {
     }
 
     const { data: eventos } = await supabaseAdmin
-      .from("eventos_risco")
-      .select("tipo, severidade, descricao")
-      .eq("viagem_id", id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
+      .from('eventos_risco')
+      .select('tipo, severidade, descricao')
+      .eq('viagem_id', id)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
       .limit(10);
 
     const context: ViagemRiskContext = {
@@ -51,17 +55,17 @@ export const GroqController = {
       return reply.send(result);
     } catch (error) {
       if (error instanceof GroqNotConfiguredError) {
-        return reply.status(503).type("application/problem+json").send({
-          type: "about:blank",
-          title: "Serviço de IA indisponível",
+        return reply.status(503).type('application/problem+json').send({
+          type: 'about:blank',
+          title: 'Serviço de IA indisponível',
           status: 503,
           detail: error.message,
           instance: request.url,
           correlationId: request.id,
         });
       }
-      logger.error({ err: error, viagemId: id }, "Falha ao chamar Groq para análise de risco");
-      return Problems.internal(reply, "Falha ao processar análise de risco via IA");
+      logger.error({ err: error, viagemId: id }, 'Falha ao chamar Groq para análise de risco');
+      return Problems.internal(reply, 'Falha ao processar análise de risco via IA');
     }
   },
 };

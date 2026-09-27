@@ -1,8 +1,8 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import jwt from "jsonwebtoken";
-import type { UserRole } from "@rigabras/shared";
-import { env } from "../config/env.js";
-import { Problems } from "../lib/problemDetails.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import jwt from 'jsonwebtoken';
+import type { UserRole } from '@rigabras/shared';
+import { env } from '../config/env.js';
+import { Problems } from '../lib/problemDetails.js';
 
 export interface AccessTokenPayload {
   sub: string; // profile id
@@ -10,7 +10,7 @@ export interface AccessTokenPayload {
   role: UserRole;
 }
 
-declare module "fastify" {
+declare module 'fastify' {
   interface FastifyRequest {
     user?: AccessTokenPayload;
   }
@@ -23,16 +23,16 @@ declare module "fastify" {
  */
 export async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const authHeader = request.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    await Problems.unauthorized(reply, "Token de acesso ausente");
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    await Problems.unauthorized(reply, 'Token de acesso ausente');
     return;
   }
-  const token = authHeader.slice("Bearer ".length);
+  const token = authHeader.slice('Bearer '.length);
   try {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as AccessTokenPayload;
     request.user = payload;
   } catch {
-    await Problems.unauthorized(reply, "Token de acesso inválido ou expirado");
+    await Problems.unauthorized(reply, 'Token de acesso inválido ou expirado');
   }
 }
 
@@ -47,10 +47,7 @@ export function requireRole(...allowedRoles: UserRole[]) {
       return;
     }
     if (!allowedRoles.includes(request.user.role)) {
-      await Problems.forbidden(
-        reply,
-        `Esta ação requer um dos papéis: ${allowedRoles.join(", ")}`,
-      );
+      await Problems.forbidden(reply, `Esta ação requer um dos papéis: ${allowedRoles.join(', ')}`);
     }
   };
 }

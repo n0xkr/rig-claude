@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { TipoApoliceSchema } from "../enums.js";
+import { z } from 'zod';
+import { TipoApoliceSchema } from '../enums.js';
 
 export const ApoliceSeguroSchema = z
   .object({
@@ -19,12 +19,12 @@ export const ApoliceSeguroSchema = z
     deleted_at: z.string().datetime().nullable().optional(),
   })
   .refine((data) => data.vigencia_fim >= data.vigencia_inicio, {
-    message: "vigencia_fim deve ser >= vigencia_inicio",
-    path: ["vigencia_fim"],
+    message: 'vigencia_fim deve ser >= vigencia_inicio',
+    path: ['vigencia_fim'],
   })
   .refine((data) => Boolean(data.veiculo_id) || Boolean(data.viagem_id), {
-    message: "apólice deve estar vinculada a um veículo ou a uma viagem",
-    path: ["veiculo_id"],
+    message: 'apólice deve estar vinculada a um veículo ou a uma viagem',
+    path: ['veiculo_id'],
   });
 export type ApoliceSeguro = z.infer<typeof ApoliceSeguroSchema>;
 
@@ -42,12 +42,12 @@ export const CreateApoliceSeguroSchema = z
     observacoes: z.string().nullable().optional(),
   })
   .refine((data) => data.vigencia_fim >= data.vigencia_inicio, {
-    message: "vigencia_fim deve ser >= vigencia_inicio",
-    path: ["vigencia_fim"],
+    message: 'vigencia_fim deve ser >= vigencia_inicio',
+    path: ['vigencia_fim'],
   })
   .refine((data) => Boolean(data.veiculo_id) || Boolean(data.viagem_id), {
-    message: "apólice deve estar vinculada a um veículo ou a uma viagem",
-    path: ["veiculo_id"],
+    message: 'apólice deve estar vinculada a um veículo ou a uma viagem',
+    path: ['veiculo_id'],
   });
 export type CreateApoliceSeguroInput = z.infer<typeof CreateApoliceSeguroSchema>;
 

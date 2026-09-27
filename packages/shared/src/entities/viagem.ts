@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { PaisHabilitadoSchema, StatusViagemSchema } from "../enums.js";
+import { z } from 'zod';
+import { PaisHabilitadoSchema, StatusViagemSchema } from '../enums.js';
 
 export const ViagemSchema = z.object({
   id: z.string().uuid(),
@@ -8,7 +8,7 @@ export const ViagemSchema = z.object({
   placa_cavalo: z.string().min(6).max(8),
   veiculo_id: z.string().uuid().nullable().optional(),
   motorista_id: z.string().uuid().nullable().optional(),
-  status: StatusViagemSchema.default("PROGRAMADA"),
+  status: StatusViagemSchema.default('PROGRAMADA'),
   origem: z.string().min(2),
   destino: z.string().min(2),
   pais_destino: PaisHabilitadoSchema.nullable().optional(),

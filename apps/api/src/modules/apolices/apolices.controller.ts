@@ -1,9 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { CreateApoliceSeguroSchema, UpdateApoliceSeguroSchema } from "@rigabras/shared";
-import { ApolicesService } from "./apolices.service.js";
-import { parseOrProblem } from "../../middleware/validate.js";
-import { Problems } from "../../lib/problemDetails.js";
-import { DomainError } from "../../lib/errors.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { CreateApoliceSeguroSchema, UpdateApoliceSeguroSchema } from '@rigabras/shared';
+import { ApolicesService } from './apolices.service.js';
+import { parseOrProblem } from '../../middleware/validate.js';
+import { Problems } from '../../lib/problemDetails.js';
+import { DomainError } from '../../lib/errors.js';
 
 const service = new ApolicesService();
 
@@ -33,7 +33,9 @@ export const ApolicesController = {
     const body = parseOrProblem(CreateApoliceSeguroSchema, request.body, reply);
     if (!body) return;
     try {
-      return reply.status(201).send(await service.create(body, request.user?.sub ?? null, request.ip));
+      return reply
+        .status(201)
+        .send(await service.create(body, request.user?.sub ?? null, request.ip));
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

@@ -1,9 +1,9 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
-import { CreateEventoRiscoSchema, UpdateEventoRiscoSchema } from "@rigabras/shared";
-import { EventosRiscoService } from "./eventosRisco.service.js";
-import { parseOrProblem } from "../../middleware/validate.js";
-import { Problems } from "../../lib/problemDetails.js";
-import { DomainError } from "../../lib/errors.js";
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { CreateEventoRiscoSchema, UpdateEventoRiscoSchema } from '@rigabras/shared';
+import { EventosRiscoService } from './eventosRisco.service.js';
+import { parseOrProblem } from '../../middleware/validate.js';
+import { Problems } from '../../lib/problemDetails.js';
+import { DomainError } from '../../lib/errors.js';
 
 const service = new EventosRiscoService();
 
@@ -31,10 +31,16 @@ export const EventosRiscoController = {
   },
   async create(request: FastifyRequest, reply: FastifyReply) {
     const { viagemId } = request.params as { viagemId: string };
-    const body = parseOrProblem(CreateEventoRiscoSchema, { ...(request.body as object), viagem_id: viagemId }, reply);
+    const body = parseOrProblem(
+      CreateEventoRiscoSchema,
+      { ...(request.body as object), viagem_id: viagemId },
+      reply,
+    );
     if (!body) return;
     try {
-      return reply.status(201).send(await service.create(body, request.user?.sub ?? null, request.ip));
+      return reply
+        .status(201)
+        .send(await service.create(body, request.user?.sub ?? null, request.ip));
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

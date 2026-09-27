@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Plus, Truck } from "lucide-react";
-import { useViagensList } from "../hooks/useViagens.js";
-import { LoadingSkeleton, EmptyState, ErrorCard } from "../components/StateViews.js";
-import { StatusBadge } from "../components/StatusBadge.js";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Truck } from 'lucide-react';
+import { useViagensList } from '../hooks/useViagens.js';
+import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
+import { StatusBadge } from '../components/StatusBadge.js';
 
 export default function ViagensListPage() {
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const { state, viagens, error, reload } = useViagensList(statusFilter || undefined);
 
   return (
@@ -25,33 +25,41 @@ export default function ViagensListPage() {
       </div>
 
       <div className="mb-4 flex gap-2">
-        {["", "PROGRAMADA", "EM_COLETA", "EM_TRANSITO", "NA_FRONTEIRA", "ENTREGUE", "ENCERRADA"].map((s) => (
+        {[
+          '',
+          'PROGRAMADA',
+          'EM_COLETA',
+          'EM_TRANSITO',
+          'NA_FRONTEIRA',
+          'ENTREGUE',
+          'ENCERRADA',
+        ].map((s) => (
           <button
-            key={s || "TODAS"}
+            key={s || 'TODAS'}
             onClick={() => setStatusFilter(s)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              statusFilter === s ? "bg-rigabras-500 text-white" : "bg-slate-800 text-slate-300"
+              statusFilter === s ? 'bg-rigabras-500 text-white' : 'bg-slate-800 text-slate-300'
             }`}
           >
-            {s ? s.replaceAll("_", " ") : "Todas"}
+            {s ? s.replaceAll('_', ' ') : 'Todas'}
           </button>
         ))}
       </div>
 
-      {state === "loading" && <LoadingSkeleton />}
+      {state === 'loading' && <LoadingSkeleton />}
 
-      {state === "error" && <ErrorCard message={error ?? "Erro desconhecido"} onRetry={reload} />}
+      {state === 'error' && <ErrorCard message={error ?? 'Erro desconhecido'} onRetry={reload} />}
 
-      {state === "success" && viagens.length === 0 && (
+      {state === 'success' && viagens.length === 0 && (
         <EmptyState
           title="Nenhuma viagem cadastrada"
           description="Comece programando a primeira viagem para acompanhar coleta, fronteira e entrega."
           actionLabel="Criar primeira viagem"
-          onAction={() => (window.location.href = "/viagens/nova")}
+          onAction={() => (window.location.href = '/viagens/nova')}
         />
       )}
 
-      {state === "success" && viagens.length > 0 && (
+      {state === 'success' && viagens.length > 0 && (
         <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
           {viagens.map((v) => (
             <li key={v.id}>
@@ -63,10 +71,10 @@ export default function ViagensListPage() {
                   <Truck className="h-5 w-5 text-slate-500" />
                   <div>
                     <p className="font-medium text-slate-100">
-                      {v.numero_crt ?? "CRT pendente"} — {v.placa_cavalo}
+                      {v.numero_crt ?? 'CRT pendente'} — {v.placa_cavalo}
                     </p>
                     <p className="text-sm text-slate-400">
-                      {v.origem} → {v.destino} {v.pais_destino ? `(${v.pais_destino})` : ""}
+                      {v.origem} → {v.destino} {v.pais_destino ? `(${v.pais_destino})` : ''}
                     </p>
                   </div>
                 </div>
