@@ -1,11 +1,29 @@
-import type { CreateViagemInput, UpdateViagemInput, Viagem } from '@rigabras/shared';
+import type {
+  CreateViagemInput,
+  UpdateViagemInput,
+  Viagem,
+  ViagemWmsStatus,
+} from '@rigabras/shared';
 import { TRANSICOES_STATUS_VIAGEM, type StatusViagem } from '@rigabras/shared';
 import { ViagensRepository, type ListViagensFilter } from './viagens.repository.js';
-import { ConflictError, InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
+import { ExpedicoesRepository } from '../wms/expedicoes.repository.js';
+import { RecebimentosRepository } from '../wms/recebimentos.repository.js';
+import { RecebimentosService } from '../wms/recebimentos.service.js';
+import {
+  ConflictError,
+  DomainError,
+  InvalidStateTransitionError,
+  NotFoundError,
+} from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 export class ViagensService {
-  constructor(private readonly repo: ViagensRepository = new ViagensRepository()) {}
+  constructor(
+    private readonly repo: ViagensRepository = new ViagensRepository(),
+    private readonly expedicoesRepo: ExpedicoesRepository = new ExpedicoesRepository(),
+    private readonly recebimentosRepo: RecebimentosRepository = new RecebimentosRepository(),
+    private readonly recebimentosService: RecebimentosService = new RecebimentosService(),
+  ) {}
 
   list(filter: ListViagensFilter) {
     return this.repo.list(filter);
@@ -102,7 +120,69 @@ export class ViagensService {
       changes: { from: current.status, to: nextStatus },
       ip,
     });
+
+    if (nextStatus === 'ENTREGUE' && updated.destino_armazem_rigabras) {
+      await this.sincronizarRecebimentoAutomatico(updated, userId, ip);
+    }
+
     return updated;
+  }
+
+  /**
+   * Módulo 6 (Integração TMS+WMS), critério "Entrega -> Recebimento": ao
+   * confirmar a entrega de uma viagem com destino ao Armazém Rigabras,
+   * tenta criar automaticamente o `recebimento` do Módulo 5 (ver
+   * `RecebimentosService.criarAutomaticoDeViagem`). NUNCA bloqueia a
+   * confirmação de entrega em si (a viagem já foi marcada ENTREGUE acima) —
+   * tanto o sucesso quanto a falha da automação viram uma nota WMS na linha
+   * do tempo da viagem, então nada acontece silenciosamente.
+   */
+  private async sincronizarRecebimentoAutomatico(
+    viagem: Viagem,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<void> {
+    try {
+      const recebimento = await this.recebimentosService.criarAutomaticoDeViagem(
+        viagem,
+        userId,
+        ip,
+      );
+      await this.repo.insertStatusHistory({
+        viagemId: viagem.id,
+        statusAnterior: viagem.status,
+        statusNovo: viagem.status,
+        changedBy: userId,
+        observacoes: `[WMS] Recebimento ${recebimento.id} criado/localizado automaticamente no armazém a partir desta entrega.`,
+        origemEvento: 'WMS',
+      });
+    } catch (error) {
+      if (error instanceof DomainError) {
+        await this.repo.insertStatusHistory({
+          viagemId: viagem.id,
+          statusAnterior: viagem.status,
+          statusNovo: viagem.status,
+          changedBy: userId,
+          observacoes: `[WMS] Não foi possível criar o recebimento automaticamente: ${error.detail ?? error.message}`,
+          origemEvento: 'WMS',
+        });
+        return;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Módulo 6: status cruzado TMS+WMS de uma viagem — expedição e/ou
+   * recebimento do armazém vinculados a ela, quando existirem.
+   */
+  async getWmsStatus(id: string): Promise<ViagemWmsStatus> {
+    await this.getById(id);
+    const [expedicao, recebimento] = await Promise.all([
+      this.expedicoesRepo.findByViagemId(id),
+      this.recebimentosRepo.findByViagemId(id),
+    ]);
+    return { viagem_id: id, expedicao, recebimento };
   }
 
   /** Histórico de transições de status da viagem (critério #1). */

@@ -1,5 +1,5 @@
 import { Route, Routes, Link } from 'react-router-dom';
-import { Truck, Gauge, Wallet, Wrench, Clock, Warehouse } from 'lucide-react';
+import { Truck, Gauge, Wallet, Wrench, Clock, Warehouse, UploadCloud } from 'lucide-react';
 import ViagensListPage from './pages/ViagensListPage.js';
 import ViagemFormPage from './pages/ViagemFormPage.js';
 import ViagemDetailPage from './pages/ViagemDetailPage.js';
@@ -29,6 +29,7 @@ import ExpedicoesListPage from './pages/ExpedicoesListPage.js';
 import ExpedicaoFormPage from './pages/ExpedicaoFormPage.js';
 import ExpedicaoDetailPage from './pages/ExpedicaoDetailPage.js';
 import AvariasListPage from './pages/AvariasListPage.js';
+import ExportacoesPage from './pages/ExportacoesPage.js';
 
 export default function App() {
   return (
@@ -69,6 +70,12 @@ export default function App() {
           >
             <Warehouse className="h-4 w-4" /> WMS
           </Link>
+          <Link
+            to="/exportacoes"
+            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+          >
+            <UploadCloud className="h-4 w-4" /> Exportações
+          </Link>
         </div>
       </header>
       <main>
@@ -106,6 +113,7 @@ export default function App() {
           <Route path="/wms/expedicoes/nova" element={<ExpedicaoFormPage />} />
           <Route path="/wms/expedicoes/:id" element={<ExpedicaoDetailPage />} />
           <Route path="/wms/avarias" element={<AvariasListPage />} />
+          <Route path="/exportacoes" element={<ExportacoesPage />} />
         </Routes>
       </main>
     </div>

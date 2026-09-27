@@ -45,9 +45,24 @@ export class RecebimentosRepository {
     return (data as Recebimento | null) ?? null;
   }
 
+  /** Módulo 6 (Integração TMS+WMS): recebimento vinculado a uma viagem do TMS (o mais recente, caso haja mais de um). */
+  async findByViagemId(viagemId: string): Promise<Recebimento | null> {
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .select('*')
+      .eq('viagem_id', viagemId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Recebimento | null) ?? null;
+  }
+
   async create(
     input: {
       depositante_id: string;
+      viagem_id?: string | null;
       referencia_documento?: string | null;
       data_prevista?: string | null;
       observacoes?: string | null;

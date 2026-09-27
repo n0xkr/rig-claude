@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
   CreateExpedicaoSchema,
   SepararExpedicaoItemSchema,
+  VincularViagemExpedicaoSchema,
   type StatusExpedicao,
 } from '@rigabras/shared';
 import { z } from 'zod';
@@ -123,6 +124,25 @@ export const ExpedicoesController = {
     const { id } = request.params as { id: string };
     try {
       const updated = await service.concluirSeparacao(id, request.user?.sub ?? null, request.ip);
+      return reply.send(updated);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  /** Módulo 6 (Integração TMS+WMS): vincula a expedição a uma viagem do TMS. */
+  async vincularViagem(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const body = parseOrProblem(VincularViagemExpedicaoSchema, request.body, reply);
+    if (!body) return;
+    try {
+      const updated = await service.vincularViagem(
+        id,
+        body.viagem_id,
+        request.user?.sub ?? null,
+        request.ip,
+      );
       return reply.send(updated);
     } catch (error) {
       if (handleDomainError(error, reply)) return;

@@ -4,13 +4,17 @@ import type {
   ExpedicaoDetalhe,
   SepararExpedicaoItemInput,
 } from '@rigabras/shared';
-import { TRANSICOES_STATUS_EXPEDICAO } from '@rigabras/shared';
+import {
+  STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA,
+  TRANSICOES_STATUS_EXPEDICAO,
+} from '@rigabras/shared';
 import { ExpedicoesRepository, type ListExpedicoesFilter } from './expedicoes.repository.js';
 import { DepositantesRepository } from './depositantes.repository.js';
 import { ProdutosRepository } from './produtos.repository.js';
 import { EnderecosRepository } from './enderecos.repository.js';
 import { EstoqueRepository } from './estoque.repository.js';
-import { InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
+import { ViagensRepository } from '../viagens/viagens.repository.js';
+import { ConflictError, InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 /**
@@ -30,6 +34,7 @@ export class ExpedicoesService {
     private readonly produtosRepo: ProdutosRepository = new ProdutosRepository(),
     private readonly enderecosRepo: EnderecosRepository = new EnderecosRepository(),
     private readonly estoqueRepo: EstoqueRepository = new EstoqueRepository(),
+    private readonly viagensRepo: ViagensRepository = new ViagensRepository(),
   ) {}
 
   list(filter: ListExpedicoesFilter) {
@@ -54,10 +59,15 @@ export class ExpedicoesService {
       const produto = await this.produtosRepo.findById(item.produto_id);
       if (!produto) throw new NotFoundError('produto_armazenado', item.produto_id);
     }
+    if (input.viagem_id) {
+      const viagem = await this.viagensRepo.findById(input.viagem_id);
+      if (!viagem) throw new NotFoundError('viagem', input.viagem_id);
+    }
 
     const created = await this.repo.create(
       {
         depositante_id: input.depositante_id,
+        viagem_id: input.viagem_id ?? null,
         referencia_documento: input.referencia_documento ?? null,
         tipo: input.tipo ?? 'NORMAL',
         observacoes: input.observacoes ?? null,
@@ -109,6 +119,60 @@ export class ExpedicoesService {
 
   iniciarSeparacao(id: string, userId: string | null, ip: string | null) {
     return this.transicionar(id, 'EM_SEPARACAO', userId, ip);
+  }
+
+  /**
+   * Módulo 6 (Integração TMS+WMS): vincula (ou revincula) uma expedição já
+   * criada a uma viagem do TMS. A validação de compatibilidade de status da
+   * viagem só acontece em `marcarProntaExpedicao` (o vínculo em si pode ser
+   * feito cedo, antes da viagem existir em um status "pronta para coleta").
+   */
+  async vincularViagem(
+    id: string,
+    viagemId: string,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<Expedicao> {
+    const expedicao = await this.repo.findById(id);
+    if (!expedicao) throw new NotFoundError('expedicao', id);
+    const viagem = await this.viagensRepo.findById(viagemId);
+    if (!viagem) throw new NotFoundError('viagem', viagemId);
+
+    const updated = await this.repo.update(id, { viagem_id: viagemId });
+    await writeAuditLog({
+      userId,
+      action: 'UPDATE',
+      entity: 'expedicoes',
+      entityId: id,
+      changes: { before: { viagem_id: expedicao.viagem_id }, after: { viagem_id: viagemId } },
+      ip,
+    });
+    return updated;
+  }
+
+  /**
+   * Módulo 6, critério "Expedição -> Viagem": quando uma expedição vinculada
+   * a uma viagem vai ser marcada PRONTA_EXPEDICAO, valida ANTES de
+   * transicionar (nunca depois — evita persistir a expedição como
+   * PRONTA_EXPEDICAO e só então rejeitar) que a viagem vinculada exista e
+   * esteja em um status compatível
+   * (`STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA` — ainda não partiu). Uma
+   * viagem em status incompatível (ex: já EM_TRANSITO) rejeita a marcação
+   * com 409 — o operador do armazém sabe então que algo está errado (viagem
+   * já partiu sem a carga).
+   */
+  private async validarViagemParaProntaExpedicao(
+    expedicao: Expedicao,
+  ): Promise<import('@rigabras/shared').Viagem | null> {
+    if (!expedicao.viagem_id) return null;
+    const viagem = await this.viagensRepo.findById(expedicao.viagem_id);
+    if (!viagem) throw new NotFoundError('viagem', expedicao.viagem_id);
+    if (!STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA.includes(viagem.status)) {
+      throw new ConflictError(
+        `A viagem vinculada (${viagem.id}) está no status "${viagem.status}", incompatível com o aviso de mercadoria pronta para expedição (esperado um dos: ${STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA.join(', ')})`,
+      );
+    }
+    return viagem;
   }
 
   /** Separa um item (retira do endereço informado) — gera uma movimentação SEPARACAO (ou CROSS_DOCKING) no ledger. */
@@ -215,7 +279,23 @@ export class ExpedicoesService {
   }
 
   async marcarProntaExpedicao(id: string, userId: string | null, ip: string | null) {
-    return this.transicionar(id, 'PRONTA_EXPEDICAO', userId, ip);
+    const antes = await this.repo.findById(id);
+    if (!antes) throw new NotFoundError('expedicao', id);
+    const viagem = await this.validarViagemParaProntaExpedicao(antes);
+
+    const updated = await this.transicionar(id, 'PRONTA_EXPEDICAO', userId, ip);
+
+    if (viagem) {
+      await this.viagensRepo.insertStatusHistory({
+        viagemId: viagem.id,
+        statusAnterior: viagem.status,
+        statusNovo: viagem.status,
+        changedBy: userId,
+        observacoes: `[WMS] Expedição ${updated.referencia_documento ?? updated.id} marcada como PRONTA_EXPEDICAO — mercadoria pronta para coleta no armazém.`,
+        origemEvento: 'WMS',
+      });
+    }
+    return updated;
   }
 
   /** Expede a mercadoria: registra o evento final EXPEDICAO no ledger para cada item já separado (rastreabilidade — o saldo já havia sido baixado na separação/cross-docking). */

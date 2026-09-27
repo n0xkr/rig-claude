@@ -42,12 +42,24 @@ export type Expedicao = z.infer<typeof ExpedicaoSchema>;
 
 export const CreateExpedicaoSchema = z.object({
   depositante_id: z.string().uuid(),
+  /**
+   * Módulo 6 (Integração TMS+WMS): permite já vincular a expedição a uma
+   * viagem do TMS no momento da criação. Também pode ser vinculada depois,
+   * via `PATCH /wms/expedicoes/:id/vincular-viagem`.
+   */
+  viagem_id: z.string().uuid().nullable().optional(),
   referencia_documento: z.string().nullable().optional(),
   tipo: TipoExpedicaoSchema.optional(),
   observacoes: z.string().nullable().optional(),
   itens: z.array(CreateExpedicaoItemSchema).min(1),
 });
 export type CreateExpedicaoInput = z.infer<typeof CreateExpedicaoSchema>;
+
+/** Módulo 6: vincula (ou revincula) uma expedição já criada a uma viagem do TMS. */
+export const VincularViagemExpedicaoSchema = z.object({
+  viagem_id: z.string().uuid(),
+});
+export type VincularViagemExpedicaoInput = z.infer<typeof VincularViagemExpedicaoSchema>;
 
 /** Separação de um item da expedição (quantidade separada a partir de um endereço). */
 export const SepararExpedicaoItemSchema = z.object({

@@ -35,5 +35,11 @@ export async function viagensRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },
     ViagensController.getStatusHistory,
   );
+  // Módulo 6 (Integração TMS+WMS): leitura aberta a todos os papéis, mesmo padrão do status-history.
+  app.get(
+    '/:id/wms-status',
+    { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },
+    ViagensController.getWmsStatus,
+  );
   app.delete('/:id', { preHandler: requireRole('SUPERADMIN', 'ADMIN') }, ViagensController.remove);
 }

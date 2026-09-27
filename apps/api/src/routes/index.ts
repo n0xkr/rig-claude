@@ -22,6 +22,7 @@ import { fretesDirectRoutes, fretesNestedRoutes } from '../modules/fretes/fretes
 import { frotaRoutes } from '../modules/frota/frota.routes.js';
 import { jornadaRoutes } from '../modules/jornada/jornada.routes.js';
 import { wmsRoutes } from '../modules/wms/wms.routes.js';
+import { erpExportRoutes } from '../modules/erpExport/erpExport.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -46,4 +47,5 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(frotaRoutes, { prefix: `${API_PREFIX}/frota` });
   await app.register(jornadaRoutes, { prefix: `${API_PREFIX}/jornada` });
   await app.register(wmsRoutes, { prefix: `${API_PREFIX}/wms` });
+  await app.register(erpExportRoutes, { prefix: `${API_PREFIX}/erp-export` });
 }

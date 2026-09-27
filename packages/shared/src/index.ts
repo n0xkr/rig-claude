@@ -28,3 +28,5 @@ export * from './entities/recebimento.js';
 export * from './entities/expedicao.js';
 export * from './entities/inventario.js';
 export * from './entities/wmsKpi.js';
+export * from './entities/integracaoTmsWms.js';
+export * from './entities/erpExport.js';

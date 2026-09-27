@@ -45,9 +45,24 @@ export class ExpedicoesRepository {
     return (data as Expedicao | null) ?? null;
   }
 
+  /** Módulo 6 (Integração TMS+WMS): expedição vinculada a uma viagem do TMS (a mais recente, caso haja mais de uma). */
+  async findByViagemId(viagemId: string): Promise<Expedicao | null> {
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .select('*')
+      .eq('viagem_id', viagemId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as Expedicao | null) ?? null;
+  }
+
   async create(
     input: {
       depositante_id: string;
+      viagem_id?: string | null;
       referencia_documento?: string | null;
       tipo?: string;
       observacoes?: string | null;

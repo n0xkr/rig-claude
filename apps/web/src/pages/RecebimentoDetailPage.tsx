@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Truck } from 'lucide-react';
 import { useRecebimentoDetail, useRecebimentoWorkflow } from '../hooks/useRecebimentos.js';
 import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
@@ -45,6 +45,17 @@ export default function RecebimentoDetailPage() {
         </div>
         <RecebimentoStatusBadge status={recebimento.status ?? 'AGUARDANDO'} />
       </div>
+
+      {recebimento.viagem_id && (
+        <Link
+          to={`/viagens/${recebimento.viagem_id}`}
+          className="mb-6 flex items-center gap-2 rounded-lg border border-slate-800 p-3 text-sm text-slate-300 hover:bg-slate-900/60"
+        >
+          <Truck className="h-4 w-4 text-rigabras-500" />
+          Gerado automaticamente pela entrega da viagem (Módulo 6 — Integração TMS+WMS):{' '}
+          {recebimento.viagem_id.slice(0, 8)}
+        </Link>
+      )}
 
       {recebimento.status === 'AGUARDANDO' && (
         <button

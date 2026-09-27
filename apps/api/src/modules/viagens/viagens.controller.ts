@@ -95,6 +95,18 @@ export const ViagensController = {
     }
   },
 
+  /** Módulo 6 (Integração TMS+WMS): expedição/recebimento do armazém vinculados a esta viagem. */
+  async getWmsStatus(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    try {
+      const status = await service.getWmsStatus(id);
+      return reply.send(status);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
   async remove(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     try {

@@ -99,6 +99,12 @@ export async function wmsRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: ESCRITA_OPERACIONAL },
     ExpedicoesController.iniciarSeparacao,
   );
+  // Módulo 6 (Integração TMS+WMS): vincula a expedição a uma viagem do TMS.
+  app.patch(
+    '/expedicoes/:id/vincular-viagem',
+    { preHandler: ESCRITA_OPERACIONAL },
+    ExpedicoesController.vincularViagem,
+  );
   app.patch(
     '/expedicoes/:id/itens/:itemId/separar',
     { preHandler: ESCRITA_OPERACIONAL },

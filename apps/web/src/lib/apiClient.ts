@@ -89,3 +89,33 @@ export const api = {
     apiFetch<T>(path, { method: 'PATCH', body: data ? JSON.stringify(data) : undefined }),
   delete: <T>(path: string) => apiFetch<T>(path, { method: 'DELETE' }),
 };
+
+/**
+ * Baixa uma resposta não-JSON (ex: anexo CSV do Módulo 7 — Integração ERP)
+ * como um Blob, para disparar o download no navegador. Trata erros no
+ * mesmo formato RFC 7807 de `apiFetch` quando a resposta não é `ok`.
+ */
+export async function apiFetchBlob(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const token = getAccessToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'GET',
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ApiError(
+      body ?? {
+        type: 'about:blank',
+        title: 'Erro de rede',
+        status: response.status,
+        detail: 'Não foi possível interpretar a resposta do servidor',
+      },
+    );
+  }
+
+  const disposition = response.headers.get('Content-Disposition');
+  const match = disposition?.match(/filename="?([^"]+)"?/);
+  return { blob: await response.blob(), filename: match?.[1] ?? null };
+}

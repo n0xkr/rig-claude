@@ -26,6 +26,13 @@ export type CreateRecebimentoItemInput = z.infer<typeof CreateRecebimentoItemSch
 export const RecebimentoSchema = z.object({
   id: z.string().uuid(),
   depositante_id: z.string().uuid(),
+  /**
+   * Módulo 6 (Integração TMS+WMS): viagem do TMS que originou este
+   * recebimento, quando criado automaticamente a partir de uma entrega
+   * (viagem ENTREGUE + `destino_armazem_rigabras = true`). Nulo para
+   * recebimentos criados manualmente pelo próprio Módulo 5.
+   */
+  viagem_id: z.string().uuid().nullable().optional(),
   referencia_documento: z.string().nullable().optional(),
   status: StatusRecebimentoSchema.optional(),
   data_prevista: z.string().date().nullable().optional(),

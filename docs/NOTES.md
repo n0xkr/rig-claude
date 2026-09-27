@@ -207,18 +207,116 @@ que vão construir em cima destas tabelas:
   migrations e RLS revisadas por leitura cuidadosa, não executadas contra um
   Supabase real.
 
-## 6. Integração TMS + WMS
-- Pendente por completo — depende dos módulos 2 e 5 estarem implementados
-  (Módulo 5 **já está** implementado nesta sessão; ver seção 5 acima para as
-  chaves estáveis deixadas prontas: `movimentacoes_estoque.
-  tipo_movimentacao IN ('CROSS_DOCKING','EXPEDICAO')` e
-  `expedicoes.viagem_id`).
+## 6. Integração TMS + WMS — IMPLEMENTADO (uma ponta completa, outra honestamente parcial)
 
-## 7. Integração ERP
-- Pendente por completo — fora do escopo desta fase (o projeto ainda não
-  depende de webhooks externos, conforme decisão registrada no prompt
-  original: "a princípio não dependerá de webhooks externos, somente RLS do
-  Supabase").
+Uma sessão final implementou o Módulo 6, ligando o TMS (Módulos 1–4) ao WMS
+(Módulo 5) que já existia. Nenhuma tabela nova — apenas as colunas mínimas da
+migration `0007_modulo6_modulo7_integracao_tms_wms_erp.sql`. Ver a seção
+dedicada no `README.md` para o detalhamento completo.
+
+- **Expedição → Viagem — 100% implementado e testável ponta a ponta.**
+  `ExpedicoesService.marcarProntaExpedicao` (`apps/api/src/modules/wms/
+  expedicoes.service.ts`) usa a chave estável `expedicoes.viagem_id` (já
+  existia desde a migration 0006, exatamente como planejado naquela sessão)
+  para: (1) validar **antes** de transicionar que a viagem vinculada existe e
+  está em `STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA`
+  (`PROGRAMADA`/`AGUARDANDO_COLETA`/`EM_COLETA` — rejeita com 409 caso
+  contrário, nunca persiste a expedição como pronta e só depois falha); (2)
+  gravar uma **nota WMS** em `status_viagem_historico` (`origem_evento =
+  'WMS'`, coluna nova, default `'MANUAL'` para todas as linhas já existentes
+  — retrocompatível), reaproveitando a linha do tempo do Módulo 2 em vez de
+  criar uma tabela de eventos paralela. Testável fim a fim: criar uma viagem
+  `PROGRAMADA`, criar uma expedição com `viagem_id` apontando para ela, e
+  chamar `POST /wms/expedicoes/:id/pronta-expedicao` — a linha do tempo da
+  viagem ganha uma nota, visível na `ViagemDetailPage`.
+- **Entrega → Recebimento — implementado, mas parcial por limitação real de
+  dados, não por atalho.** `viagens` ganhou duas colunas mínimas:
+  `destino_armazem_rigabras` (boolean) e `depositante_id` (FK opcional para
+  `depositantes` do Módulo 5) — o TMS não tinha, e continua sem ter, nenhum
+  conceito de "depositante" ou de detalhamento de SKU/quantidade da carga
+  (`viagens` guarda isso como peso agregado/texto livre). Quando uma viagem
+  com `destino_armazem_rigabras = true` é marcada `ENTREGUE`
+  (`ViagensService.changeStatus`), `RecebimentosService.
+  criarAutomaticoDeViagem` cria (idempotente por `viagem_id`) o
+  **cabeçalho** do recebimento (depositante, referência = CRT, data prevista,
+  observações com peso/origem/destino). Os **itens continuam manuais** —
+  isso é a limitação honesta documentada, não uma promessa não cumprida: sem
+  detalhamento de carga no TMS, não há dado real para pré-preencher
+  SKU/quantidade. A automação nunca bloqueia a entrega: se
+  `depositante_id` estiver vazio, a viagem é marcada `ENTREGUE` normalmente e
+  uma nota WMS (mesmo mecanismo acima) explica por que o recebimento não foi
+  criado.
+- **`GET /viagens/:id/wms-status`**: expedição e/ou recebimento vinculados a
+  uma viagem, quando existirem — consumido pela `ViagemDetailPage` (nova
+  seção "Integração com o armazém (WMS)"); `ExpedicaoDetailPage` e
+  `RecebimentoDetailPage` também mostram a viagem vinculada com link direto,
+  quando houver.
+- **RBAC**: sem mudança de padrão — leitura do status cruzado aberta a todos
+  os papéis (mesmo racional do histórico de status); vincular
+  expedição↔viagem é operacional (OPERADOR+, mesmo padrão do resto do
+  Módulo 5).
+- **Migration** `0007_modulo6_modulo7_integracao_tms_wms_erp.sql`:
+  `status_viagem_historico.origem_evento` (enum `origem_evento_viagem`,
+  `MANUAL`/`WMS`), `viagens.destino_armazem_rigabras`,
+  `viagens.depositante_id`, `recebimentos.viagem_id`. `expedicoes.viagem_id`
+  não precisou de alteração (já existia).
+- **Não verificado nesta sessão**: mesma ressalva dos Módulos 2–5 — migration
+  revisada por leitura cuidadosa, não executada contra um Supabase real. A
+  lógica de compatibilidade de status (`STATUS_VIAGEM_COMPATIVEIS_COM_WMS_
+  PRONTA`) é um array simples, coberta implicitamente pelo typecheck; não
+  ganhou um arquivo de teste dedicado nesta sessão (diferente do Módulo 7,
+  que ganhou).
+
+## 7. Integração ERP — IMPLEMENTADO (abstração interna, nenhum ERP de terceiros real)
+
+Como não existe um ERP real para integrar nesta fase, o Módulo 7 foi
+construído como uma **abstração interna limpa e documentada**, exatamente
+como pedido: um contrato único (`ErpAdapter`) e uma implementação concreta
+(`InternalCsvJsonAdapter`) que hoje lê do Supabase — um adapter de ERP real
+(SAP, TOTVS, Sankhya etc., citados apenas como exemplos comuns na logística
+brasileira; **nenhum implementado aqui**) substituiria essa classe
+implementando a mesma interface, sem exigir nenhuma mudança nas rotas.
+
+- **`apps/api/src/modules/erpExport/erpAdapter.ts`**: interface `ErpAdapter`
+  (`exportFinanceiro`/`exportEstoque`, ambos recebendo `{ inicio, fim }`) — o
+  ponto de extensão documentado no próprio código.
+- **`internalCsvJsonAdapter.ts`**: exportação financeira busca fretes do
+  Módulo 3 criados no período e recalcula o saldo **reaproveitando**
+  `FretesService.computeSaldo` (nunca duplica a lógica de saldo já usada pela
+  tela financeira — um único lugar calcula saldo de frete no sistema
+  inteiro); exportação de estoque busca `movimentacoes_estoque` do Módulo 5
+  no período, com SKU/depositante via join em `produtos_armazenados`.
+- **`erpExport.mapper.ts`**: funções puras (sem I/O) que moldam frete+saldo
+  e movimentação+produto nos tipos de exportação documentados
+  (`ErpFinanceiroRecord`/`ErpEstoqueRecord`, `packages/shared/src/entities/
+  erpExport.ts`) — testadas isoladamente do Supabase.
+- **Nenhuma tabela nova**: a exportação é 100% derivada de dados já
+  existentes dos Módulos 3 e 5 — nenhuma migration de schema foi necessária
+  além do que o Módulo 6 já trouxe na 0007.
+- **Endpoints**: `GET /api/v1/erp-export/financeiro?inicio=...&fim=...&formato=csv|json`
+  e o equivalente `/estoque`. `formato=json` retorna o array tipado
+  diretamente (para a tela inspecionar); `formato=csv` retorna um anexo
+  baixável, mesmo padrão do histórico de jornada do Módulo 4
+  (`toCsv` de `apps/api/src/lib/csv.ts`, reaproveitado — nenhum segundo
+  serializador CSV foi escrito).
+- **RBAC**: `GET /erp-export/*` restrito a ADMIN/SUPERADMIN — decisão de
+  produto documentada no cabeçalho de `erpExport.routes.ts`: mesmo sendo
+  rotas de leitura, exportar em lote dados financeiros e de estoque é
+  justamente o tipo de operação sensível que o RBAC granular existe para
+  restringir (mesmo racional da aprovação financeira do Módulo 3 e da
+  reconciliação de inventário do Módulo 5).
+- **Frontend**: `ExportacoesPage` (`/exportacoes`) — período + tipo,
+  "Visualizar (JSON)" (tabela inline) e "Baixar CSV" (download real via
+  `apiFetchBlob`, novo helper em `apiClient.ts` para respostas não-JSON).
+- **Testes**: `erpExport.mapper.test.ts` (7 testes `vitest`) cobrindo o
+  mapeamento frete+saldo → registro financeiro (inclusive `numero_crt`
+  nulo e `numero_fatura` ausente), movimentação+produto → registro de
+  estoque (inclusive quando o join do produto não retorna nada) e o filtro
+  de período (extremos inclusive, fora do período exclui).
+- **Não verificado nesta sessão**: a lógica de mapeamento (a parte
+  determinística, testável sem banco) está coberta; o `internalCsvJsonAdapter.ts`
+  (I/O Supabase — queries com `.in()`/join) não foi exercitado contra um
+  banco real.
 
 ## Observação sobre integrações de rastreamento
 O prompt original menciona uma evolução futura: dados inicialmente vindos de

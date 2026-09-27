@@ -23,6 +23,20 @@ export const ViagemSchema = z.object({
   peso_kg: z.number().nonnegative().nullable().optional(),
   valor_frete: z.number().nonnegative().nullable().optional(),
   observacoes: z.string().nullable().optional(),
+  /**
+   * Módulo 6 (Integração TMS+WMS): sinaliza que o destino final desta
+   * viagem é o Armazém Geral da Rigabras (e não um cliente externo),
+   * habilitando a criação automática de um `recebimento` do Módulo 5
+   * quando a viagem for marcada como ENTREGUE.
+   */
+  destino_armazem_rigabras: z.boolean().optional(),
+  /**
+   * Módulo 6: depositante (Módulo 5) dono da carga transportada nesta
+   * viagem — necessário para a automação de recebimento acima. Sem este
+   * campo preenchido, a automação não é bloqueante: apenas registra uma
+   * nota WMS explicando por que o recebimento não pôde ser criado.
+   */
+  depositante_id: z.string().uuid().nullable().optional(),
   created_by: z.string().uuid().nullable().optional(),
   created_at: z.string().datetime().optional(),
   updated_at: z.string().datetime().nullable().optional(),

@@ -3,6 +3,7 @@ import type {
   CreateRecebimentoInput,
   Recebimento,
   RecebimentoDetalhe,
+  Viagem,
 } from '@rigabras/shared';
 import { TRANSICOES_STATUS_RECEBIMENTO } from '@rigabras/shared';
 import { RecebimentosRepository, type ListRecebimentosFilter } from './recebimentos.repository.js';
@@ -10,7 +11,7 @@ import { DepositantesRepository } from './depositantes.repository.js';
 import { ProdutosRepository } from './produtos.repository.js';
 import { EnderecosRepository } from './enderecos.repository.js';
 import { EstoqueRepository } from './estoque.repository.js';
-import { InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
+import { ConflictError, InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 /**
@@ -73,6 +74,66 @@ export class RecebimentosService {
       ip,
     });
     return { ...created, itens };
+  }
+
+  /**
+   * Módulo 6 (Integração TMS+WMS), critério "Entrega -> Recebimento": cria
+   * (ou retorna, se já existir — idempotente por `viagem_id`) um
+   * `recebimento` a partir de uma viagem do TMS marcada ENTREGUE com
+   * `destino_armazem_rigabras = true`. Cria SOMENTE o cabeçalho (depositante,
+   * referência = CRT, data prevista, observações com os dados da carga já
+   * conhecidos pelo TMS) — o TMS não detalha SKU/quantidade da carga
+   * transportada, então os itens do recebimento continuam sendo lançados
+   * manualmente pelo armazém na conferência, exatamente como em um
+   * recebimento criado pelo próprio Módulo 5. Isso ainda elimina a
+   * redigitação dos dados de cabeçalho (critério "not re-entering the same
+   * data"). Nunca bloqueia a confirmação de entrega: se o depositante não
+   * estiver configurado na viagem, lança `ConflictError` para o chamador
+   * registrar a falha como uma nota WMS (ver `ViagensService.changeStatus`),
+   * em vez de impedir a entrega.
+   */
+  async criarAutomaticoDeViagem(
+    viagem: Viagem,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<RecebimentoDetalhe> {
+    const existente = await this.repo.findByViagemId(viagem.id);
+    if (existente) {
+      const itens = await this.repo.listItens(existente.id);
+      return { ...existente, itens };
+    }
+
+    if (!viagem.depositante_id) {
+      throw new ConflictError(
+        'A viagem está marcada para entrega no Armazém Rigabras (destino_armazem_rigabras=true), mas não possui um depositante vinculado (viagens.depositante_id). Associe um depositante à viagem antes de confirmar a entrega para permitir a criação automática do recebimento.',
+      );
+    }
+    const depositante = await this.depositantesRepo.findById(viagem.depositante_id);
+    if (!depositante) throw new NotFoundError('depositante', viagem.depositante_id);
+
+    const created = await this.repo.create(
+      {
+        depositante_id: viagem.depositante_id,
+        viagem_id: viagem.id,
+        referencia_documento: viagem.numero_crt ?? viagem.id,
+        data_prevista: new Date().toISOString().slice(0, 10),
+        observacoes:
+          `Recebimento gerado automaticamente pela Integração TMS+WMS (Módulo 6) a partir da entrega da viagem ${viagem.numero_crt ?? viagem.id}. ` +
+          `Peso informado no TMS: ${viagem.peso_kg ?? 'não informado'} kg. Origem: ${viagem.origem} / Destino: ${viagem.destino}. ` +
+          'Os itens (SKU/quantidade) devem ser conferidos e lançados manualmente pelo armazém — o TMS não detalha a composição da carga.',
+      },
+      userId,
+    );
+
+    await writeAuditLog({
+      userId,
+      action: 'CREATE',
+      entity: 'recebimentos',
+      entityId: created.id,
+      changes: { after: created, origem: { viagem_id: viagem.id } },
+      ip,
+    });
+    return { ...created, itens: [] };
   }
 
   private assertTransicao(atual: Recebimento['status'], proximo: Recebimento['status']): void {

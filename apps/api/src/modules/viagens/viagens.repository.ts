@@ -1,5 +1,6 @@
 import type {
   CreateViagemInput,
+  OrigemEventoViagem,
   StatusViagem,
   StatusViagemHistorico,
   UpdateViagemInput,
@@ -94,12 +95,19 @@ export class ViagensRepository {
     if (error) throw error;
   }
 
+  /**
+   * `origemEvento` (Módulo 6, default 'MANUAL') distingue uma transição real
+   * de status (Módulo 2) de uma nota informativa disparada pelo WMS
+   * (Módulo 5) — ver migration 0007. Uma nota WMS pode gravar
+   * `statusAnterior === statusNovo` (não é uma transição de fato).
+   */
   async insertStatusHistory(entry: {
     viagemId: string;
     statusAnterior: StatusViagem | null;
     statusNovo: StatusViagem;
     changedBy: string | null;
     observacoes: string | null;
+    origemEvento?: OrigemEventoViagem;
   }): Promise<StatusViagemHistorico> {
     const { data, error } = await supabaseAdmin
       .from(HISTORY_TABLE)
@@ -109,6 +117,7 @@ export class ViagensRepository {
         status_novo: entry.statusNovo,
         changed_by: entry.changedBy,
         observacoes: entry.observacoes,
+        origem_evento: entry.origemEvento ?? 'MANUAL',
       })
       .select('*')
       .single();

@@ -309,3 +309,39 @@ export const TRANSICOES_STATUS_INVENTARIO: Record<StatusInventario, StatusInvent
   RECONCILIADO: ['ENCERRADO'],
   ENCERRADO: [],
 };
+
+// ============================================================================
+// Módulo 6 — Integração TMS + WMS
+// ============================================================================
+
+/**
+ * Origem de uma linha em `status_viagem_historico` (critério "integração
+ * TMS+WMS"): `MANUAL` é toda transição de status lançada pelos Módulos 1-4
+ * (comportamento padrão, retrocompatível com as linhas já existentes);
+ * `WMS` marca uma NOTA informativa disparada automaticamente pelo Módulo 5
+ * (ex: "expedição pronta para coleta", "recebimento criado a partir da
+ * entrega") — uma nota WMS pode gravar `status_anterior = status_novo`
+ * (não é uma transição de fato da máquina de estados da viagem).
+ */
+export const OrigemEventoViagemSchema = z.enum(['MANUAL', 'WMS']);
+export type OrigemEventoViagem = z.infer<typeof OrigemEventoViagemSchema>;
+
+/**
+ * Status de viagem em que é aceitável que o WMS sinalize a mercadoria como
+ * "pronta para expedição/coleta" (critério "Expedição -> Viagem"): a viagem
+ * ainda não partiu (nada além de PROGRAMADA/AGUARDANDO_COLETA/EM_COLETA) —
+ * sinalizar isso quando a viagem já está em trânsito ou além não faz sentido
+ * operacional e é rejeitado com 409 (Conflict).
+ */
+export const STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA: StatusViagem[] = [
+  'PROGRAMADA',
+  'AGUARDANDO_COLETA',
+  'EM_COLETA',
+];
+
+// ============================================================================
+// Módulo 7 — Integração ERP
+// ============================================================================
+
+export const FormatoExportacaoSchema = z.enum(['csv', 'json']);
+export type FormatoExportacao = z.infer<typeof FormatoExportacaoSchema>;
