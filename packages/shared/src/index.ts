@@ -7,3 +7,7 @@ export * from './entities/viagem.js';
 export * from './entities/eventoRisco.js';
 export * from './entities/apoliceSeguro.js';
 export * from './entities/profile.js';
+export * from './entities/eventoFronteira.js';
+export * from './entities/documentoEmbarque.js';
+export * from './entities/statusViagemHistorico.js';
+export * from './entities/validacaoPreEmbarque.js';

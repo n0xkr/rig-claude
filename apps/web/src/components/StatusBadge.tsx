@@ -2,9 +2,14 @@ import type { StatusViagem, SeveridadeRisco } from '@rigabras/shared';
 
 const STATUS_STYLES: Record<StatusViagem, string> = {
   PROGRAMADA: 'bg-slate-700 text-slate-200',
+  AGUARDANDO_COLETA: 'bg-amber-950/60 text-amber-300',
   EM_COLETA: 'bg-amber-900/60 text-amber-200',
+  EM_DOCUMENTACAO: 'bg-cyan-900/60 text-cyan-200',
+  VEICULO_MOTORISTA_DEFINIDO: 'bg-teal-900/60 text-teal-200',
+  EM_VALIDACAO_PRE_EMBARQUE: 'bg-indigo-900/60 text-indigo-200',
   EM_TRANSITO: 'bg-blue-900/60 text-blue-200',
   NA_FRONTEIRA: 'bg-purple-900/60 text-purple-200',
+  EM_MONITORAMENTO: 'bg-sky-900/60 text-sky-200',
   ENTREGUE: 'bg-emerald-900/60 text-emerald-200',
   ENCERRADA: 'bg-slate-800 text-slate-400',
   CANCELADA: 'bg-red-900/60 text-red-200',

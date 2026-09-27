@@ -9,6 +9,15 @@ import {
 } from '../modules/eventosRisco/eventosRisco.routes.js';
 import { apolicesRoutes } from '../modules/apolices/apolices.routes.js';
 import { groqRoutes } from '../modules/groq/groq.routes.js';
+import {
+  fronteiraDirectRoutes,
+  fronteiraNestedRoutes,
+} from '../modules/fronteira/fronteira.routes.js';
+import { validacaoPreEmbarqueRoutes } from '../modules/validacaoPreEmbarque/validacaoPreEmbarque.routes.js';
+import {
+  documentosEmbarqueDirectRoutes,
+  documentosEmbarqueNestedRoutes,
+} from '../modules/documentosEmbarque/documentosEmbarque.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -17,8 +26,15 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(viagensRoutes, { prefix: `${API_PREFIX}/viagens` });
   await app.register(eventosRiscoNestedRoutes, { prefix: `${API_PREFIX}/viagens` });
   await app.register(groqRoutes, { prefix: `${API_PREFIX}/viagens` });
+  await app.register(fronteiraNestedRoutes, { prefix: `${API_PREFIX}/viagens` });
+  await app.register(validacaoPreEmbarqueRoutes, { prefix: `${API_PREFIX}/viagens` });
+  await app.register(documentosEmbarqueNestedRoutes, { prefix: `${API_PREFIX}/viagens` });
   await app.register(veiculosRoutes, { prefix: `${API_PREFIX}/veiculos` });
   await app.register(motoristasRoutes, { prefix: `${API_PREFIX}/motoristas` });
   await app.register(eventosRiscoDirectRoutes, { prefix: `${API_PREFIX}/eventos-risco` });
   await app.register(apolicesRoutes, { prefix: `${API_PREFIX}/apolices-seguro` });
+  await app.register(fronteiraDirectRoutes, { prefix: `${API_PREFIX}/fronteira` });
+  await app.register(documentosEmbarqueDirectRoutes, {
+    prefix: `${API_PREFIX}/documentos-embarque`,
+  });
 }

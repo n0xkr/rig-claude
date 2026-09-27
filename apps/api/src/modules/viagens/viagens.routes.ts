@@ -30,5 +30,10 @@ export async function viagensRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR') },
     ViagensController.changeStatus,
   );
+  app.get(
+    '/:id/status-history',
+    { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },
+    ViagensController.getStatusHistory,
+  );
   app.delete('/:id', { preHandler: requireRole('SUPERADMIN', 'ADMIN') }, ViagensController.remove);
 }

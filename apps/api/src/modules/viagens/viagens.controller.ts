@@ -69,8 +69,20 @@ export const ViagensController = {
         body.status,
         request.user?.sub ?? null,
         request.ip,
+        body.observacoes,
       );
       return reply.send(updated);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async getStatusHistory(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    try {
+      const history = await service.getStatusHistory(id);
+      return reply.send(history);
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

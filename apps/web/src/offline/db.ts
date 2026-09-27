@@ -8,9 +8,9 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
  */
 export interface QueuedMutation {
   id: string; // uuid gerado no cliente, dobra como chave de idempotência
-  kind: 'create-viagem' | 'update-viagem';
+  kind: 'create-viagem' | 'update-viagem' | 'create-evento-fronteira';
   payload: Record<string, unknown>;
-  targetId?: string; // usado em update-viagem
+  targetId?: string; // usado em update-viagem e create-evento-fronteira (viagemId)
   createdAt: string;
   attempts: number;
   lastError?: string;

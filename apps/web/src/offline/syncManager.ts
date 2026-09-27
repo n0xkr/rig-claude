@@ -54,11 +54,34 @@ export async function queueUpdateViagem(
   void trySync();
 }
 
+/**
+ * Enfileira o registro de uma etapa de travessia de fronteira (Módulo 2,
+ * critério #2) para envio posterior, reaproveitando a mesma fila offline
+ * usada pelo módulo de viagens.
+ */
+export async function queueCreateEventoFronteira(
+  viagemId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'create-evento-fronteira',
+    payload,
+    targetId: viagemId,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
 async function sendMutation(mutation: QueuedMutation): Promise<void> {
   if (mutation.kind === 'create-viagem') {
     await api.post('/viagens', mutation.payload);
   } else if (mutation.kind === 'update-viagem' && mutation.targetId) {
     await api.patch(`/viagens/${mutation.targetId}`, mutation.payload);
+  } else if (mutation.kind === 'create-evento-fronteira' && mutation.targetId) {
+    await api.post(`/viagens/${mutation.targetId}/fronteira/eventos`, mutation.payload);
   }
 }
 

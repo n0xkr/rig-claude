@@ -1,7 +1,14 @@
-import type { CreateViagemInput, UpdateViagemInput, Viagem } from '@rigabras/shared';
+import type {
+  CreateViagemInput,
+  StatusViagem,
+  StatusViagemHistorico,
+  UpdateViagemInput,
+  Viagem,
+} from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
 
 const TABLE = 'viagens';
+const HISTORY_TABLE = 'status_viagem_historico';
 
 export interface ListViagensFilter {
   status?: string;
@@ -85,5 +92,37 @@ export class ViagensRepository {
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
     if (error) throw error;
+  }
+
+  async insertStatusHistory(entry: {
+    viagemId: string;
+    statusAnterior: StatusViagem | null;
+    statusNovo: StatusViagem;
+    changedBy: string | null;
+    observacoes: string | null;
+  }): Promise<StatusViagemHistorico> {
+    const { data, error } = await supabaseAdmin
+      .from(HISTORY_TABLE)
+      .insert({
+        viagem_id: entry.viagemId,
+        status_anterior: entry.statusAnterior,
+        status_novo: entry.statusNovo,
+        changed_by: entry.changedBy,
+        observacoes: entry.observacoes,
+      })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as StatusViagemHistorico;
+  }
+
+  async listStatusHistory(viagemId: string): Promise<StatusViagemHistorico[]> {
+    const { data, error } = await supabaseAdmin
+      .from(HISTORY_TABLE)
+      .select('*')
+      .eq('viagem_id', viagemId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as StatusViagemHistorico[];
   }
 }

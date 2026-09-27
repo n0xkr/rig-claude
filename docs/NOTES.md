@@ -6,17 +6,43 @@ eventos_risco/apolices_seguro + endpoint de análise de risco via Groq), e o
 frontend PWA (lista/criação/detalhe de viagens com estados de loading/empty/
 error e fila offline em IndexedDB).
 
-Os módulos abaixo foram **scaffolded apenas no nível de schema de banco de
-dados** (tabelas `STUB` em `supabase/migrations/0001_initial.sql`, com RLS
-mínima em `0002_rls_policies.sql`). Nenhuma rota de API ou tela foi construída
-para eles nesta sessão — ficam para sessões futuras, seguindo a ordem
-estratégica definida no arquivo de critérios do projeto.
+Uma sessão subsequente implementou **integralmente o Módulo 2 (TMS
+Operacional)** em cima da mesma entidade `viagens` — ver seção dedicada no
+`README.md` para o detalhamento completo de rotas, schema e telas. Resumo:
 
-## 2. TMS Operacional (Fronteira / Documentação de embarque)
-- Tabelas: `documentos_embarque`, `eventos_fronteira`.
-- Pendente: fluxo de validação cruzada CRT × Fatura × MIC/DTA × Veículo ×
-  Viagem, KPIs de fronteira (tempo parado, desembaraço, retenção, custo da
-  espera), rotas de API e telas dedicadas.
+## 2. TMS Operacional (Fronteira / Documentação de embarque) — IMPLEMENTADO
+- **Máquina de estados estendida da viagem** (critério #1): enum
+  `status_viagem` ampliado via `0003_modulo2_tms_operacional.sql` para
+  Programação → Coleta (Aguardando/Em coleta) → Documentação →
+  Veículo/Motorista definido → Validação pré-embarque → Viagem (trânsito) →
+  Fronteira → Monitoramento → Entrega → Encerramento, com `CANCELADA` como
+  saída em quase todos os estados. Transições inválidas retornam 422
+  (Problem Details); toda transição válida grava uma linha em
+  `status_viagem_historico` (trilha de auditoria dedicada, além do
+  `audit_logs` geral). API: `PATCH /viagens/:id/status`,
+  `GET /viagens/:id/status-history`.
+- **Travessia de fronteira** (critério #2): tabela `eventos_fronteira`
+  promovida de stub a operacional (enum `etapa_fronteira`: Agendamento →
+  Chegada → Gate → Fiscalização → Desembaraço → Saída → Liberação), cada
+  etapa timestampada com tempo parado, motivo de retenção, retrabalho
+  documental e custo estimado da espera. API:
+  `GET/POST /viagens/:id/fronteira/eventos`,
+  `GET /fronteira/kpis` (agregação em memória de tempo parado, tempo de
+  desembaraço, retenções, retrabalho documental e custo, por viagem e por
+  rota).
+- **Validação cruzada pré-embarque** (critério #3): tabela
+  `documentos_embarque` promovida de stub a operacional (enum
+  `tipo_documento_embarque`: CRT, MIC/DTA, Fatura, DU-E, DUIMP). Serviço
+  `ValidacaoPreEmbarqueService` cruza CRT × Fatura × MIC/DTA × veículo ×
+  motorista × viagem e retorna uma lista estruturada de achados
+  (`AchadoValidacao[]`, severidade INFO/AVISO/BLOQUEANTE), não apenas um
+  booleano. API: `POST /viagens/:id/validacao-pre-embarque`.
+- **Telas React**: `ViagemDetailPage` (linha do tempo do ciclo de vida com
+  histórico de status), `FronteiraTravessiaPage` (registro de etapas +
+  KPIs da viagem), `FronteiraKpiPage` (performance por rota, filtro por
+  rota), `ValidacaoPage` (resultado estruturado da validação). A fila
+  offline-first (IndexedDB) do Módulo 1 foi reaproveitada para o registro
+  de etapas de fronteira (`create-evento-fronteira`), sem uma segunda fila.
 
 ## 3. Controle Financeiro do Frete
 - Tabelas: `fretes`, `pagamentos_frete`.

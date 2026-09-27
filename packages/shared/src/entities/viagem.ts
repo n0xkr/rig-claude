@@ -44,5 +44,6 @@ export type UpdateViagemInput = z.infer<typeof UpdateViagemSchema>;
 
 export const ChangeStatusViagemSchema = z.object({
   status: StatusViagemSchema,
+  observacoes: z.string().nullable().optional(),
 });
 export type ChangeStatusViagemInput = z.infer<typeof ChangeStatusViagemSchema>;

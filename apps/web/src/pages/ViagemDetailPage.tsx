@@ -1,12 +1,14 @@
-import { useParams } from 'react-router-dom';
-import { ShieldAlert } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
+import { ClipboardCheck, History, MapPinned, ShieldAlert } from 'lucide-react';
 import { useViagemDetail } from '../hooks/useViagemDetail.js';
+import { useViagemStatusHistory } from '../hooks/useViagemStatusHistory.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
 import { StatusBadge, SeveridadeBadge } from '../components/StatusBadge.js';
 
 export default function ViagemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, viagem, eventos, error, reload } = useViagemDetail(id);
+  const { historico, state: historicoState } = useViagemStatusHistory(id);
 
   if (state === 'loading' || state === 'idle')
     return (
@@ -43,6 +45,52 @@ export default function ViagemDetailPage() {
           value={viagem.valor_frete ? `R$ ${viagem.valor_frete}` : '-'}
         />
       </dl>
+
+      <div className="mb-8 flex flex-wrap gap-3">
+        <Link
+          to={`/viagens/${viagem.id}/fronteira`}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
+        >
+          <MapPinned className="h-4 w-4" /> Travessia de fronteira
+        </Link>
+        <Link
+          to={`/viagens/${viagem.id}/validacao-pre-embarque`}
+          className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
+        >
+          <ClipboardCheck className="h-4 w-4" /> Validação pré-embarque
+        </Link>
+      </div>
+
+      <div className="mb-4 flex items-center gap-2">
+        <History className="h-5 w-5 text-slate-400" />
+        <h2 className="text-lg font-semibold text-white">Linha do tempo do ciclo de vida</h2>
+      </div>
+
+      {historicoState === 'loading' ? (
+        <LoadingSkeleton rows={2} />
+      ) : historico.length === 0 ? (
+        <p className="mb-8 text-sm text-slate-500">Nenhuma transição de status registrada ainda.</p>
+      ) : (
+        <ol className="mb-8 space-y-3 border-l border-slate-800 pl-4">
+          {historico.map((h) => (
+            <li key={h.id} className="relative">
+              <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-rigabras-500" />
+              <div className="flex flex-wrap items-center gap-2">
+                {h.status_anterior && (
+                  <span className="text-xs text-slate-500">
+                    {h.status_anterior.replaceAll('_', ' ')} →
+                  </span>
+                )}
+                <StatusBadge status={h.status_novo} />
+                <span className="text-xs text-slate-500">
+                  {h.created_at ? new Date(h.created_at).toLocaleString('pt-BR') : ''}
+                </span>
+              </div>
+              {h.observacoes && <p className="mt-1 text-sm text-slate-400">{h.observacoes}</p>}
+            </li>
+          ))}
+        </ol>
+      )}
 
       <div className="mb-4 flex items-center gap-2">
         <ShieldAlert className="h-5 w-5 text-amber-400" />

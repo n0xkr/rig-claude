@@ -60,15 +60,19 @@ export class ViagensService {
   }
 
   /**
-   * Aplica a máquina de estados explícita da viagem (critério #1):
-   * PROGRAMADA -> EM_COLETA -> EM_TRANSITO -> NA_FRONTEIRA -> ENTREGUE -> ENCERRADA
-   * (com CANCELADA como saída em quase todos os estados).
+   * Aplica a máquina de estados explícita da viagem (critério #1 do Módulo 2):
+   * Programação -> Coleta -> Documentação -> Veículo/Motorista -> Validação ->
+   * Viagem -> Monitoramento -> Entrega -> Encerramento (com CANCELADA como
+   * saída em quase todos os estados). Transições inválidas são rejeitadas com
+   * um Problem Details 422, e toda transição válida grava uma linha em
+   * `status_viagem_historico` para fins de auditoria, além do audit_log geral.
    */
   async changeStatus(
     id: string,
     nextStatus: StatusViagem,
     userId: string | null,
     ip: string | null,
+    observacoes?: string | null,
   ): Promise<Viagem> {
     const current = await this.getById(id);
     const allowed = TRANSICOES_STATUS_VIAGEM[current.status];
@@ -83,6 +87,13 @@ export class ViagensService {
     }
 
     const updated = await this.repo.update(id, patch);
+    await this.repo.insertStatusHistory({
+      viagemId: id,
+      statusAnterior: current.status,
+      statusNovo: nextStatus,
+      changedBy: userId,
+      observacoes: observacoes ?? null,
+    });
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',
@@ -92,6 +103,12 @@ export class ViagensService {
       ip,
     });
     return updated;
+  }
+
+  /** Histórico de transições de status da viagem (critério #1). */
+  async getStatusHistory(id: string) {
+    await this.getById(id);
+    return this.repo.listStatusHistory(id);
   }
 
   async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
@@ -109,9 +126,11 @@ export class ViagensService {
 }
 
 const STATUS_TIMESTAMP_FIELD: Partial<Record<StatusViagem, string>> = {
+  AGUARDANDO_COLETA: 'data_ordem_coleta',
   EM_COLETA: 'data_coleta',
   EM_TRANSITO: 'data_inicio_viagem',
   NA_FRONTEIRA: 'data_chegada_fronteira',
+  EM_MONITORAMENTO: 'data_liberacao_fronteira',
   ENTREGUE: 'data_entrega',
   ENCERRADA: 'data_encerramento',
 };
