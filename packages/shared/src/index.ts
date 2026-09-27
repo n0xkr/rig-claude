@@ -15,3 +15,6 @@ export * from './entities/frete.js';
 export * from './entities/freteLancamento.js';
 export * from './entities/statusFreteHistorico.js';
 export * from './entities/pagamentoFrete.js';
+export * from './entities/manutencaoVeiculo.js';
+export * from './entities/frotaKpi.js';
+export * from './entities/registroJornada.js';

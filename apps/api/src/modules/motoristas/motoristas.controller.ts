@@ -2,14 +2,20 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { CreateMotoristaSchema, UpdateMotoristaSchema } from '@rigabras/shared';
 import { MotoristasService } from './motoristas.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
-import { Problems } from '../../lib/problemDetails.js';
+import { sendProblem } from '../../lib/problemDetails.js';
 import { DomainError } from '../../lib/errors.js';
 
 const service = new MotoristasService();
 
+/**
+ * Envia o status real do erro de domínio (404/409/422/...) via `sendProblem`,
+ * em vez do padrão antigo `Problems.badRequest(reply, ...).status(error.status)`,
+ * que sempre respondia 400 pois `.status()` não tem efeito depois de `.send()`
+ * já ter sido chamado (bug corrigido a partir do padrão do Módulo 3).
+ */
 function handleDomainError(error: unknown, reply: FastifyReply): boolean {
   if (error instanceof DomainError) {
-    void Problems.badRequest(reply, error.detail ?? error.message).status(error.status);
+    sendProblem(reply, error.status, error.message, error.detail);
     return true;
   }
   return false;

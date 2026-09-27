@@ -117,6 +117,62 @@ export async function queueUpdateFrete(
   void trySync();
 }
 
+/**
+ * Enfileira uma manutenção de veículo (Módulo 4, Controle de Frota) para
+ * envio posterior.
+ */
+export async function queueCreateManutencaoVeiculo(
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'create-manutencao-veiculo',
+    payload,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
+/** Enfileira a atualização de quilometragem/consumo de uma viagem (colunas próprias do Módulo 4). */
+export async function queueUpdateQuilometragemViagem(
+  viagemId: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'update-quilometragem-viagem',
+    payload,
+    targetId: viagemId,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
+/**
+ * Enfileira o registro de um evento de jornada (Módulo 4, Controle de
+ * Jornada — ADI 5322). Diferente de `create-frete`/`create-viagem`, este
+ * evento tem um `timestamp_evento` que idealmente reflete o momento real do
+ * acontecimento (ex: início de espera na fronteira sem sinal de rede) — por
+ * isso o payload já inclui o timestamp capturado no momento do clique,
+ * preenchido pelo formulário antes de enfileirar, não no momento da
+ * sincronização.
+ */
+export async function queueCreateRegistroJornada(payload: Record<string, unknown>): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'create-registro-jornada',
+    payload,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
 async function sendMutation(mutation: QueuedMutation): Promise<void> {
   if (mutation.kind === 'create-viagem') {
     await api.post('/viagens', mutation.payload);
@@ -128,6 +184,12 @@ async function sendMutation(mutation: QueuedMutation): Promise<void> {
     await api.post(`/viagens/${mutation.targetId}/frete`, mutation.payload);
   } else if (mutation.kind === 'update-frete' && mutation.targetId) {
     await api.patch(`/fretes/${mutation.targetId}`, mutation.payload);
+  } else if (mutation.kind === 'create-manutencao-veiculo') {
+    await api.post('/frota/manutencoes', mutation.payload);
+  } else if (mutation.kind === 'update-quilometragem-viagem' && mutation.targetId) {
+    await api.patch(`/frota/viagens/${mutation.targetId}/quilometragem`, mutation.payload);
+  } else if (mutation.kind === 'create-registro-jornada') {
+    await api.post('/jornada/eventos', mutation.payload);
   }
 }
 

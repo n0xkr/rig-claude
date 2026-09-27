@@ -160,3 +160,55 @@ export type TipoLancamentoFrete = z.infer<typeof TipoLancamentoFreteSchema>;
 /** Status de um pagamento individual dentro do ledger de pagamentos do frete. */
 export const StatusPagamentoFreteSchema = z.enum(['PENDENTE', 'CONFIRMADO', 'CANCELADO']);
 export type StatusPagamentoFrete = z.infer<typeof StatusPagamentoFreteSchema>;
+
+// ============================================================================
+// Módulo 4 — Controle de Frota e Jornada (foco ADI 5322)
+// ============================================================================
+
+export const TipoManutencaoVeiculoSchema = z.enum([
+  'PREVENTIVA',
+  'CORRETIVA',
+  'REVISAO',
+  'TROCA_PNEUS',
+  'OUTRO',
+]);
+export type TipoManutencaoVeiculo = z.infer<typeof TipoManutencaoVeiculoSchema>;
+
+/**
+ * Tipo de evento no log contínuo de jornada do motorista (critério "Controle
+ * de Jornada" — ADI 5322). Cada linha em `registros_jornada` é um evento
+ * pontual e imutável; o serviço de conformidade reconstrói as sessões de
+ * jornada e os tempos de direção/espera/descanso a partir da sequência
+ * ordenada desses eventos por motorista.
+ */
+export const TipoEventoJornadaSchema = z.enum([
+  'INICIO_JORNADA',
+  'INICIO_DIRECAO',
+  'FIM_DIRECAO',
+  'INICIO_ESPERA',
+  'FIM_ESPERA',
+  'INICIO_DESCANSO',
+  'FIM_DESCANSO',
+  'FIM_JORNADA',
+]);
+export type TipoEventoJornada = z.infer<typeof TipoEventoJornadaSchema>;
+
+/**
+ * Máquina de estados explícita (critério #1) do log de jornada: dado o
+ * último evento em aberto de um motorista, apenas os tipos de evento listados
+ * aqui podem ser lançados a seguir (ex: não é possível lançar `FIM_DIRECAO`
+ * sem um `INICIO_DIRECAO` pendente; após `FIM_JORNADA`, o único evento válido
+ * é um novo `INICIO_JORNADA` — o que, por construção, torna o intervalo entre
+ * duas jornadas um período de descanso "puro", nunca interrompido por outro
+ * tipo de evento).
+ */
+export const PROXIMO_EVENTO_JORNADA_VALIDO: Record<TipoEventoJornada, TipoEventoJornada[]> = {
+  INICIO_JORNADA: ['INICIO_DIRECAO', 'INICIO_ESPERA', 'INICIO_DESCANSO', 'FIM_JORNADA'],
+  INICIO_DIRECAO: ['FIM_DIRECAO'],
+  FIM_DIRECAO: ['INICIO_DIRECAO', 'INICIO_ESPERA', 'INICIO_DESCANSO', 'FIM_JORNADA'],
+  INICIO_ESPERA: ['FIM_ESPERA'],
+  FIM_ESPERA: ['INICIO_DIRECAO', 'INICIO_ESPERA', 'INICIO_DESCANSO', 'FIM_JORNADA'],
+  INICIO_DESCANSO: ['FIM_DESCANSO'],
+  FIM_DESCANSO: ['INICIO_DIRECAO', 'INICIO_ESPERA', 'INICIO_DESCANSO', 'FIM_JORNADA'],
+  FIM_JORNADA: ['INICIO_JORNADA'],
+};

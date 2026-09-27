@@ -19,6 +19,8 @@ import {
   documentosEmbarqueNestedRoutes,
 } from '../modules/documentosEmbarque/documentosEmbarque.routes.js';
 import { fretesDirectRoutes, fretesNestedRoutes } from '../modules/fretes/fretes.routes.js';
+import { frotaRoutes } from '../modules/frota/frota.routes.js';
+import { jornadaRoutes } from '../modules/jornada/jornada.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -40,4 +42,6 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     prefix: `${API_PREFIX}/documentos-embarque`,
   });
   await app.register(fretesDirectRoutes, { prefix: `${API_PREFIX}/fretes` });
+  await app.register(frotaRoutes, { prefix: `${API_PREFIX}/frota` });
+  await app.register(jornadaRoutes, { prefix: `${API_PREFIX}/jornada` });
 }

@@ -79,14 +79,60 @@ telas. Resumo:
   um teste isolado (`reply.status(400).send(...); reply.status(422)` →
   `res.statusCode` continua `400`). O módulo 3 usa um helper corrigido
   (`sendProblem(reply, error.status, ...)`), mas os módulos 1/2 não foram
-  alterados (fora do escopo desta sessão) — ver tarefa sinalizada
-  separadamente para corrigir os controllers antigos.
+  alterados (fora do escopo daquela sessão).
 
-## 4. Controle de Frota e Jornada (foco ADI 5322)
-- Tabelas: `jornadas_motorista`, `registros_ponto`.
-- Pendente: registro contínuo de jornada, cômputo de tempo de espera como
-  jornada (STF ADI 5322), alertas de excesso, indicadores de frota (km
-  rodado/vazio, custo/km, consumo, ocupação).
+  **CORRIGIDO em sessão subsequente** (a mesma que implementou o Módulo 4):
+  os 8 controllers listados acima passaram a usar `sendProblem(reply,
+  error.status, error.message, error.detail)`, exatamente como `fretes`. A
+  correção foi verificada com `fastify.inject()` construindo duas rotas
+  fastify mínimas lado a lado (padrão antigo x novo) usando as classes de
+  erro reais (`NotFoundError`, `ConflictError`) e os helpers reais
+  (`Problems`, `sendProblem`): antes, `NotFoundError` (status 404) e
+  `ConflictError` (status 409) resultavam em `res.statusCode === 400` nos
+  dois casos; depois, `res.statusCode` passou a ser `404` e `409`
+  respectivamente, com o campo `status` do corpo JSON também correto. Nenhum
+  arquivo de rota/service/repository foi alterado, apenas a função
+  `handleDomainError` (e a troca do import `Problems` → `sendProblem`) em
+  cada um dos 8 `*.controller.ts`.
+
+## 4. Controle de Frota e Jornada (foco ADI 5322) — IMPLEMENTADO
+
+Uma sessão subsequente implementou **integralmente o Módulo 4 (Controle de
+Frota e Jornada)** em cima das entidades dos Módulos 1–3 — ver a seção
+dedicada no `README.md` para o detalhamento completo de rotas, schema e
+telas. Resumo:
+
+- **Controle de Frota** (`apps/api/src/modules/frota`): nova tabela
+  `manutencoes_veiculo` (tipo/data/custo/km/próxima manutenção); 3 colunas
+  próprias do Módulo 4 em `viagens` (`km_rodado`, `km_vazio`,
+  `consumo_combustivel_litros`), escritas por um endpoint dedicado do Módulo
+  4 (nenhum arquivo do Módulo 2 é tocado); KPIs agregados (km rodado/vazio,
+  custo/km — apenas manutenção nesta fase, sem preço de combustível ainda —,
+  consumo médio, ocupação, disponíveis x em viagem). "Km vazio" cruza (nunca
+  duplica) `fretes.retorno_vazio` do Módulo 3 via JOIN em memória.
+- **Controle de Jornada** (`apps/api/src/modules/jornada`): nova tabela
+  `registros_jornada`, log contínuo e **imutável** de eventos (início/fim de
+  jornada, direção, espera, descanso), substituindo os stubs
+  `jornadas_motorista`/`registros_ponto` (ver nota de modelagem na migration
+  0005). Máquina de estados explícita valida a sequência de eventos.
+  Motor de conformidade puro (`jornadaCompliance.ts`, 6 testes `vitest`)
+  aplica as duas regras centrais da ADI 5322: tempo de espera conta como
+  jornada (nunca descontado do total) e descanso mínimo de 11h consecutivas,
+  não fracionável (soma de pausas curtas não substitui um bloco contínuo).
+  Endpoints de histórico consolidado (exportável em CSV) e de alertas de
+  conformidade entre motoristas ativos.
+- **RBAC**: OPERADOR registra eventos de jornada em tempo real, mas o log é
+  insert-only para esse papel (sem UPDATE); exclusão restrita a SUPERADMIN,
+  preservando a integridade probatória do histórico (decisão de produto
+  documentada no cabeçalho da migration 0005 e no README).
+- **Telas web**: `FrotaKpiPage`, `ManutencoesListPage`/`ManutencaoFormPage`/`ManutencaoDetailPage`,
+  `JornadaRegistroPage`, `JornadaAlertasPage`, `JornadaHistoricoPage`. Fila
+  offline-first estendida com 3 novos tipos de mutação.
+- **Migration** `0005_modulo4_frota_jornada.sql`.
+- **Não verificado nesta sessão**: mesma ressalva dos Módulos 2/3 —
+  migrations e RLS revisadas por leitura cuidadosa, não executadas contra um
+  Supabase real. O motor de conformidade, por não depender de banco, foi
+  executado e testado.
 
 ## 5. WMS (Armazém Geral)
 - Tabelas: `armazens`, `estoque_itens`, `movimentacoes_estoque`.
