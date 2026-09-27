@@ -16,7 +16,9 @@ export interface QueuedMutation {
     | 'update-frete'
     | 'create-manutencao-veiculo'
     | 'update-quilometragem-viagem'
-    | 'create-registro-jornada';
+    | 'create-registro-jornada'
+    | 'create-depositante'
+    | 'create-avaria';
   payload: Record<string, unknown>;
   targetId?: string; // usado em update-viagem/create-evento-fronteira (viagemId), update-frete/create-frete (viagemId/freteId) e update-quilometragem-viagem (viagemId)
   createdAt: string;

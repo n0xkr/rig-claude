@@ -212,3 +212,100 @@ export const PROXIMO_EVENTO_JORNADA_VALIDO: Record<TipoEventoJornada, TipoEvento
   FIM_DESCANSO: ['INICIO_DIRECAO', 'INICIO_ESPERA', 'INICIO_DESCANSO', 'FIM_JORNADA'],
   FIM_JORNADA: ['INICIO_JORNADA'],
 };
+
+// ============================================================================
+// Módulo 5 — WMS (Armazém Geral, Decreto 1.102/1903)
+// ============================================================================
+
+export const StatusEnderecoArmazemSchema = z.enum(['LIVRE', 'OCUPADO', 'BLOQUEADO']);
+export type StatusEnderecoArmazem = z.infer<typeof StatusEnderecoArmazemSchema>;
+
+/**
+ * Tipo de evento no ledger imutável de estoque (critério "Inventário deve
+ * ser derivado/reconciliado do ledger, nunca um campo mutável solto"). As
+ * chaves são estáveis e nunca renomeadas: o futuro Módulo 6 (integração
+ * TMS+WMS) referencia 'CROSS_DOCKING' e 'EXPEDICAO' para casar uma expedição
+ * do armazém com uma viagem do TMS.
+ */
+export const TipoMovimentacaoEstoqueSchema = z.enum([
+  'RECEBIMENTO',
+  'ENDERECAMENTO',
+  'SEPARACAO',
+  'REEMBALAGEM',
+  'ETIQUETAGEM',
+  'TRANSFERENCIA',
+  'CROSS_DOCKING',
+  'EXPEDICAO',
+  'AVARIA',
+  'AJUSTE_INVENTARIO',
+]);
+export type TipoMovimentacaoEstoque = z.infer<typeof TipoMovimentacaoEstoqueSchema>;
+
+/** Máquina de estados do recebimento/conferência (critério "Recebimento e Conferência"). */
+export const StatusRecebimentoSchema = z.enum([
+  'AGUARDANDO',
+  'EM_CONFERENCIA',
+  'CONFERIDO',
+  'ENDERECADO',
+  'DIVERGENTE',
+]);
+export type StatusRecebimento = z.infer<typeof StatusRecebimentoSchema>;
+
+export const TRANSICOES_STATUS_RECEBIMENTO: Record<StatusRecebimento, StatusRecebimento[]> = {
+  AGUARDANDO: ['EM_CONFERENCIA'],
+  EM_CONFERENCIA: ['CONFERIDO', 'DIVERGENTE'],
+  CONFERIDO: ['ENDERECADO'],
+  DIVERGENTE: ['EM_CONFERENCIA'],
+  ENDERECADO: [],
+};
+
+export const TipoExpedicaoSchema = z.enum(['NORMAL', 'CROSS_DOCKING']);
+export type TipoExpedicao = z.infer<typeof TipoExpedicaoSchema>;
+
+/**
+ * Máquina de estados da expedição (critérios "Separação, Reembalagem,
+ * Etiquetagem" e "Cross-docking / Consolidação / Expedição") — etapas
+ * estruturadas e timestampadas, mesmo racional do fluxo de fronteira do
+ * Módulo 2. Uma expedição CROSS_DOCKING pode pular direto de SOLICITADA para
+ * PRONTA_EXPEDICAO (mercadoria roteada direto para expedição, sem
+ * endereçamento pleno no armazém).
+ */
+export const StatusExpedicaoSchema = z.enum([
+  'SOLICITADA',
+  'EM_SEPARACAO',
+  'SEPARADA',
+  'EM_REEMBALAGEM',
+  'PRONTA_EXPEDICAO',
+  'EXPEDIDA',
+  'CANCELADA',
+]);
+export type StatusExpedicao = z.infer<typeof StatusExpedicaoSchema>;
+
+export const TRANSICOES_STATUS_EXPEDICAO: Record<StatusExpedicao, StatusExpedicao[]> = {
+  SOLICITADA: ['EM_SEPARACAO', 'PRONTA_EXPEDICAO', 'CANCELADA'], // pula p/ PRONTA_EXPEDICAO em cross-docking
+  EM_SEPARACAO: ['SEPARADA', 'CANCELADA'],
+  SEPARADA: ['EM_REEMBALAGEM', 'PRONTA_EXPEDICAO', 'CANCELADA'],
+  EM_REEMBALAGEM: ['PRONTA_EXPEDICAO', 'CANCELADA'],
+  PRONTA_EXPEDICAO: ['EXPEDIDA', 'CANCELADA'],
+  EXPEDIDA: [],
+  CANCELADA: [],
+};
+
+export const SeveridadeAvariaSchema = z.enum(['LEVE', 'MODERADA', 'GRAVE', 'PERDA_TOTAL']);
+export type SeveridadeAvaria = z.infer<typeof SeveridadeAvariaSchema>;
+
+/** Máquina de estados do inventário/contagem (critério "Controle de Inventário"). */
+export const StatusInventarioSchema = z.enum([
+  'ABERTO',
+  'EM_CONTAGEM',
+  'RECONCILIADO',
+  'ENCERRADO',
+]);
+export type StatusInventario = z.infer<typeof StatusInventarioSchema>;
+
+export const TRANSICOES_STATUS_INVENTARIO: Record<StatusInventario, StatusInventario[]> = {
+  ABERTO: ['EM_CONTAGEM'],
+  EM_CONTAGEM: ['RECONCILIADO'],
+  RECONCILIADO: ['ENCERRADO'],
+  ENCERRADO: [],
+};

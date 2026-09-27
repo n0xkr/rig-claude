@@ -173,6 +173,36 @@ export async function queueCreateRegistroJornada(payload: Record<string, unknown
   void trySync();
 }
 
+/**
+ * Enfileira o cadastro de um depositante (Módulo 5, WMS — Armazém Geral)
+ * para envio posterior, reaproveitando a mesma fila offline dos demais
+ * módulos (extensão, nunca uma fila paralela).
+ */
+export async function queueCreateDepositante(payload: Record<string, unknown>): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'create-depositante',
+    payload,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
+/** Enfileira o registro de uma avaria (Módulo 5, WMS — Controle de avarias) para envio posterior. */
+export async function queueCreateAvaria(payload: Record<string, unknown>): Promise<void> {
+  await enqueueMutation({
+    id: randomUUID(),
+    kind: 'create-avaria',
+    payload,
+    createdAt: new Date().toISOString(),
+    attempts: 0,
+  });
+  await notifyListeners();
+  void trySync();
+}
+
 async function sendMutation(mutation: QueuedMutation): Promise<void> {
   if (mutation.kind === 'create-viagem') {
     await api.post('/viagens', mutation.payload);
@@ -190,6 +220,10 @@ async function sendMutation(mutation: QueuedMutation): Promise<void> {
     await api.patch(`/frota/viagens/${mutation.targetId}/quilometragem`, mutation.payload);
   } else if (mutation.kind === 'create-registro-jornada') {
     await api.post('/jornada/eventos', mutation.payload);
+  } else if (mutation.kind === 'create-depositante') {
+    await api.post('/wms/depositantes', mutation.payload);
+  } else if (mutation.kind === 'create-avaria') {
+    await api.post('/wms/avarias', mutation.payload);
   }
 }
 

@@ -1,5 +1,5 @@
 import { Route, Routes, Link } from 'react-router-dom';
-import { Truck, Gauge, Wallet, Wrench, Clock } from 'lucide-react';
+import { Truck, Gauge, Wallet, Wrench, Clock, Warehouse } from 'lucide-react';
 import ViagensListPage from './pages/ViagensListPage.js';
 import ViagemFormPage from './pages/ViagemFormPage.js';
 import ViagemDetailPage from './pages/ViagemDetailPage.js';
@@ -16,6 +16,19 @@ import ManutencaoDetailPage from './pages/ManutencaoDetailPage.js';
 import JornadaRegistroPage from './pages/JornadaRegistroPage.js';
 import JornadaAlertasPage from './pages/JornadaAlertasPage.js';
 import JornadaHistoricoPage from './pages/JornadaHistoricoPage.js';
+import WmsKpiPage from './pages/WmsKpiPage.js';
+import DepositantesListPage from './pages/DepositantesListPage.js';
+import DepositanteFormPage from './pages/DepositanteFormPage.js';
+import ProdutosListPage from './pages/ProdutosListPage.js';
+import RastreioProdutoPage from './pages/RastreioProdutoPage.js';
+import ArmazemMapaPage from './pages/ArmazemMapaPage.js';
+import RecebimentosListPage from './pages/RecebimentosListPage.js';
+import RecebimentoFormPage from './pages/RecebimentoFormPage.js';
+import RecebimentoDetailPage from './pages/RecebimentoDetailPage.js';
+import ExpedicoesListPage from './pages/ExpedicoesListPage.js';
+import ExpedicaoFormPage from './pages/ExpedicaoFormPage.js';
+import ExpedicaoDetailPage from './pages/ExpedicaoDetailPage.js';
+import AvariasListPage from './pages/AvariasListPage.js';
 
 export default function App() {
   return (
@@ -50,6 +63,12 @@ export default function App() {
           >
             <Clock className="h-4 w-4" /> Jornada
           </Link>
+          <Link
+            to="/wms"
+            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+          >
+            <Warehouse className="h-4 w-4" /> WMS
+          </Link>
         </div>
       </header>
       <main>
@@ -74,6 +93,19 @@ export default function App() {
             path="/jornada/motoristas/:motoristaId/historico"
             element={<JornadaHistoricoPage />}
           />
+          <Route path="/wms" element={<WmsKpiPage />} />
+          <Route path="/wms/depositantes" element={<DepositantesListPage />} />
+          <Route path="/wms/depositantes/novo" element={<DepositanteFormPage />} />
+          <Route path="/wms/produtos" element={<ProdutosListPage />} />
+          <Route path="/wms/produtos/:produtoId/rastreio" element={<RastreioProdutoPage />} />
+          <Route path="/wms/armazem/mapa" element={<ArmazemMapaPage />} />
+          <Route path="/wms/recebimentos" element={<RecebimentosListPage />} />
+          <Route path="/wms/recebimentos/novo" element={<RecebimentoFormPage />} />
+          <Route path="/wms/recebimentos/:id" element={<RecebimentoDetailPage />} />
+          <Route path="/wms/expedicoes" element={<ExpedicoesListPage />} />
+          <Route path="/wms/expedicoes/nova" element={<ExpedicaoFormPage />} />
+          <Route path="/wms/expedicoes/:id" element={<ExpedicaoDetailPage />} />
+          <Route path="/wms/avarias" element={<AvariasListPage />} />
         </Routes>
       </main>
     </div>

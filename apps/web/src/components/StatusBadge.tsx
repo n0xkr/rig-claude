@@ -4,6 +4,11 @@ import type {
   StatusFechamentoFrete,
   TipoManutencaoVeiculo,
   TipoEventoJornada,
+  StatusEnderecoArmazem,
+  StatusRecebimento,
+  StatusExpedicao,
+  SeveridadeAvaria,
+  StatusInventario,
 } from '@rigabras/shared';
 
 const STATUS_STYLES: Record<StatusViagem, string> = {
@@ -102,6 +107,99 @@ export function EventoJornadaBadge({ tipo }: { tipo: TipoEventoJornada }) {
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${TIPO_EVENTO_JORNADA_STYLES[tipo]}`}
     >
       {tipo.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const STATUS_ENDERECO_STYLES: Record<StatusEnderecoArmazem, string> = {
+  LIVRE: 'bg-emerald-900/60 text-emerald-200',
+  OCUPADO: 'bg-blue-900/60 text-blue-200',
+  BLOQUEADO: 'bg-red-900/60 text-red-200',
+};
+
+/** Badge do status de um endereço/bin do armazém (Módulo 5, WMS — mapa de ocupação). */
+export function EnderecoStatusBadge({ status }: { status: StatusEnderecoArmazem }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_ENDERECO_STYLES[status]}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+const STATUS_RECEBIMENTO_STYLES: Record<StatusRecebimento, string> = {
+  AGUARDANDO: 'bg-slate-700 text-slate-200',
+  EM_CONFERENCIA: 'bg-amber-900/60 text-amber-200',
+  CONFERIDO: 'bg-cyan-900/60 text-cyan-200',
+  ENDERECADO: 'bg-emerald-900/60 text-emerald-200',
+  DIVERGENTE: 'bg-red-900/60 text-red-200',
+};
+
+/** Badge do status de um recebimento (Módulo 5, WMS — Recebimento e Conferência). */
+export function RecebimentoStatusBadge({ status }: { status: StatusRecebimento }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_RECEBIMENTO_STYLES[status]}`}
+    >
+      {status.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const STATUS_EXPEDICAO_STYLES: Record<StatusExpedicao, string> = {
+  SOLICITADA: 'bg-slate-700 text-slate-200',
+  EM_SEPARACAO: 'bg-amber-900/60 text-amber-200',
+  SEPARADA: 'bg-cyan-900/60 text-cyan-200',
+  EM_REEMBALAGEM: 'bg-indigo-900/60 text-indigo-200',
+  PRONTA_EXPEDICAO: 'bg-teal-900/60 text-teal-200',
+  EXPEDIDA: 'bg-emerald-900/60 text-emerald-200',
+  CANCELADA: 'bg-red-900/60 text-red-200',
+};
+
+/** Badge do status de uma expedição (Módulo 5, WMS — Separação/Reembalagem/Etiquetagem/Cross-docking/Expedição). */
+export function ExpedicaoStatusBadge({ status }: { status: StatusExpedicao }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_EXPEDICAO_STYLES[status]}`}
+    >
+      {status.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const SEVERIDADE_AVARIA_STYLES: Record<SeveridadeAvaria, string> = {
+  LEVE: 'bg-amber-950/60 text-amber-300',
+  MODERADA: 'bg-amber-900/60 text-amber-200',
+  GRAVE: 'bg-orange-900/60 text-orange-200',
+  PERDA_TOTAL: 'bg-red-900/60 text-red-200',
+};
+
+/** Badge de severidade de uma avaria (Módulo 5, WMS — Controle de avarias). */
+export function AvariaSeveridadeBadge({ severidade }: { severidade: SeveridadeAvaria }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${SEVERIDADE_AVARIA_STYLES[severidade]}`}
+    >
+      {severidade.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const STATUS_INVENTARIO_STYLES: Record<StatusInventario, string> = {
+  ABERTO: 'bg-slate-700 text-slate-200',
+  EM_CONTAGEM: 'bg-amber-900/60 text-amber-200',
+  RECONCILIADO: 'bg-cyan-900/60 text-cyan-200',
+  ENCERRADO: 'bg-emerald-900/60 text-emerald-200',
+};
+
+/** Badge do status de um inventário/contagem física (Módulo 5, WMS — Controle de Inventário). */
+export function InventarioStatusBadge({ status }: { status: StatusInventario }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_INVENTARIO_STYLES[status]}`}
+    >
+      {status.replaceAll('_', ' ')}
     </span>
   );
 }

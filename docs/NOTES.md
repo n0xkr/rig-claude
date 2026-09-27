@@ -134,13 +134,85 @@ telas. Resumo:
   Supabase real. O motor de conformidade, por não depender de banco, foi
   executado e testado.
 
-## 5. WMS (Armazém Geral)
-- Tabelas: `armazens`, `estoque_itens`, `movimentacoes_estoque`.
-- Pendente: recebimento/conferência/endereçamento, separação, reembalagem,
-  cross-docking, controle de avarias e inventário, giro de estoque.
+## 5. WMS (Armazém Geral) — IMPLEMENTADO
+
+Uma sessão subsequente implementou **integralmente o Módulo 5 (WMS — Armazém
+Geral, Decreto 1.102/1903)** em `apps/api/src/modules/wms`, montado sob
+`/api/v1/wms` — ver a seção dedicada no `README.md` para o detalhamento
+completo de rotas, schema e telas. Resumo das decisões de modelagem chave
+(documentadas também no cabeçalho da migration `0006`), para os Módulos 6/7
+que vão construir em cima destas tabelas:
+
+- **`depositantes` ≠ clientes de frete**: o Armazém Geral vende um serviço
+  distinto (guarda/conferência/reembalagem de mercadoria de terceiros) do
+  frete rodoviário internacional dos Módulos 1–4. `depositantes` é uma
+  tabela própria (razão social/CNPJ/contato), **nunca** uma FK para uma
+  tabela de "clientes de frete" — que hoje nem existe como entidade própria
+  (`viagens`/`fretes` guardam o cliente como texto livre). Um mesmo cliente
+  real pode ser as duas coisas ao mesmo tempo, mas são papéis independentes
+  no sistema.
+- **Inventário como ledger imutável, nunca um campo mutável solto**:
+  `movimentacoes_estoque` é a fonte da verdade — cada linha é um evento de
+  estoque imutável (insert-only, sem policy de UPDATE/DELETE além de
+  SUPERADMIN, mesmo padrão de `registros_jornada` no Módulo 4), com 10 tipos
+  (`RECEBIMENTO`, `ENDERECAMENTO`, `SEPARACAO`, `REEMBALAGEM`,
+  `ETIQUETAGEM`, `TRANSFERENCIA`, `CROSS_DOCKING`, `EXPEDICAO`, `AVARIA`,
+  `AJUSTE_INVENTARIO`). A tabela `estoque` (saldo por produto x endereço) é
+  um **saldo materializado**, mantido pela camada de serviço
+  (`EstoqueRepository.registrarMovimentacao`) a cada movimentação, calculado
+  pelas funções puras de `estoqueLedger.ts` (nunca editado "à mão" fora
+  desse fluxo). O inventário (`POST /inventarios/:id/reconciliar`) sempre
+  reconcilia o saldo contado fisicamente contra o ledger e qualquer
+  divergência vira uma **nova** linha `AJUSTE_INVENTARIO` — nunca um update
+  silencioso do saldo.
+- **Chaves estáveis para o Módulo 6 (integração TMS+WMS)**: os valores
+  `'CROSS_DOCKING'` e `'EXPEDICAO'` de `movimentacoes_estoque.
+  tipo_movimentacao`, e a coluna `expedicoes.viagem_id` (nullable, hoje
+  nunca preenchida por este módulo) existem justamente para que o futuro
+  Módulo 6 consiga casar uma expedição do armazém com uma viagem do TMS sem
+  precisar renomear ou remodelar nada aqui.
+- **`avarias` referencia `movimentacoes_estoque`, não o contrário**: para
+  evitar uma dependência circular entre as duas tabelas na migration
+  (`avarias.movimentacao_id` aponta para o evento `AVARIA` do ledger que
+  registrou a baixa de estoque), `movimentacoes_estoque` é criada **antes**
+  de `avarias` — e depois de `inventarios` (que ela também referencia via
+  `inventario_id`). A ordem de criação das tabelas na migration 0006 segue
+  estritamente essa dependência.
+- **RBAC**: leitura aberta a todos os papéis (cadastros, mapa de ocupação,
+  KPIs, rastreabilidade — sem dado financeiro sensível). OPERADOR cobre todo
+  o trabalho de piso (recebimento/conferência, separação/expedição, avarias,
+  abertura e contagem de inventário). A **reconciliação de inventário**
+  (`POST /inventarios/:id/reconciliar`), que gera ajustes de estoque com
+  efeito financeiro/contratual sobre o depositante, fica restrita a
+  ADMIN/SUPERADMIN — mesmo racional da aprovação financeira do Módulo 3.
+- **Telas web**: `DepositantesListPage`/`DepositanteFormPage`,
+  `ProdutosListPage`/`RastreioProdutoPage`, `ArmazemMapaPage` (ocupação),
+  `RecebimentosListPage`/`RecebimentoFormPage`/`RecebimentoDetailPage`,
+  `ExpedicoesListPage`/`ExpedicaoFormPage`/`ExpedicaoDetailPage`,
+  `AvariasListPage`, `WmsKpiPage`. Fila offline-first estendida com
+  `create-depositante` e `create-avaria`.
+- **Migration** `0006_modulo5_wms_armazem_geral.sql` — substitui os stubs
+  `estoque_itens`/`movimentacoes_estoque` da migration 0001 pelo modelo
+  completo acima; `armazens` (migration 0001) é mantida como está.
+- **Testes**: `estoqueLedger.test.ts` (13 testes `vitest`, lógica pura sem
+  dependência de banco) cobrindo o delta de saldo por tipo de movimentação
+  (entrada/saída/transferência/ajuste), % de ocupação, giro de estoque e o
+  cálculo de ajustes de inventário (aumento/redução/sem ajuste).
+- **Giro de estoque — simplificação documentada**: como este módulo não
+  mantém snapshots históricos de saldo, o "saldo médio do período" usado no
+  cálculo de giro é aproximado pelo saldo **atual** total dos endereços do
+  armazém filtrado — uma evolução futura com séries temporais de saldo
+  diário daria um saldo médio mais preciso.
+- **Não verificado nesta sessão**: mesma ressalva dos Módulos 2–4 —
+  migrations e RLS revisadas por leitura cuidadosa, não executadas contra um
+  Supabase real.
 
 ## 6. Integração TMS + WMS
-- Pendente por completo — depende dos módulos 2 e 5 estarem implementados.
+- Pendente por completo — depende dos módulos 2 e 5 estarem implementados
+  (Módulo 5 **já está** implementado nesta sessão; ver seção 5 acima para as
+  chaves estáveis deixadas prontas: `movimentacoes_estoque.
+  tipo_movimentacao IN ('CROSS_DOCKING','EXPEDICAO')` e
+  `expedicoes.viagem_id`).
 
 ## 7. Integração ERP
 - Pendente por completo — fora do escopo desta fase (o projeto ainda não
