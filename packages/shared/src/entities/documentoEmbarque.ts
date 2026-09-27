@@ -26,5 +26,21 @@ export const CreateDocumentoEmbarqueSchema = DocumentoEmbarqueSchema.omit({
 });
 export type CreateDocumentoEmbarqueInput = z.infer<typeof CreateDocumentoEmbarqueSchema>;
 
+/**
+ * Payload de `POST /viagens/:viagemId/documentos` — igual ao de criação
+ * direta, mas sem `viagem_id` (vem da URL). Bug real corrigido nesta sessão
+ * (mesma classe de bug do Módulo 2 em `eventoFronteira.ts`): o controller
+ * validava o body com `CreateDocumentoEmbarqueSchema` (que exige
+ * `viagem_id`) ANTES de mesclar o `viagem_id` da URL, então essa rota
+ * (única forma de criar um documento de embarque — não existe rota direta
+ * de criação) sempre falhava com 422.
+ */
+export const CreateDocumentoEmbarqueNestedSchema = CreateDocumentoEmbarqueSchema.omit({
+  viagem_id: true,
+});
+export type CreateDocumentoEmbarqueNestedInput = z.infer<
+  typeof CreateDocumentoEmbarqueNestedSchema
+>;
+
 export const UpdateDocumentoEmbarqueSchema = CreateDocumentoEmbarqueSchema.partial();
 export type UpdateDocumentoEmbarqueInput = z.infer<typeof UpdateDocumentoEmbarqueSchema>;

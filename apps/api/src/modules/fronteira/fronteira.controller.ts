@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { CreateEventoFronteiraSchema } from '@rigabras/shared';
+import { CreateEventoFronteiraNestedSchema } from '@rigabras/shared';
 import { FronteiraService } from './fronteira.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
 import { sendProblem } from '../../lib/problemDetails.js';
@@ -35,7 +35,7 @@ export const FronteiraController = {
 
   async registrarEtapa(request: FastifyRequest, reply: FastifyReply) {
     const { viagemId } = request.params as { viagemId: string };
-    const parsed = parseOrProblem(CreateEventoFronteiraSchema, request.body, reply);
+    const parsed = parseOrProblem(CreateEventoFronteiraNestedSchema, request.body, reply);
     if (!parsed) return;
     const body = { ...parsed, viagem_id: viagemId };
     try {

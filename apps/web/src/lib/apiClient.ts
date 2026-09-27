@@ -55,7 +55,18 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     ...init,
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      // Bug real encontrado nesta sessão: `Content-Type: application/json`
+      // era enviado mesmo em requisições sem corpo (ex: `POST
+      // /wms/recebimentos/:id/iniciar-conferencia`, chamada como
+      // `api.post(path)` sem segundo argumento) — o parser de JSON do
+      // Fastify rejeita isso com 400 `FST_ERR_CTP_EMPTY_JSON_BODY` ("Body
+      // cannot be empty when content-type is set to 'application/json'").
+      // Isso quebrava TODOS os botões de transição sem payload do Módulo 5
+      // (iniciar conferência/concluir de recebimento, iniciar
+      // separação/pronta para expedição/expedir/cancelar de expedição,
+      // iniciar contagem/reconciliar/encerrar de inventário) — nunca detectado
+      // antes porque essas rotas nunca tinham sido exercitadas pela UI real.
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },

@@ -1,5 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { CreateDocumentoEmbarqueSchema, UpdateDocumentoEmbarqueSchema } from '@rigabras/shared';
+import {
+  CreateDocumentoEmbarqueNestedSchema,
+  UpdateDocumentoEmbarqueSchema,
+} from '@rigabras/shared';
 import { DocumentosEmbarqueService } from './documentosEmbarque.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
 import { sendProblem } from '../../lib/problemDetails.js';
@@ -30,7 +33,7 @@ export const DocumentosEmbarqueController = {
 
   async create(request: FastifyRequest, reply: FastifyReply) {
     const { viagemId } = request.params as { viagemId: string };
-    const parsed = parseOrProblem(CreateDocumentoEmbarqueSchema, request.body, reply);
+    const parsed = parseOrProblem(CreateDocumentoEmbarqueNestedSchema, request.body, reply);
     if (!parsed) return;
     const body = { ...parsed, viagem_id: viagemId };
     try {

@@ -31,6 +31,21 @@ export const CreateEventoFronteiraSchema = EventoFronteiraSchema.omit({
 });
 export type CreateEventoFronteiraInput = z.infer<typeof CreateEventoFronteiraSchema>;
 
+/**
+ * Payload de `POST /viagens/:viagemId/fronteira/eventos` — igual ao de
+ * criação direta, mas sem `viagem_id` (vem da URL, injetado pelo
+ * controller depois da validação — mesmo padrão de
+ * `CreateFreteNestedSchema` no Módulo 3). Bug real corrigido nesta sessão:
+ * o controller usava `CreateEventoFronteiraSchema` (que exige `viagem_id`
+ * no corpo) para validar o body ANTES de mesclar o `viagem_id` da URL, então
+ * toda chamada a essa rota falhava com 422 — nunca havia sido exercitada
+ * ponta a ponta antes desta sessão de testes.
+ */
+export const CreateEventoFronteiraNestedSchema = CreateEventoFronteiraSchema.omit({
+  viagem_id: true,
+});
+export type CreateEventoFronteiraNestedInput = z.infer<typeof CreateEventoFronteiraNestedSchema>;
+
 /** KPIs de fronteira agregados por viagem (critério #2). */
 export const FronteiraKpiViagemSchema = z.object({
   viagem_id: z.string().uuid(),
