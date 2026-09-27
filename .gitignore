@@ -14,3 +14,6 @@ coverage/
 apps/web/dist/
 apps/api/dist/
 packages/shared/dist/
+playwright-report/
+test-results/
+supabase/.temp/

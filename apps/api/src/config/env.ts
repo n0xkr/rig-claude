@@ -1,4 +1,41 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { z } from 'zod';
+
+/**
+ * Carregador de `.env` minimalista, sem dependência externa (bug real
+ * encontrado nesta sessão: o projeto nunca teve nenhum mecanismo de leitura
+ * de `.env` — nem `dotenv`, nem `node --env-file` nos scripts — então
+ * `pnpm --filter @rigabras/api dev` sempre falhava com "Required" para toda
+ * variável, mesmo com um `.env` presente. Corrigido aqui em vez de exigir
+ * que o operador exporte manualmente cada variável no shell). Nunca
+ * sobrescreve uma variável já definida no ambiente (env real do processo/CI
+ * sempre tem prioridade sobre o arquivo).
+ */
+function loadDotEnv(): void {
+  const path = resolve(process.cwd(), '.env');
+  if (!existsSync(path)) return;
+  const content = readFileSync(path, 'utf-8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const key = trimmed.slice(0, eqIndex).trim();
+    let value = trimmed.slice(eqIndex + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadDotEnv();
 
 /**
  * Validação de variáveis de ambiente no boot (critério #11): a aplicação
@@ -27,6 +64,18 @@ const EnvSchema = z.object({
 
   REDIS_URL: z.string().optional(),
   WEB_ORIGIN: z.string().default('http://localhost:5173'),
+
+  /**
+   * Quando `true`, `config/supabase.ts` usa um cliente Supabase falso em
+   * memória (`config/fakeSupabase.ts`) em vez do `@supabase/supabase-js`
+   * real. Existe exclusivamente para dev local/testes sem Docker disponível
+   * (ver docs/NOTES.md e README, seção "Testes") — nunca deve ser `true` em
+   * produção.
+   */
+  USE_FAKE_DB: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

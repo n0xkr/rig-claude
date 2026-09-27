@@ -118,6 +118,153 @@ pnpm dev
 # web:  http://localhost:5173
 ```
 
+**Bug corrigido nesta sessão**: `apps/api/src/config/env.ts` nunca teve nenhum
+mecanismo de leitura de `.env` (nem `dotenv`, nem `node --env-file` nos
+scripts), então `pnpm dev`/`pnpm --filter @rigabras/api dev` sempre falhavam
+com "Required" para toda variável, mesmo com um `.env` presente — o operador
+precisava exportar cada variável manualmente no shell. Um carregador de
+`.env` minimalista e sem dependência externa foi adicionado (nunca sobrescreve
+uma variável já definida no ambiente real/CI).
+
+## Testes
+
+Esta seção documenta a suíte de testes entregue nesta sessão final —
+Prettier + typecheck + `vitest` (critérios já existentes) e, como novidade,
+uma suíte **Playwright** de ponta a ponta.
+
+### Backend usado pelos testes: banco falso em memória, não Supabase real
+
+Este sandbox de testes **não tem Docker disponível** (`docker`/`supabase
+start` não funcionam aqui), então não havia como rodar um Supabase local
+real. A alternativa adotada foi um **cliente Supabase falso em memória**
+(`apps/api/src/config/fakeSupabase.ts`), ativado com `USE_FAKE_DB=true` no
+`.env` da API: ele implementa a mesma API encadeável do
+`@supabase/supabase-js` (`.from().select().eq()...`) usada por **todos** os
+repositories, então nenhum arquivo de rota/controller/service/repository
+precisou mudar — só o I/O (Postgres real) foi trocado por um `Map` em
+memória, com um seed mínimo (`fakeSupabaseSeed.ts`: um perfil por papel de
+RBAC + um armazém). **Isso significa que as migrations SQL (0001-0007) e as
+políticas de RLS continuam sem verificação contra um Postgres real** — a
+mesma ressalva pré-existente do projeto, documentada em cada seção de módulo
+acima, não foi resolvida por este mecanismo (e não tem como ser, sem
+Docker). `USE_FAKE_DB` nunca deve ser `true` em produção (documentado no
+próprio `env.ts`).
+
+Dois gaps reais e pré-existentes do frontend foram corrigidos para que o
+login e a máquina de estados da viagem pudessem ser testados pela UI de
+verdade (não são artefatos do banco falso — afetam qualquer backend):
+
+- **Não existia nenhuma tela de login.** `apiClient.ts` já lia
+  `localStorage.getItem('rigabras_access_token')` em toda chamada, mas nada
+  no app jamais escrevia essa chave — não havia como um usuário real se
+  autenticar pela UI, apesar de `POST /api/v1/auth/login` sempre ter
+  funcionado. Adicionada `apps/web/src/pages/LoginPage.tsx` +
+  `apps/web/src/components/AuthGate.tsx` (guarda de rota client-side,
+  redireciona para `/login` sem token) + botão de logout no header.
+- **Não existia nenhum controle para mudar o status de uma viagem.**
+  `PATCH /viagens/:id/status` (a máquina de estados completa do Módulo 2)
+  nunca era chamado por nenhuma tela — `ViagemDetailPage` só lia o
+  histórico. Adicionado um controle mínimo "Avançar status da viagem"
+  (`apps/web/src/hooks/useChangeViagemStatus.ts` + seção nova em
+  `ViagemDetailPage.tsx`).
+
+### Bugs reais encontrados e corrigidos ao exercitar a aplicação de ponta a ponta pela primeira vez
+
+1. **`POST /viagens/:viagemId/fronteira/eventos` sempre retornava 422** —
+   o controller validava o body com `CreateEventoFronteiraSchema` (que
+   exige `viagem_id`) **antes** de mesclar o `viagem_id` vindo da URL; como
+   o frontend corretamente nunca envia esse campo no corpo (vem da rota),
+   toda chamada falhava. Corrigido com um novo
+   `CreateEventoFronteiraNestedSchema` (omite `viagem_id`), mesmo padrão já
+   usado por `CreateFreteNestedSchema` no Módulo 3.
+   (`packages/shared/src/entities/eventoFronteira.ts`,
+   `apps/api/src/modules/fronteira/fronteira.controller.ts`)
+2. **`POST /viagens/:viagemId/documentos` tinha o mesmo bug** — mesma causa
+   raiz, mesma correção (`CreateDocumentoEmbarqueNestedSchema`).
+   (`packages/shared/src/entities/documentoEmbarque.ts`,
+   `apps/api/src/modules/documentosEmbarque/documentosEmbarque.controller.ts`)
+3. **Todo botão de transição sem payload do Módulo 5 estava quebrado** —
+   "Iniciar conferência"/"Concluir" (recebimento), "Iniciar
+   separação"/"Pronta para expedição"/"Expedir"/"Cancelar" (expedição),
+   "Iniciar contagem"/"Reconciliar"/"Encerrar" (inventário): o helper
+   `api.post(path)` do frontend sempre enviava `Content-Type:
+application/json` mesmo sem corpo, e o Fastify rejeita isso com `400
+FST_ERR_CTP_EMPTY_JSON_BODY` ("Body cannot be empty..."). Corrigido em
+   `apps/web/src/lib/apiClient.ts`: o header só é enviado quando há de fato
+   um `body`. Este era provavelmente o bug de maior impacto encontrado —
+   quebrava a maior parte do fluxo operacional do Módulo 5 na UI real,
+   nunca detectado porque essas rotas nunca haviam sido clicadas de
+   verdade antes desta sessão.
+
+### Rodando a suíte
+
+```bash
+# instala os browsers do Playwright (uma vez só; ~300 MB, precisa de rede)
+npx playwright install chromium
+
+# .env necessários (ver acima) — apps/api/.env com USE_FAKE_DB=true e
+# WEB_ORIGIN=http://127.0.0.1:5173 (tem que bater exatamente com a origem
+# usada pelo Chromium do Playwright, senão a API bloqueia por CORS)
+
+pnpm test:e2e            # roda toda a suíte (sobe api+web sozinho via webServer)
+pnpm test:e2e:report     # abre o relatório HTML da última execução
+```
+
+A `playwright.config.ts` (raiz do repo) já sobe `apps/api` (com
+`USE_FAKE_DB=true`) e `apps/web` automaticamente (`webServer`), reaproveita
+um servidor já rodando se houver um de pé, e roda com 1 worker (as specs
+compartilham o mesmo banco falso em memória dentro de uma execução).
+
+### Cobertura: 19/19 specs Playwright passando, cobrindo os 7 módulos
+
+`tests/e2e/*.spec.ts` — todas rodam num Chromium real, contra a API e o web
+reais (não mocks de rede):
+
+- `01-auth-rbac.spec.ts` (8 testes): login como ADMIN e OPERADOR, senha
+  errada, rota protegida sem sessão, logout, RBAC ocultando/mostrando a
+  tela de Exportações por papel, e a mesma checagem 403/200 direto na API.
+- `02-modulo1-viagens.spec.ts` (2): cria viagem → aparece na lista → abre o
+  detalhe; estado vazio de um filtro sem resultados.
+- `03-modulo2-ciclo-vida-fronteira.spec.ts` (2): transição de status pela
+  UI + linha do tempo atualizando; registro de etapa de fronteira + KPIs
+  agregados por rota/viagem.
+- `04-modulo3-financeiro.spec.ts` (1): avança a viagem até ENTREGUE, registra
+  o frete, roda o fechamento completo (OPERADOR envia para conferência,
+  troca de sessão para ADMIN aprova e paga), confere o saldo chegando a
+  zero.
+- `05-modulo4-jornada.spec.ts` (1): registra eventos de jornada, abre o
+  painel de alertas de conformidade.
+- `06-modulo5-wms.spec.ts` (1): cria depositante + produto, registra
+  recebimento, roda a conferência até `ENDERECADO`.
+- `07-modulo6-integracao-tms-wms.spec.ts` (1): a seção "Integração com o
+  armazém (WMS)" da viagem mostra a expedição vinculada a ela.
+- `08-modulo7-erp-export.spec.ts` (2): visualização JSON + download real de
+  CSV, para os dois tipos de exportação (financeiro/estoque).
+- `09-offline-queue.spec.ts` (1): cria uma viagem com `context.setOffline(true)`
+  (emulação real do Playwright), confirma o enfileiramento local, volta a
+  ficar online e confirma que `apps/web/src/offline/syncManager.ts`
+  sincronizou de verdade com a API.
+
+Pré-requisitos honestos, sem tela própria no app (criados via API dentro do
+teste, nunca simulados): motoristas, endereços de armazém e o vínculo
+expedição↔viagem do Módulo 6 (`viagem_id` na criação da expedição) — nenhuma
+tela permite fazer isso hoje, só a API. Documentado em comentário no topo de
+cada spec que depende disso.
+
+### O que continua sem cobertura (gaps honestos)
+
+- **RLS do Supabase e as migrations 0001-0007 continuam nunca verificadas
+  contra um Postgres real** — o banco falso em memória valida
+  routing/RBAC/regras de negócio/máquinas de estado reais, mas não
+  constraints de schema SQL, triggers, nem policy de RLS. Só um Supabase
+  real (local via Docker, ou um projeto de staging) resolve isso.
+- Telas sem cobertura Playwright: `ValidacaoPage` (validação cruzada
+  pré-embarque), `FrotaKpiPage`/manutenções, `ArmazemMapaPage`,
+  `AvariasListPage`, o fluxo completo de separação/expedição (só o vínculo
+  com a viagem foi testado, não o workflow de separação item a item).
+- Nenhum teste de carga/performance, nenhum teste de acessibilidade
+  automatizado.
+
 ## Mapeamento dos 17 Critérios de Excelência de Produção
 
 | #   | Critério            | Status nesta sessão                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -131,14 +278,14 @@ pnpm dev
 | 7   | Confiabilidade      | **Satisfeito (parcial)** — graceful shutdown (SIGINT/SIGTERM). Circuit breaker para chamadas externas (Groq) e transações multi-tabela explícitas: **deferidos**. Backup automatizado do banco: fora do escopo (gerido pelo Supabase).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 8   | Integrações         | **Não aplicável nesta fase** — decisão de produto registrada no prompt original: sem webhooks externos por enquanto, apenas RLS do Supabase. Groq é chamado de forma síncrona, sem fila BullMQ.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 9   | Observabilidade     | **Satisfeito** — logs JSON estruturados (pino), Correlation-ID por requisição propagado em log e header de resposta. Tracing distribuído: **deferido**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| 10  | Testes              | **Satisfeito (parcial)** — motor de conformidade ADI 5322 do Módulo 4 (`jornadaCompliance.ts`) tem 6 testes unitários (`vitest`) cobrindo as regras centrais (espera conta como jornada, descanso fracionado, descanso contínuo válido, descanso insuficiente entre jornadas, excesso de direção/jornada, sessão em aberto). O ledger de estoque do Módulo 5 (`estoqueLedger.ts`) tem 13 testes unitários cobrindo o delta de saldo por tipo de movimentação, ocupação, giro de estoque e ajustes de inventário. O bug de status HTTP dos Módulos 1/2 foi verificado com `fastify.inject()` comparando padrão antigo x novo. O Módulo 7 (`erpExport.mapper.test.ts`) tem 7 testes unitários cobrindo o mapeamento frete+saldo -> registro ERP financeiro, movimentação+produto -> registro ERP de estoque (inclusive quando o join do produto não retorna nada) e o filtro de período (extremos inclusive). Total: 26 testes `vitest` passando. Cobertura de 100% dos UseCases/rotas HTTP: **deferida** para os demais módulos.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 10  | Testes              | **Satisfeito (parcial)** — motor de conformidade ADI 5322 do Módulo 4 (`jornadaCompliance.ts`) tem 6 testes unitários (`vitest`) cobrindo as regras centrais (espera conta como jornada, descanso fracionado, descanso contínuo válido, descanso insuficiente entre jornadas, excesso de direção/jornada, sessão em aberto). O ledger de estoque do Módulo 5 (`estoqueLedger.ts`) tem 13 testes unitários cobrindo o delta de saldo por tipo de movimentação, ocupação, giro de estoque e ajustes de inventário. O bug de status HTTP dos Módulos 1/2 foi verificado com `fastify.inject()` comparando padrão antigo x novo. O Módulo 7 (`erpExport.mapper.test.ts`) tem 7 testes unitários cobrindo o mapeamento frete+saldo -> registro ERP financeiro, movimentação+produto -> registro ERP de estoque (inclusive quando o join do produto não retorna nada) e o filtro de período (extremos inclusive). Total: 26 testes `vitest` passando. **Sessão final**: suíte Playwright de ponta a ponta somada (19/19 passando, browser real) — ver seção "Testes" acima para a suíte completa, o backend falso em memória usado (sem Docker disponível neste sandbox) e os bugs reais encontrados e corrigidos. Cobertura de 100% dos UseCases/rotas HTTP: **deferida** para os demais módulos.                                                                                                                                                                                                                                                                                                                                            |
 | 11  | DevOps              | **Satisfeito (parcial)** — Dockerfiles multi-stage Alpine para api e web, validação de env no boot com `process.exit(1)`. Pipeline de CI (lint→typecheck→test→build): **deferido** (nenhum arquivo de workflow criado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 12  | Documentação        | **Satisfeito (parcial)** — este README, `docs/NOTES.md` por módulo (agora incluindo os Módulos 6 e 7, com o detalhamento honesto do que é totalmente automatizado vs. parcial). OpenAPI/Swagger vivo e dicionário de dados formal: **deferidos**.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 13  | Escalabilidade      | **Satisfeito (parcial)** — API stateless (sessão via JWT, não em memória do processo), pronta para múltiplas réplicas atrás de LB. Filas de workers dedicados: **deferido** (não há BullMQ/Redis configurado).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 14  | Administração       | **Deferido** — painel de administração com métricas de negócio, gestão de usuários e consulta de auditoria via UI não foram construídos (a tabela `audit_logs` existe e é gravada, mas sem tela de consulta).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 15  | Qualidade de Código | **Satisfeito** — TypeScript `strict: true` em todos os workspaces, arquitetura em camadas, zero credenciais hardcoded (tudo via `.env`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 16  | Produção            | **Deferido** — TLS/domínio, subnet privada de banco e rollback automático pós-deploy dependem da infraestrutura de hospedagem (Coolify) e não foram configurados neste scaffold.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 17  | Definition of Done  | **Parcial** — Módulo 1 está Implementado → Integrado → Validado (Zod) → Seguro (RBAC/RLS) → Persistindo → Tratando erros (RFC 7807) → Monitorado (logs). **Testado** e **Pronto para produção** (TLS, CI, backups) ainda não.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 17  | Definition of Done  | **Parcial** — Módulo 1 está Implementado → Integrado → Validado (Zod) → Seguro (RBAC/RLS) → Persistindo → Tratando erros (RFC 7807) → Monitorado (logs). **Testado**: parcial — 26 testes `vitest` (lógica pura) + 19 specs Playwright de ponta a ponta (browser real, contra um banco falso em memória, não um Postgres real — ver seção "Testes"). **Pronto para produção** (TLS, CI, backups, Supabase/RLS real) ainda não.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 ## Módulo 2 — TMS Operacional
 

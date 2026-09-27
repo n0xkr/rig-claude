@@ -1,5 +1,8 @@
-import { Route, Routes, Link } from 'react-router-dom';
-import { Truck, Gauge, Wallet, Wrench, Clock, Warehouse, UploadCloud } from 'lucide-react';
+import { Route, Routes, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Truck, Gauge, Wallet, Wrench, Clock, Warehouse, UploadCloud, LogOut } from 'lucide-react';
+import { AuthGate } from './components/AuthGate.js';
+import { getCurrentUserRole } from './lib/apiClient.js';
+import LoginPage from './pages/LoginPage.js';
 import ViagensListPage from './pages/ViagensListPage.js';
 import ViagemFormPage from './pages/ViagemFormPage.js';
 import ViagemDetailPage from './pages/ViagemDetailPage.js';
@@ -31,89 +34,330 @@ import ExpedicaoDetailPage from './pages/ExpedicaoDetailPage.js';
 import AvariasListPage from './pages/AvariasListPage.js';
 import ExportacoesPage from './pages/ExportacoesPage.js';
 
+function LogoutButton() {
+  const navigate = useNavigate();
+  const role = getCurrentUserRole();
+  if (!role) return null;
+  return (
+    <button
+      type="button"
+      data-testid="logout-button"
+      onClick={() => {
+        localStorage.removeItem('rigabras_access_token');
+        navigate('/login');
+      }}
+      className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+      title={`Papel atual: ${role}`}
+    >
+      <LogOut className="h-4 w-4" /> Sair ({role})
+    </button>
+  );
+}
+
 export default function App() {
+  const location = useLocation();
+  const isLoginRoute = location.pathname === '/login';
+
   return (
     <div className="min-h-screen bg-slate-950">
-      <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3">
-          <Link to="/viagens" className="flex items-center gap-2 font-semibold text-white">
-            <Truck className="h-6 w-6 text-rigabras-500" />
-            Rigabras — TMS Operacional
-          </Link>
-          <Link
-            to="/fronteira/kpis"
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-          >
-            <Gauge className="h-4 w-4" /> KPIs de fronteira
-          </Link>
-          <Link
-            to="/fretes"
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-          >
-            <Wallet className="h-4 w-4" /> Financeiro do frete
-          </Link>
-          <Link
-            to="/frota/kpis"
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-          >
-            <Wrench className="h-4 w-4" /> Frota
-          </Link>
-          <Link
-            to="/jornada"
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-          >
-            <Clock className="h-4 w-4" /> Jornada
-          </Link>
-          <Link
-            to="/wms"
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-          >
-            <Warehouse className="h-4 w-4" /> WMS
-          </Link>
-          <Link
-            to="/exportacoes"
-            className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
-          >
-            <UploadCloud className="h-4 w-4" /> Exportações
-          </Link>
-        </div>
-      </header>
+      {!isLoginRoute && (
+        <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3">
+            <Link to="/viagens" className="flex items-center gap-2 font-semibold text-white">
+              <Truck className="h-6 w-6 text-rigabras-500" />
+              Rigabras — TMS Operacional
+            </Link>
+            <Link
+              to="/fronteira/kpis"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <Gauge className="h-4 w-4" /> KPIs de fronteira
+            </Link>
+            <Link
+              to="/fretes"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <Wallet className="h-4 w-4" /> Financeiro do frete
+            </Link>
+            <Link
+              to="/frota/kpis"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <Wrench className="h-4 w-4" /> Frota
+            </Link>
+            <Link
+              to="/jornada"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <Clock className="h-4 w-4" /> Jornada
+            </Link>
+            <Link
+              to="/wms"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <Warehouse className="h-4 w-4" /> WMS
+            </Link>
+            <Link
+              to="/exportacoes"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <UploadCloud className="h-4 w-4" /> Exportações
+            </Link>
+            <LogoutButton />
+          </div>
+        </header>
+      )}
       <main>
         <Routes>
-          <Route path="/" element={<ViagensListPage />} />
-          <Route path="/viagens" element={<ViagensListPage />} />
-          <Route path="/viagens/nova" element={<ViagemFormPage />} />
-          <Route path="/viagens/:id" element={<ViagemDetailPage />} />
-          <Route path="/viagens/:id/fronteira" element={<FronteiraTravessiaPage />} />
-          <Route path="/viagens/:id/validacao-pre-embarque" element={<ValidacaoPage />} />
-          <Route path="/viagens/:id/frete" element={<ViagemFechamentoPage />} />
-          <Route path="/fronteira/kpis" element={<FronteiraKpiPage />} />
-          <Route path="/fretes" element={<FretesListPage />} />
-          <Route path="/fretes/:id" element={<FreteDetailPage />} />
-          <Route path="/frota/kpis" element={<FrotaKpiPage />} />
-          <Route path="/frota/manutencoes" element={<ManutencoesListPage />} />
-          <Route path="/frota/manutencoes/nova" element={<ManutencaoFormPage />} />
-          <Route path="/frota/manutencoes/:id" element={<ManutencaoDetailPage />} />
-          <Route path="/jornada" element={<JornadaRegistroPage />} />
-          <Route path="/jornada/alertas" element={<JornadaAlertasPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/"
+            element={
+              <AuthGate>
+                <ViagensListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/viagens"
+            element={
+              <AuthGate>
+                <ViagensListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/viagens/nova"
+            element={
+              <AuthGate>
+                <ViagemFormPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/viagens/:id"
+            element={
+              <AuthGate>
+                <ViagemDetailPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/viagens/:id/fronteira"
+            element={
+              <AuthGate>
+                <FronteiraTravessiaPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/viagens/:id/validacao-pre-embarque"
+            element={
+              <AuthGate>
+                <ValidacaoPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/viagens/:id/frete"
+            element={
+              <AuthGate>
+                <ViagemFechamentoPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/fronteira/kpis"
+            element={
+              <AuthGate>
+                <FronteiraKpiPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/fretes"
+            element={
+              <AuthGate>
+                <FretesListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/fretes/:id"
+            element={
+              <AuthGate>
+                <FreteDetailPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/frota/kpis"
+            element={
+              <AuthGate>
+                <FrotaKpiPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/frota/manutencoes"
+            element={
+              <AuthGate>
+                <ManutencoesListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/frota/manutencoes/nova"
+            element={
+              <AuthGate>
+                <ManutencaoFormPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/frota/manutencoes/:id"
+            element={
+              <AuthGate>
+                <ManutencaoDetailPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/jornada"
+            element={
+              <AuthGate>
+                <JornadaRegistroPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/jornada/alertas"
+            element={
+              <AuthGate>
+                <JornadaAlertasPage />
+              </AuthGate>
+            }
+          />
           <Route
             path="/jornada/motoristas/:motoristaId/historico"
-            element={<JornadaHistoricoPage />}
+            element={
+              <AuthGate>
+                <JornadaHistoricoPage />
+              </AuthGate>
+            }
           />
-          <Route path="/wms" element={<WmsKpiPage />} />
-          <Route path="/wms/depositantes" element={<DepositantesListPage />} />
-          <Route path="/wms/depositantes/novo" element={<DepositanteFormPage />} />
-          <Route path="/wms/produtos" element={<ProdutosListPage />} />
-          <Route path="/wms/produtos/:produtoId/rastreio" element={<RastreioProdutoPage />} />
-          <Route path="/wms/armazem/mapa" element={<ArmazemMapaPage />} />
-          <Route path="/wms/recebimentos" element={<RecebimentosListPage />} />
-          <Route path="/wms/recebimentos/novo" element={<RecebimentoFormPage />} />
-          <Route path="/wms/recebimentos/:id" element={<RecebimentoDetailPage />} />
-          <Route path="/wms/expedicoes" element={<ExpedicoesListPage />} />
-          <Route path="/wms/expedicoes/nova" element={<ExpedicaoFormPage />} />
-          <Route path="/wms/expedicoes/:id" element={<ExpedicaoDetailPage />} />
-          <Route path="/wms/avarias" element={<AvariasListPage />} />
-          <Route path="/exportacoes" element={<ExportacoesPage />} />
+          <Route
+            path="/wms"
+            element={
+              <AuthGate>
+                <WmsKpiPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/depositantes"
+            element={
+              <AuthGate>
+                <DepositantesListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/depositantes/novo"
+            element={
+              <AuthGate>
+                <DepositanteFormPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/produtos"
+            element={
+              <AuthGate>
+                <ProdutosListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/produtos/:produtoId/rastreio"
+            element={
+              <AuthGate>
+                <RastreioProdutoPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/armazem/mapa"
+            element={
+              <AuthGate>
+                <ArmazemMapaPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/recebimentos"
+            element={
+              <AuthGate>
+                <RecebimentosListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/recebimentos/novo"
+            element={
+              <AuthGate>
+                <RecebimentoFormPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/recebimentos/:id"
+            element={
+              <AuthGate>
+                <RecebimentoDetailPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/expedicoes"
+            element={
+              <AuthGate>
+                <ExpedicoesListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/expedicoes/nova"
+            element={
+              <AuthGate>
+                <ExpedicaoFormPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/expedicoes/:id"
+            element={
+              <AuthGate>
+                <ExpedicaoDetailPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/wms/avarias"
+            element={
+              <AuthGate>
+                <AvariasListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/exportacoes"
+            element={
+              <AuthGate>
+                <ExportacoesPage />
+              </AuthGate>
+            }
+          />
         </Routes>
       </main>
     </div>

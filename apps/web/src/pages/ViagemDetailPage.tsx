@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ClipboardCheck,
@@ -7,9 +8,11 @@ import {
   ShieldAlert,
   Wallet,
 } from 'lucide-react';
+import { TRANSICOES_STATUS_VIAGEM, type StatusViagem } from '@rigabras/shared';
 import { useViagemDetail } from '../hooks/useViagemDetail.js';
 import { useViagemStatusHistory } from '../hooks/useViagemStatusHistory.js';
 import { useViagemWmsStatus } from '../hooks/useViagemWmsStatus.js';
+import { useChangeViagemStatus } from '../hooks/useChangeViagemStatus.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
 import {
   StatusBadge,
@@ -21,8 +24,14 @@ import {
 export default function ViagemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, viagem, eventos, error, reload } = useViagemDetail(id);
-  const { historico, state: historicoState } = useViagemStatusHistory(id);
+  const { historico, state: historicoState, reload: reloadHistorico } = useViagemStatusHistory(id);
   const { status: wmsStatus, state: wmsState } = useViagemWmsStatus(id);
+  const {
+    changeStatus,
+    submitting: submittingStatus,
+    error: statusError,
+  } = useChangeViagemStatus(id);
+  const [proximoStatus, setProximoStatus] = useState<StatusViagem | ''>('');
 
   if (state === 'loading' || state === 'idle')
     return (
@@ -79,6 +88,49 @@ export default function ViagemDetailPage() {
         >
           <Wallet className="h-4 w-4" /> Fechamento financeiro do frete
         </Link>
+      </div>
+
+      <div className="mb-8 rounded-lg border border-slate-800 p-4">
+        <h2 className="mb-3 text-sm font-semibold text-slate-200">Avançar status da viagem</h2>
+        {TRANSICOES_STATUS_VIAGEM[viagem.status].length === 0 ? (
+          <p className="text-sm text-slate-500">
+            Nenhuma transição disponível a partir de "{viagem.status.replaceAll('_', ' ')}".
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="input"
+              data-testid="viagem-proximo-status"
+              value={proximoStatus}
+              onChange={(e) => setProximoStatus(e.target.value as StatusViagem)}
+            >
+              <option value="">Selecione o próximo status...</option>
+              {TRANSICOES_STATUS_VIAGEM[viagem.status].map((s) => (
+                <option key={s} value={s}>
+                  {s.replaceAll('_', ' ')}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!proximoStatus || submittingStatus}
+              data-testid="viagem-confirmar-status"
+              onClick={async () => {
+                if (!proximoStatus) return;
+                const ok = await changeStatus(proximoStatus);
+                if (ok) {
+                  setProximoStatus('');
+                  reload();
+                  reloadHistorico();
+                }
+              }}
+              className="rounded-md bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            >
+              {submittingStatus ? 'Aplicando...' : 'Confirmar transição'}
+            </button>
+          </div>
+        )}
+        {statusError && <p className="mt-2 text-sm text-red-400">{statusError}</p>}
       </div>
 
       <div className="mb-4 flex items-center gap-2">

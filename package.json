@@ -16,10 +16,13 @@
     "dev:api": "pnpm --filter @rigabras/api run dev",
     "dev:web": "pnpm --filter @rigabras/web run dev",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
-    "prettier": "^3.3.3"
+    "@playwright/test": "^1.63.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
   }
 }

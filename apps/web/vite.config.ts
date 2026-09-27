@@ -37,5 +37,12 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5173 },
+  // `host: '127.0.0.1'` (em vez do padrão do Vite, que só faz bind em `::1`
+  // nesta máquina Windows): sem isso, qualquer cliente que resolva
+  // `localhost`/`127.0.0.1` para IPv4 primeiro (curl neste sandbox,
+  // Playwright/Chromium) recebia "connection refused" mesmo com o dev
+  // server rodando — encontrado ao tentar acessar a app pela primeira vez
+  // nesta sessão de testes.
+  server: { port: 5173, host: '127.0.0.1' },
+  preview: { port: 5173, host: '127.0.0.1' },
 });
