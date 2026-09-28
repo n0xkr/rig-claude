@@ -1,6 +1,7 @@
 -- ============================================================================
 -- Rigabras Transportes - Ecossistema Integrado de Gestao Logistica
--- Migration 0008: Módulo 8 (Portaria)
+-- Migration 0008 (parte 2/2): Módulo 8 (Portaria)
+-- Rode `0008_modulo8_portaria_enum.sql` primeiro (ver nota logo abaixo).
 --
 -- Decisões de modelagem:
 --
@@ -42,15 +43,12 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- Papel RBAC: portaria
+-- IMPORTANTE: este arquivo depende de `0008_modulo8_portaria_enum.sql` ter
+-- rodado e COMMITADO antes (ele adiciona 'PORTARIA' aos enums `user_role` e
+-- `origem_evento_viagem`, usados pelas RLS policies abaixo). Rodar os dois
+-- arquivos na mesma transação/consulta falha com o erro 55P04 do Postgres
+-- ("unsafe use of new value... must be committed before they can be used").
 -- ----------------------------------------------------------------------------
-alter type user_role add value if not exists 'PORTARIA';
-
--- ----------------------------------------------------------------------------
--- Origem de evento na timeline da viagem: nota de portaria (mesmo padrão do
--- Módulo 6 / migration 0007, que introduziu 'WMS').
--- ----------------------------------------------------------------------------
-alter type origem_evento_viagem add value if not exists 'PORTARIA';
 
 -- ----------------------------------------------------------------------------
 -- ENUMs do Módulo 8
