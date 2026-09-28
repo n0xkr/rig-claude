@@ -33,3 +33,4 @@ export * from './entities/erpExport.js';
 export * from './entities/portariaEntrada.js';
 export * from './entities/ordemServico.js';
 export * from './entities/importacao.js';
+export * from './entities/chatbot.js';

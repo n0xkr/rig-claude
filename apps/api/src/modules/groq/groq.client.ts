@@ -88,6 +88,48 @@ export async function analyzeViagemRisk(context: ViagemRiskContext): Promise<Ris
   return result.data;
 }
 
+const CHATBOT_SYSTEM_PROMPT = `Você é o RIGABRAS AI, assistente operacional interno da Rigabras
+Transportes (transporte rodoviário internacional de cargas + Armazém Geral, Uruguaiana/RS).
+
+REGRA DE OURO, inegociável: responda ESTRITAMENTE com base no "SNAPSHOT DE DADOS" fornecido
+abaixo, que já foi consultado ao vivo no banco de dados da empresa. NUNCA invente números,
+registros ou causas. Se o snapshot não contiver informação suficiente para responder com
+segurança, diga literalmente: "Não encontrei dados suficientes nos registros disponíveis para
+responder." — nunca tente adivinhar.
+
+Ao responder:
+1. Dê uma resposta objetiva, citando os números relevantes do snapshot.
+2. Quando fizer sentido, mencione o período/momento da consulta (o snapshot é sempre "agora").
+3. Se identificar um problema operacional (atraso, veículo parado, documentação pendente,
+   consumo fora do padrão), apresente FATO + DADO + CONTEXTO. Nunca afirme uma causa com
+   certeza quando houver apenas uma hipótese — nesse caso diga "possível causa a investigar".
+4. Responda em português, em texto corrido (não JSON), de forma direta e profissional.`;
+
+export async function askOperationalQuestion(
+  pergunta: string,
+  snapshotJson: string,
+): Promise<string> {
+  if (!isGroqConfigured) {
+    throw new GroqNotConfiguredError();
+  }
+
+  const completion = await getClient().chat.completions.create({
+    model: env.GROQ_MODEL,
+    temperature: 0.1,
+    max_tokens: 600,
+    messages: [
+      { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+      { role: 'user', content: `SNAPSHOT DE DADOS (JSON):\n${snapshotJson}\n\nPERGUNTA: ${pergunta}` },
+    ],
+  });
+
+  const resposta = completion.choices[0]?.message?.content;
+  if (!resposta) {
+    throw new Error('Resposta vazia da Groq');
+  }
+  return resposta.trim();
+}
+
 export class GroqNotConfiguredError extends Error {
   constructor() {
     super(

@@ -60,7 +60,12 @@ const EnvSchema = z.object({
   COOKIE_SECRET: z.string().min(16, 'COOKIE_SECRET deve ter ao menos 16 caracteres'),
 
   GROQ_API_KEY: z.string().optional(),
-  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
+  // `llama-3.3-70b-versatile` foi descontinuado pela Groq (a API passou a
+  // responder 404 "model_not_found" para ele) — encontrado ao testar o
+  // RIGABRAS AI (Módulo 10) nesta sessão. `openai/gpt-oss-120b` é o modelo
+  // de texto de propósito geral atualmente disponível na conta usada por
+  // este projeto (verificado via GET /openai/v1/models da Groq).
+  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
 
   REDIS_URL: z.string().optional(),
   WEB_ORIGIN: z.string().default('http://localhost:5173'),

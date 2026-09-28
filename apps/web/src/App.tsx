@@ -9,6 +9,7 @@ import {
   LogOut,
   LayoutDashboard,
   ClipboardCheck,
+  Bot,
 } from 'lucide-react';
 import { AuthGate } from './components/AuthGate.js';
 import { getCurrentUserRole } from './lib/apiClient.js';
@@ -50,6 +51,7 @@ import PortariaEntradasListPage from './pages/PortariaEntradasListPage.js';
 import PortariaEntradaFormPage from './pages/PortariaEntradaFormPage.js';
 import PortariaEntradaDetailPage from './pages/PortariaEntradaDetailPage.js';
 import ImportarDadosPage from './pages/ImportarDadosPage.js';
+import RigabrasAiPage from './pages/RigabrasAiPage.js';
 
 function LogoutButton() {
   const navigate = useNavigate();
@@ -89,6 +91,12 @@ export default function App() {
               className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
             >
               <LayoutDashboard className="h-4 w-4" /> Painel
+            </Link>
+            <Link
+              to="/rigabras-ai"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <Bot className="h-4 w-4" /> RIGABRAS AI
             </Link>
             <Link
               to="/portaria"
@@ -431,6 +439,14 @@ export default function App() {
             element={
               <AuthGate>
                 <ImportarDadosPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/rigabras-ai"
+            element={
+              <AuthGate>
+                <RigabrasAiPage />
               </AuthGate>
             }
           />
