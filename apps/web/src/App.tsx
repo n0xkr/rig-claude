@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ClipboardCheck,
   Bot,
+  ShieldCheck,
 } from 'lucide-react';
 import { AuthGate } from './components/AuthGate.js';
 import { getCurrentUserRole } from './lib/apiClient.js';
@@ -52,6 +53,7 @@ import PortariaEntradaFormPage from './pages/PortariaEntradaFormPage.js';
 import PortariaEntradaDetailPage from './pages/PortariaEntradaDetailPage.js';
 import ImportarDadosPage from './pages/ImportarDadosPage.js';
 import RigabrasAiPage from './pages/RigabrasAiPage.js';
+import AuditoriaListPage from './pages/AuditoriaListPage.js';
 
 function LogoutButton() {
   const navigate = useNavigate();
@@ -76,6 +78,8 @@ function LogoutButton() {
 export default function App() {
   const location = useLocation();
   const isPublicRoute = location.pathname === '/login' || location.pathname === '/registro';
+  const role = getCurrentUserRole();
+  const isAdmin = role === 'SUPERADMIN' || role === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -146,6 +150,14 @@ export default function App() {
             >
               <UploadCloud className="h-4 w-4" /> Importar dados
             </Link>
+            {isAdmin && (
+              <Link
+                to="/auditoria"
+                className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+              >
+                <ShieldCheck className="h-4 w-4" /> Auditoria
+              </Link>
+            )}
             <LogoutButton />
           </div>
         </header>
@@ -447,6 +459,14 @@ export default function App() {
             element={
               <AuthGate>
                 <RigabrasAiPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/auditoria"
+            element={
+              <AuthGate>
+                <AuditoriaListPage />
               </AuthGate>
             }
           />
