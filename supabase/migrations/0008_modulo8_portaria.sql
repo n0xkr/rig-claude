@@ -1,7 +1,6 @@
 -- ============================================================================
 -- Rigabras Transportes - Ecossistema Integrado de Gestao Logistica
--- Migration 0008 (parte 2/2): Módulo 8 (Portaria)
--- Rode `0008_modulo8_portaria_enum.sql` primeiro (ver nota logo abaixo).
+-- Migration 0008: Módulo 8 (Portaria)
 --
 -- Decisões de modelagem:
 --
@@ -43,12 +42,24 @@
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- IMPORTANTE: este arquivo depende de `0008_modulo8_portaria_enum.sql` ter
--- rodado e COMMITADO antes (ele adiciona 'PORTARIA' aos enums `user_role` e
--- `origem_evento_viagem`, usados pelas RLS policies abaixo). Rodar os dois
--- arquivos na mesma transação/consulta falha com o erro 55P04 do Postgres
--- ("unsafe use of new value... must be committed before they can be used").
+-- Papel RBAC: portaria. E origem de evento na timeline da viagem: nota de
+-- portaria (mesmo padrão do Módulo 6 / migration 0007, que introduziu 'WMS').
+--
+-- Os dois `ALTER TYPE ... ADD VALUE` ficam num bloco `BEGIN; ... COMMIT;`
+-- próprio, ISOLADO do restante do arquivo: o Postgres proíbe usar um valor
+-- de enum recém-adicionado dentro da MESMA transação em que ele foi criado
+-- (erro 55P04, "unsafe use of new value... must be committed before they
+-- can be used") — e as RLS policies logo abaixo referenciam 'PORTARIA'. O
+-- `COMMIT;` explícito fecha essa transação ali mesmo, então mesmo colando
+-- o arquivo INTEIRO de uma vez no SQL editor do Supabase (que roda o texto
+-- colado como uma única mensagem multi-statement), o valor já está commitado
+-- antes das instruções seguintes o usarem. `IF NOT EXISTS` torna estas duas
+-- linhas seguras de rodar de novo caso o arquivo seja reaplicado.
 -- ----------------------------------------------------------------------------
+begin;
+alter type user_role add value if not exists 'PORTARIA';
+alter type origem_evento_viagem add value if not exists 'PORTARIA';
+commit;
 
 -- ----------------------------------------------------------------------------
 -- ENUMs do Módulo 8
