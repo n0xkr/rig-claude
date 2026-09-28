@@ -9,6 +9,8 @@ import type {
   StatusExpedicao,
   SeveridadeAvaria,
   StatusInventario,
+  StatusPortariaEntrada,
+  StatusOrdemServico,
 } from '@rigabras/shared';
 
 const STATUS_STYLES: Record<StatusViagem, string> = {
@@ -198,6 +200,44 @@ export function InventarioStatusBadge({ status }: { status: StatusInventario }) 
   return (
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_INVENTARIO_STYLES[status]}`}
+    >
+      {status.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const STATUS_PORTARIA_ENTRADA_STYLES: Record<StatusPortariaEntrada, string> = {
+  AGUARDANDO_CONFERENCIA: 'bg-amber-900/60 text-amber-200',
+  CONFERIDO: 'bg-cyan-900/60 text-cyan-200',
+  LIBERADO_PATIO: 'bg-teal-900/60 text-teal-200',
+  AGUARDANDO_SAIDA: 'bg-indigo-900/60 text-indigo-200',
+  SAIDA_REGISTRADA: 'bg-emerald-900/60 text-emerald-200',
+  CANCELADA: 'bg-red-900/60 text-red-200',
+};
+
+/** Badge do status de uma entrada de portaria (Módulo 8 — Portaria). */
+export function PortariaEntradaStatusBadge({ status }: { status: StatusPortariaEntrada }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_PORTARIA_ENTRADA_STYLES[status]}`}
+    >
+      {status.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const STATUS_ORDEM_SERVICO_STYLES: Record<StatusOrdemServico, string> = {
+  ABERTA: 'bg-slate-700 text-slate-200',
+  EM_EXECUCAO: 'bg-amber-900/60 text-amber-200',
+  FINALIZADA: 'bg-emerald-900/60 text-emerald-200',
+  CANCELADA: 'bg-red-900/60 text-red-200',
+};
+
+/** Badge do status de uma ordem de serviço (Módulo 8 — Portaria, gerada automaticamente na chegada). */
+export function OrdemServicoStatusBadge({ status }: { status: StatusOrdemServico }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_ORDEM_SERVICO_STYLES[status]}`}
     >
       {status.replaceAll('_', ' ')}
     </span>

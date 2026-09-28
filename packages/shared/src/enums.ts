@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const UserRoleSchema = z.enum(['SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE']);
+export const UserRoleSchema = z.enum(['SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE', 'PORTARIA']);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 /**
@@ -323,7 +323,7 @@ export const TRANSICOES_STATUS_INVENTARIO: Record<StatusInventario, StatusInvent
  * entrega") — uma nota WMS pode gravar `status_anterior = status_novo`
  * (não é uma transição de fato da máquina de estados da viagem).
  */
-export const OrigemEventoViagemSchema = z.enum(['MANUAL', 'WMS']);
+export const OrigemEventoViagemSchema = z.enum(['MANUAL', 'WMS', 'PORTARIA']);
 export type OrigemEventoViagem = z.infer<typeof OrigemEventoViagemSchema>;
 
 /**
@@ -345,3 +345,66 @@ export const STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA: StatusViagem[] = [
 
 export const FormatoExportacaoSchema = z.enum(['csv', 'json']);
 export type FormatoExportacao = z.infer<typeof FormatoExportacaoSchema>;
+
+// ============================================================================
+// Módulo 8 — Portaria
+// ============================================================================
+
+/** Tipo de operação que o veículo vem realizar no pátio (critério "gatilho da automação operacional"). */
+export const TipoOperacaoPortariaSchema = z.enum(['DESCARGA', 'CARGA', 'TRANSITO']);
+export type TipoOperacaoPortaria = z.infer<typeof TipoOperacaoPortariaSchema>;
+
+/**
+ * Máquina de estados da entrada de portaria: Aguardando conferência (recém
+ * registrada pelo porteiro) -> Conferido (documentos conferidos) -> Liberado
+ * no pátio -> Aguardando saída -> Saída registrada. `CANCELADA` é o único
+ * estado de exceção (ex: veículo não autorizado, entrada duplicada).
+ */
+export const StatusPortariaEntradaSchema = z.enum([
+  'AGUARDANDO_CONFERENCIA',
+  'CONFERIDO',
+  'LIBERADO_PATIO',
+  'AGUARDANDO_SAIDA',
+  'SAIDA_REGISTRADA',
+  'CANCELADA',
+]);
+export type StatusPortariaEntrada = z.infer<typeof StatusPortariaEntradaSchema>;
+
+export const TRANSICOES_STATUS_PORTARIA_ENTRADA: Record<
+  StatusPortariaEntrada,
+  StatusPortariaEntrada[]
+> = {
+  AGUARDANDO_CONFERENCIA: ['CONFERIDO', 'CANCELADA'],
+  CONFERIDO: ['LIBERADO_PATIO', 'CANCELADA'],
+  LIBERADO_PATIO: ['AGUARDANDO_SAIDA', 'CANCELADA'],
+  AGUARDANDO_SAIDA: ['SAIDA_REGISTRADA', 'CANCELADA'],
+  SAIDA_REGISTRADA: [],
+  CANCELADA: [],
+};
+
+export const TipoDocumentoPortariaSchema = z.enum([
+  'CRT',
+  'ORDEM_COLETA',
+  'NOTA_FISCAL',
+  'CNH',
+  'OUTRO',
+]);
+export type TipoDocumentoPortaria = z.infer<typeof TipoDocumentoPortariaSchema>;
+
+export const TipoOrdemServicoSchema = z.enum(['DESCARGA', 'CARGA']);
+export type TipoOrdemServico = z.infer<typeof TipoOrdemServicoSchema>;
+
+export const StatusOrdemServicoSchema = z.enum([
+  'ABERTA',
+  'EM_EXECUCAO',
+  'FINALIZADA',
+  'CANCELADA',
+]);
+export type StatusOrdemServico = z.infer<typeof StatusOrdemServicoSchema>;
+
+export const TRANSICOES_STATUS_ORDEM_SERVICO: Record<StatusOrdemServico, StatusOrdemServico[]> = {
+  ABERTA: ['EM_EXECUCAO', 'CANCELADA'],
+  EM_EXECUCAO: ['FINALIZADA', 'CANCELADA'],
+  FINALIZADA: [],
+  CANCELADA: [],
+};

@@ -60,6 +60,9 @@ const TABLE_COLUMN_DEFAULTS: Record<string, Row> = {
   recebimentos: { status: 'AGUARDANDO' },
   expedicoes: { tipo: 'NORMAL', status: 'SOLICITADA' },
   inventarios: { status: 'ABERTO' },
+  portaria_entradas: { tipo_operacao: 'DESCARGA', status: 'AGUARDANDO_CONFERENCIA' },
+  ordens_servico: { status: 'ABERTA' },
+  import_datasets: { origem: 'EXCEL', status: 'VALIDADO', total_linhas: 0, linhas_importadas: 0, linhas_com_erro: 0 },
 };
 
 function genId(): string {

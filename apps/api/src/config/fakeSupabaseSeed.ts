@@ -12,13 +12,14 @@ import type { FakeSupabaseStore } from './fakeSupabase.js';
  *   admin@rigabras.test      / Teste@123 (ADMIN)
  *   operador@rigabras.test   / Teste@123 (OPERADOR)
  *   visitante@rigabras.test  / Teste@123 (VISITANTE)
+ *   portaria@rigabras.test   / Teste@123 (PORTARIA)
  */
 const SEED_PASSWORD = 'Teste@123';
 
 interface SeedProfile {
   id: string;
   email: string;
-  role: 'SUPERADMIN' | 'ADMIN' | 'OPERADOR' | 'VISITANTE';
+  role: 'SUPERADMIN' | 'ADMIN' | 'OPERADOR' | 'VISITANTE' | 'PORTARIA';
   nome_completo: string;
 }
 
@@ -46,6 +47,12 @@ export const SEED_PROFILES: SeedProfile[] = [
     email: 'visitante@rigabras.test',
     role: 'VISITANTE',
     nome_completo: 'Visitante (seed)',
+  },
+  {
+    id: '00000000-0000-0000-0000-000000000005',
+    email: 'portaria@rigabras.test',
+    role: 'PORTARIA',
+    nome_completo: 'Porteiro (seed)',
   },
 ];
 

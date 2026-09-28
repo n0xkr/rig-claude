@@ -30,3 +30,6 @@ export * from './entities/inventario.js';
 export * from './entities/wmsKpi.js';
 export * from './entities/integracaoTmsWms.js';
 export * from './entities/erpExport.js';
+export * from './entities/portariaEntrada.js';
+export * from './entities/ordemServico.js';
+export * from './entities/importacao.js';

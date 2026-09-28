@@ -8,6 +8,7 @@ import {
   UploadCloud,
   LogOut,
   LayoutDashboard,
+  ClipboardCheck,
 } from 'lucide-react';
 import { AuthGate } from './components/AuthGate.js';
 import { getCurrentUserRole } from './lib/apiClient.js';
@@ -45,6 +46,10 @@ import ExpedicaoFormPage from './pages/ExpedicaoFormPage.js';
 import ExpedicaoDetailPage from './pages/ExpedicaoDetailPage.js';
 import AvariasListPage from './pages/AvariasListPage.js';
 import ExportacoesPage from './pages/ExportacoesPage.js';
+import PortariaEntradasListPage from './pages/PortariaEntradasListPage.js';
+import PortariaEntradaFormPage from './pages/PortariaEntradaFormPage.js';
+import PortariaEntradaDetailPage from './pages/PortariaEntradaDetailPage.js';
+import ImportarDadosPage from './pages/ImportarDadosPage.js';
 
 function LogoutButton() {
   const navigate = useNavigate();
@@ -86,6 +91,12 @@ export default function App() {
               <LayoutDashboard className="h-4 w-4" /> Painel
             </Link>
             <Link
+              to="/portaria"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <ClipboardCheck className="h-4 w-4" /> Portaria
+            </Link>
+            <Link
               to="/fronteira/kpis"
               className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
             >
@@ -120,6 +131,12 @@ export default function App() {
               className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
             >
               <UploadCloud className="h-4 w-4" /> Exportações
+            </Link>
+            <Link
+              to="/importar-dados"
+              className="flex items-center gap-2 text-sm text-slate-300 hover:text-white"
+            >
+              <UploadCloud className="h-4 w-4" /> Importar dados
             </Link>
             <LogoutButton />
           </div>
@@ -382,6 +399,38 @@ export default function App() {
             element={
               <AuthGate>
                 <ExportacoesPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/portaria"
+            element={
+              <AuthGate>
+                <PortariaEntradasListPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/portaria/nova"
+            element={
+              <AuthGate>
+                <PortariaEntradaFormPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/portaria/:id"
+            element={
+              <AuthGate>
+                <PortariaEntradaDetailPage />
+              </AuthGate>
+            }
+          />
+          <Route
+            path="/importar-dados"
+            element={
+              <AuthGate>
+                <ImportarDadosPage />
               </AuthGate>
             }
           />
