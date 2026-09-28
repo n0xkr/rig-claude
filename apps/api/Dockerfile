@@ -1,7 +1,7 @@
 # ============================================================================
 # Rigabras API - Dockerfile multi-stage (Alpine, sem devDependencies em prod)
 # ============================================================================
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 WORKDIR /repo
 
@@ -25,7 +25,7 @@ RUN pnpm --filter @rigabras/shared run build
 RUN pnpm --filter @rigabras/api run build
 
 # ---- runtime: apenas artefatos de produção ----
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 WORKDIR /app
