@@ -27,6 +27,7 @@ import { portariaRoutes } from '../modules/portaria/portaria.routes.js';
 import { importacaoRoutes } from '../modules/importacao/importacao.routes.js';
 import { chatbotRoutes } from '../modules/chatbot/chatbot.routes.js';
 import { auditoriaRoutes } from '../modules/auditoria/auditoria.routes.js';
+import { usuariosRoutes } from '../modules/usuarios/usuarios.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -56,4 +57,5 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(importacaoRoutes, { prefix: `${API_PREFIX}/importacoes` });
   await app.register(chatbotRoutes, { prefix: `${API_PREFIX}/rigabras-ai` });
   await app.register(auditoriaRoutes, { prefix: `${API_PREFIX}/auditoria` });
+  await app.register(usuariosRoutes, { prefix: `${API_PREFIX}/usuarios` });
 }

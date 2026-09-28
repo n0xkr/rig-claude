@@ -46,7 +46,8 @@ export function requireRole(...allowedRoles: UserRole[]) {
       await Problems.unauthorized(reply);
       return;
     }
-    if (!allowedRoles.includes(request.user.role)) {
+    // SUPERADMIN tem acesso irrestrito a todas as rotas protegidas por papel.
+    if (request.user.role !== 'SUPERADMIN' && !allowedRoles.includes(request.user.role)) {
       await Problems.forbidden(reply, `Esta ação requer um dos papéis: ${allowedRoles.join(', ')}`);
     }
   };
