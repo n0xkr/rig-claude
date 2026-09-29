@@ -177,7 +177,7 @@ export function DashboardLayout({
 
       {/* Sidebar flutuante (desktop) */}
       <aside
-        className="fixed bottom-4 left-4 top-4 z-30 hidden flex-col rounded-2xl border border-white/10 bg-[#0e1726]/70 p-3 backdrop-blur-xl transition-[width] duration-300 lg:flex"
+        className="fixed bottom-4 left-4 top-4 z-[45] hidden flex-col rounded-2xl border border-white/10 bg-[#0e1726]/70 p-3 backdrop-blur-xl transition-[width] duration-300 lg:flex"
         style={{
           width: collapsed ? '4.5rem' : '15rem',
           boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,242,254,0.08), 0 0 40px rgba(0,242,254,0.06)',
