@@ -10,15 +10,15 @@ export default function ViagensListPage() {
   const { state, viagens, error, reload } = useViagensList(statusFilter || undefined);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Viagens</h1>
-          <p className="text-sm text-slate-400">Gerenciamento de Risco — Rigabras Transportes</p>
+          <h1 className="text-2xl font-bold text-slate-900">Viagens</h1>
+          <p className="text-sm text-slate-500">Gerenciamento de Risco — Rigabras Transportes</p>
         </div>
         <Link
           to="/viagens/nova"
-          className="inline-flex items-center gap-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          className="inline-flex items-center gap-2 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
         >
           <Plus className="h-4 w-4" /> Nova viagem
         </Link>
@@ -38,7 +38,7 @@ export default function ViagensListPage() {
             key={s || 'TODAS'}
             onClick={() => setStatusFilter(s)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              statusFilter === s ? 'bg-rigabras-500 text-white' : 'bg-slate-800 text-slate-300'
+              statusFilter === s ? 'bg-rigabras-500 text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
             {s ? s.replaceAll('_', ' ') : 'Todas'}
@@ -60,20 +60,20 @@ export default function ViagensListPage() {
       )}
 
       {state === 'success' && viagens.length > 0 && (
-        <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+        <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white shadow-sm">
           {viagens.map((v) => (
             <li key={v.id}>
               <Link
                 to={`/viagens/${v.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-slate-900/60"
+                className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-slate-50 transition-all duration-200"
               >
                 <div className="flex items-center gap-3">
                   <Truck className="h-5 w-5 text-slate-500" />
                   <div>
-                    <p className="font-medium text-slate-100">
+                    <p className="font-medium text-slate-900">
                       {v.numero_crt ?? 'CRT pendente'} — {v.placa_cavalo}
                     </p>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-500">
                       {v.origem} → {v.destino} {v.pais_destino ? `(${v.pais_destino})` : ''}
                     </p>
                   </div>

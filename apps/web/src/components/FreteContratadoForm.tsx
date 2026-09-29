@@ -61,8 +61,11 @@ export function FreteContratadoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-slate-800 p-6">
-      <h2 className="text-lg font-semibold text-white">Registrar frete contratado</h2>
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-xl border border-slate-200 p-6 bg-white shadow-sm"
+    >
+      <h2 className="text-lg font-bold text-slate-900">Registrar frete contratado</h2>
       <Field label="Número da fatura (opcional)">
         <input
           className="input"
@@ -82,7 +85,7 @@ export function FreteContratadoForm({
         />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm text-slate-300">
+      <label className="flex items-center gap-2 text-sm text-slate-600">
         <input
           type="checkbox"
           checked={form.retorno_vazio}
@@ -126,16 +129,16 @@ export function FreteContratadoForm({
       </Field>
 
       {feedback && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
           <WifiOff className="h-4 w-4 shrink-0" /> {feedback}
         </div>
       )}
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-md bg-rigabras-500 px-4 py-2 font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+        className="w-full rounded-xl bg-rigabras-500 px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
       >
         {submitting ? 'Salvando...' : 'Registrar frete'}
       </button>
@@ -146,7 +149,7 @@ export function FreteContratadoForm({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-300">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-slate-600">{label}</span>
       {children}
     </label>
   );

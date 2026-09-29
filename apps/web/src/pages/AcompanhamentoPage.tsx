@@ -13,12 +13,16 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
-import type { AcompanhamentoVeiculo, StatusOperacionalVeiculo, TipoVeiculo } from '@rigabras/shared';
+import type {
+  AcompanhamentoVeiculo,
+  StatusOperacionalVeiculo,
+  TipoVeiculo,
+} from '@rigabras/shared';
 import { api } from '../lib/apiClient.js';
 import { getCurrentUserRole } from '../lib/apiClient.js';
 import { errorMessage, useAcompanhamento } from '../hooks/useAcompanhamento.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
-import { GlassCard, accentText, type GlassAccent } from '../components/ui/GlassCard.js';
+import { GlassCard, accentChip, type GlassAccent } from '../components/ui/GlassCard.js';
 import { AnimatedCounter } from '../components/ui/Telemetry.js';
 import { BarList, DonutChart } from '../components/charts/Charts.js';
 import { InsightsPanel } from '../components/InsightsPanel.js';
@@ -33,9 +37,9 @@ const STATUS_LABEL: Record<StatusOperacionalVeiculo, string> = {
 };
 const STATUS_COLOR: Record<StatusOperacionalVeiculo, string> = {
   DISPONIVEL: '#10b981',
-  EM_TRANSITO: '#00f2fe',
+  EM_TRANSITO: '#2563eb',
   MANUTENCAO: '#ef4444',
-  GARAGEM: '#ff9f43',
+  GARAGEM: '#f59e0b',
 };
 const TIPOS: TipoVeiculo[] = ['CAVALO', 'CARRETA_ABERTA', 'CARRETA_SIDER', 'CARRETA_OUTRO'];
 
@@ -101,20 +105,36 @@ function diasAte(data?: string | null): number | null {
   return Math.round((alvo - hoje.getTime()) / 86_400_000);
 }
 
-const corCombustivel = (n: number) => (n <= 25 ? '#ef4444' : n <= 50 ? '#ff9f43' : '#10b981');
+const corCombustivel = (n: number) => (n <= 25 ? '#ef4444' : n <= 50 ? '#f59e0b' : '#10b981');
 
-function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => void; children: ReactNode }) {
+function Modal({
+  titulo,
+  onClose,
+  children,
+}: {
+  titulo: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      onClick={onClose}
+    >
       <div
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-white/10 bg-[#0e1726] p-5 shadow-2xl sm:rounded-2xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={titulo}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">{titulo}</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="rounded-lg p-1 text-slate-400 hover:bg-white/5">
+          <h2 className="text-lg font-bold text-slate-900">{titulo}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="rounded-xl p-1 text-slate-500 hover:bg-slate-50 transition-all duration-200"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -173,7 +193,7 @@ function VeiculoForm({
   }
 
   const campo = (label: string, el: ReactNode) => (
-    <label className="block text-xs text-slate-400">
+    <label className="block text-xs text-slate-500">
       {label}
       <div className="mt-1">{el}</div>
     </label>
@@ -181,36 +201,177 @@ function VeiculoForm({
 
   return (
     <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2" data-testid="veiculo-form">
-      {campo('Placa *', <input className="input" required minLength={6} maxLength={8} value={f.placa} onChange={(e) => set('placa', e.target.value.toUpperCase())} data-testid="vf-placa" />)}
-      {campo('Tipo', <select className="input" value={f.tipo} onChange={(e) => set('tipo', e.target.value as TipoVeiculo)}>{TIPOS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}</select>)}
-      {campo('Marca', <input className="input" value={f.marca} onChange={(e) => set('marca', e.target.value)} />)}
-      {campo('Modelo', <input className="input" value={f.modelo} onChange={(e) => set('modelo', e.target.value)} />)}
-      {campo('Ano', <input className="input" type="number" min={1980} max={2100} value={f.ano_fabricacao} onChange={(e) => set('ano_fabricacao', e.target.value)} />)}
-      {campo('Status', <select className="input" value={f.status_operacional} onChange={(e) => set('status_operacional', e.target.value as StatusOperacionalVeiculo)} data-testid="vf-status">{(Object.keys(STATUS_LABEL) as StatusOperacionalVeiculo[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}</select>)}
-      {campo('Motorista atual', <input className="input" value={f.motorista_atual} onChange={(e) => set('motorista_atual', e.target.value)} />)}
-      {campo('Quilometragem (km)', <input className="input" type="number" min={0} step="0.1" value={f.km_atual} onChange={(e) => set('km_atual', e.target.value)} data-testid="vf-km" />)}
-      {campo('Combustível (%)', <input className="input" type="number" min={0} max={100} value={f.nivel_combustivel} onChange={(e) => set('nivel_combustivel', e.target.value)} />)}
-      {campo('Localização atual', <input className="input" value={f.localizacao_atual} onChange={(e) => set('localizacao_atual', e.target.value)} />)}
-      {campo('Última manutenção', <input className="input" type="date" value={f.ultima_manutencao_data} onChange={(e) => set('ultima_manutencao_data', e.target.value)} />)}
-      {campo('Próxima manutenção', <input className="input" type="date" value={f.proxima_manutencao_data} onChange={(e) => set('proxima_manutencao_data', e.target.value)} />)}
+      {campo(
+        'Placa *',
+        <input
+          className="input"
+          required
+          minLength={6}
+          maxLength={8}
+          value={f.placa}
+          onChange={(e) => set('placa', e.target.value.toUpperCase())}
+          data-testid="vf-placa"
+        />,
+      )}
+      {campo(
+        'Tipo',
+        <select
+          className="input"
+          value={f.tipo}
+          onChange={(e) => set('tipo', e.target.value as TipoVeiculo)}
+        >
+          {TIPOS.map((t) => (
+            <option key={t} value={t}>
+              {t.replace(/_/g, ' ')}
+            </option>
+          ))}
+        </select>,
+      )}
+      {campo(
+        'Marca',
+        <input className="input" value={f.marca} onChange={(e) => set('marca', e.target.value)} />,
+      )}
+      {campo(
+        'Modelo',
+        <input
+          className="input"
+          value={f.modelo}
+          onChange={(e) => set('modelo', e.target.value)}
+        />,
+      )}
+      {campo(
+        'Ano',
+        <input
+          className="input"
+          type="number"
+          min={1980}
+          max={2100}
+          value={f.ano_fabricacao}
+          onChange={(e) => set('ano_fabricacao', e.target.value)}
+        />,
+      )}
+      {campo(
+        'Status',
+        <select
+          className="input"
+          value={f.status_operacional}
+          onChange={(e) => set('status_operacional', e.target.value as StatusOperacionalVeiculo)}
+          data-testid="vf-status"
+        >
+          {(Object.keys(STATUS_LABEL) as StatusOperacionalVeiculo[]).map((s) => (
+            <option key={s} value={s}>
+              {STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>,
+      )}
+      {campo(
+        'Motorista atual',
+        <input
+          className="input"
+          value={f.motorista_atual}
+          onChange={(e) => set('motorista_atual', e.target.value)}
+        />,
+      )}
+      {campo(
+        'Quilometragem (km)',
+        <input
+          className="input"
+          type="number"
+          min={0}
+          step="0.1"
+          value={f.km_atual}
+          onChange={(e) => set('km_atual', e.target.value)}
+          data-testid="vf-km"
+        />,
+      )}
+      {campo(
+        'Combustível (%)',
+        <input
+          className="input"
+          type="number"
+          min={0}
+          max={100}
+          value={f.nivel_combustivel}
+          onChange={(e) => set('nivel_combustivel', e.target.value)}
+        />,
+      )}
+      {campo(
+        'Localização atual',
+        <input
+          className="input"
+          value={f.localizacao_atual}
+          onChange={(e) => set('localizacao_atual', e.target.value)}
+        />,
+      )}
+      {campo(
+        'Última manutenção',
+        <input
+          className="input"
+          type="date"
+          value={f.ultima_manutencao_data}
+          onChange={(e) => set('ultima_manutencao_data', e.target.value)}
+        />,
+      )}
+      {campo(
+        'Próxima manutenção',
+        <input
+          className="input"
+          type="date"
+          value={f.proxima_manutencao_data}
+          onChange={(e) => set('proxima_manutencao_data', e.target.value)}
+        />,
+      )}
       <div className="sm:col-span-2">
-        {campo('Observações', <textarea className="input" rows={2} value={f.observacoes_acompanhamento} onChange={(e) => set('observacoes_acompanhamento', e.target.value)} />)}
+        {campo(
+          'Observações',
+          <textarea
+            className="input"
+            rows={2}
+            value={f.observacoes_acompanhamento}
+            onChange={(e) => set('observacoes_acompanhamento', e.target.value)}
+          />,
+        )}
       </div>
-      {erro && <p className="text-sm text-red-400 sm:col-span-2">{erro}</p>}
+      {erro && <p className="text-sm text-red-600 sm:col-span-2">{erro}</p>}
       <div className="flex justify-end gap-2 sm:col-span-2">
-        <button type="button" onClick={onCancel} className="rounded-lg border border-white/15 px-4 py-2 text-sm text-slate-300 hover:bg-white/5">Cancelar</button>
-        <button type="submit" disabled={salvando} className="btn-brand" data-testid="vf-salvar">{salvando ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar veículo'}</button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
+        >
+          Cancelar
+        </button>
+        <button type="submit" disabled={salvando} className="btn-brand" data-testid="vf-salvar">
+          {salvando ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar veículo'}
+        </button>
       </div>
     </form>
   );
 }
 
-function Kpi({ icon, label, value, accent, sufixo }: { icon: ReactNode; label: string; value: number | null; accent: GlassAccent; sufixo?: string }) {
+function Kpi({
+  icon,
+  label,
+  value,
+  accent,
+  sufixo,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | null;
+  accent: GlassAccent;
+  sufixo?: string;
+}) {
   return (
-    <GlassCard accent={accent} className="p-4">
-      <div className={`mb-2 ${accentText(accent)}`}>{icon}</div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold text-white">
+    <GlassCard accent={accent} className="p-6">
+      <div
+        className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl ${accentChip(accent)}`}
+      >
+        {icon}
+      </div>
+      <dt className="text-sm text-slate-500">{label}</dt>
+      <dd className="mt-1 text-2xl font-bold text-slate-900">
         {value == null ? '—' : <AnimatedCounter value={value} suffix={sufixo} />}
       </dd>
     </GlassCard>
@@ -237,12 +398,18 @@ export default function AcompanhamentoPage() {
     return veiculos.filter(
       (v) =>
         (!filtro || v.status_operacional === filtro) &&
-        (!q || [v.placa, v.modelo, v.marca, v.motorista_atual, v.localizacao_atual].some((x) => x?.toLowerCase().includes(q))),
+        (!q ||
+          [v.placa, v.modelo, v.marca, v.motorista_atual, v.localizacao_atual].some((x) =>
+            x?.toLowerCase().includes(q),
+          )),
     );
   }, [veiculos, busca, filtro]);
 
   async function excluir(v: AcompanhamentoVeiculo) {
-    if (!window.confirm(`Excluir o veículo ${v.placa}? Esta ação remove o veículo do acompanhamento.`)) return;
+    if (
+      !window.confirm(`Excluir o veículo ${v.placa}? Esta ação remove o veículo do acompanhamento.`)
+    )
+      return;
     try {
       await api.delete(`/veiculos/${v.id}`);
       haptic('warning');
@@ -259,8 +426,18 @@ export default function AcompanhamentoPage() {
     await reload();
   }
 
-  if (state === 'loading' || state === 'idle') return <div className="mx-auto max-w-6xl px-4 py-8"><LoadingSkeleton rows={5} /></div>;
-  if (state === 'error') return <div className="mx-auto max-w-6xl px-4 py-8"><ErrorCard message={error ?? 'Erro'} onRetry={reload} /></div>;
+  if (state === 'loading' || state === 'idle')
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <LoadingSkeleton rows={5} />
+      </div>
+    );
+  if (state === 'error')
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        <ErrorCard message={error ?? 'Erro'} onRetry={reload} />
+      </div>
+    );
 
   const r = resumo!;
   const slices = (Object.keys(STATUS_LABEL) as StatusOperacionalVeiculo[]).map((s) => ({
@@ -279,20 +456,32 @@ export default function AcompanhamentoPage() {
     .slice(0, 10);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6" data-testid="acompanhamento-page">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8" data-testid="acompanhamento-page">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-            <Radar className="h-6 w-6 text-tms-cyan" /> Acompanhamento de veículos
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <Radar className="h-6 w-6 text-blue-600" /> Acompanhamento de veículos
           </h1>
-          <p className="text-sm text-slate-400">Situação da frota em tempo real, alimentada por planilhas e interpretada por IA.</p>
+          <p className="text-sm text-slate-500">
+            Situação da frota em tempo real, alimentada por planilhas e interpretada por IA.
+          </p>
         </div>
         {podeEditar && (
           <div className="flex gap-2">
-            <button type="button" onClick={() => setModal('importar')} className="inline-flex items-center gap-2 rounded-lg border border-tms-cyan/40 bg-tms-cyan/10 px-3 py-2 text-sm font-medium text-tms-cyan hover:bg-tms-cyan/20" data-testid="btn-importar-ia">
+            <button
+              type="button"
+              onClick={() => setModal('importar')}
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-100 transition-all duration-200"
+              data-testid="btn-importar-ia"
+            >
               <Sparkles className="h-4 w-4" /> Importar planilha (IA)
             </button>
-            <button type="button" onClick={() => setModal('novo')} className="btn-brand" data-testid="btn-novo-veiculo">
+            <button
+              type="button"
+              onClick={() => setModal('novo')}
+              className="btn-brand"
+              data-testid="btn-novo-veiculo"
+            >
               <Plus className="h-4 w-4" /> Novo veículo
             </button>
           </div>
@@ -300,55 +489,99 @@ export default function AcompanhamentoPage() {
       </div>
 
       {aviso && (
-        <p className="mb-4 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200" data-testid="acomp-aviso">
+        <p
+          className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+          data-testid="acomp-aviso"
+        >
           {aviso}
         </p>
       )}
 
       <dl className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-6">
-        <Kpi icon={<Truck className="h-5 w-5" />} label="Frota total" value={r.total} accent="cyan" />
-        <Kpi icon={<Gauge className="h-5 w-5" />} label="Em trânsito" value={r.por_status.EM_TRANSITO ?? 0} accent="cyan" />
-        <Kpi icon={<Truck className="h-5 w-5" />} label="Disponíveis" value={r.por_status.DISPONIVEL ?? 0} accent="emerald" />
-        <Kpi icon={<Wrench className="h-5 w-5" />} label="Manutenção/garagem" value={(r.por_status.MANUTENCAO ?? 0) + (r.por_status.GARAGEM ?? 0)} accent="amber" />
-        <Kpi icon={<Fuel className="h-5 w-5" />} label="Combustível médio" value={r.combustivel_medio} sufixo="%" accent="emerald" />
-        <Kpi icon={<AlertTriangle className="h-5 w-5" />} label="Manutenção vencida" value={r.manutencao_vencida.length} accent="scarlet" />
+        <Kpi
+          icon={<Truck className="h-5 w-5" />}
+          label="Frota total"
+          value={r.total}
+          accent="cyan"
+        />
+        <Kpi
+          icon={<Gauge className="h-5 w-5" />}
+          label="Em trânsito"
+          value={r.por_status.EM_TRANSITO ?? 0}
+          accent="cyan"
+        />
+        <Kpi
+          icon={<Truck className="h-5 w-5" />}
+          label="Disponíveis"
+          value={r.por_status.DISPONIVEL ?? 0}
+          accent="emerald"
+        />
+        <Kpi
+          icon={<Wrench className="h-5 w-5" />}
+          label="Manutenção/garagem"
+          value={(r.por_status.MANUTENCAO ?? 0) + (r.por_status.GARAGEM ?? 0)}
+          accent="amber"
+        />
+        <Kpi
+          icon={<Fuel className="h-5 w-5" />}
+          label="Combustível médio"
+          value={r.combustivel_medio}
+          sufixo="%"
+          accent="emerald"
+        />
+        <Kpi
+          icon={<AlertTriangle className="h-5 w-5" />}
+          label="Manutenção vencida"
+          value={r.manutencao_vencida.length}
+          accent="scarlet"
+        />
       </dl>
 
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <GlassCard accent="cyan" tilt={0} className="p-5">
-          <h2 className="mb-4 text-base font-semibold text-white">Status da frota</h2>
+        <GlassCard accent="cyan" tilt={0} className="p-6">
+          <h2 className="mb-4 text-base font-bold text-slate-900">Status da frota</h2>
           <DonutChart data={slices} />
           <InsightsPanel escopo="status" />
         </GlassCard>
 
-        <GlassCard accent="amber" tilt={0} className="p-5">
-          <h2 className="mb-4 text-base font-semibold text-white">Quilometragem por veículo</h2>
+        <GlassCard accent="amber" tilt={0} className="p-6">
+          <h2 className="mb-4 text-base font-bold text-slate-900">Quilometragem por veículo</h2>
           <BarList
-            data={r.km_por_veiculo.map((k) => ({ label: k.placa, value: k.km, display: `${k.km.toLocaleString('pt-BR')} km`, color: '#ff9f43' }))}
+            data={r.km_por_veiculo.map((k) => ({
+              label: k.placa,
+              value: k.km,
+              display: `${k.km.toLocaleString('pt-BR')} km`,
+              color: '#f59e0b',
+            }))}
             emptyText="Sem quilometragem informada"
           />
           <InsightsPanel escopo="quilometragem" />
         </GlassCard>
 
-        <GlassCard accent="emerald" tilt={0} className="p-5">
-          <h2 className="mb-4 text-base font-semibold text-white">Nível de combustível</h2>
+        <GlassCard accent="emerald" tilt={0} className="p-6">
+          <h2 className="mb-4 text-base font-bold text-slate-900">Nível de combustível</h2>
           <BarList
             max={100}
-            data={comCombustivel.map((v) => ({ label: v.placa, value: v.nivel_combustivel ?? 0, display: `${v.nivel_combustivel}%`, color: corCombustivel(v.nivel_combustivel ?? 0) }))}
+            data={comCombustivel.map((v) => ({
+              label: v.placa,
+              value: v.nivel_combustivel ?? 0,
+              display: `${v.nivel_combustivel}%`,
+              color: corCombustivel(v.nivel_combustivel ?? 0),
+            }))}
             emptyText="Sem nível de combustível informado"
           />
           <InsightsPanel escopo="combustivel" />
         </GlassCard>
 
-        <GlassCard accent="scarlet" tilt={0} className="p-5">
-          <h2 className="mb-4 text-base font-semibold text-white">Próximas manutenções</h2>
+        <GlassCard accent="scarlet" tilt={0} className="p-6">
+          <h2 className="mb-4 text-base font-bold text-slate-900">Próximas manutenções</h2>
           <BarList
             max={Math.max(60, ...manutencoes.map((m) => Math.abs(m.dias)))}
             data={manutencoes.map(({ v, dias }) => ({
               label: v.placa,
               value: Math.abs(dias),
               display: dias < 0 ? `vencida ${-dias}d` : dias === 0 ? 'hoje' : `em ${dias}d`,
-              color: dias < 0 ? '#ef4444' : dias <= 30 ? '#ff9f43' : '#10b981',
+              color: dias < 0 ? '#ef4444' : dias <= 30 ? '#f59e0b' : '#10b981',
             }))}
             emptyText="Sem datas de manutenção informadas"
           />
@@ -356,77 +589,161 @@ export default function AcompanhamentoPage() {
         </GlassCard>
       </div>
 
-      <GlassCard accent="cyan" tilt={0} className="mb-6 p-5">
-        <h2 className="mb-1 flex items-center gap-2 text-base font-semibold text-white">
-          <Sparkles className="h-4 w-4 text-tms-cyan" /> Análise geral da frota
+      <GlassCard accent="cyan" tilt={0} className="mb-6 p-6">
+        <h2 className="mb-1 flex items-center gap-2 text-base font-bold text-slate-900">
+          <Sparkles className="h-4 w-4 text-blue-600" /> Análise geral da frota
         </h2>
-        <p className="text-xs text-slate-400">A IA cruza status, quilometragem, combustível e manutenção e aponta prioridades.</p>
+        <p className="text-xs text-slate-500">
+          A IA cruza status, quilometragem, combustível e manutenção e aponta prioridades.
+        </p>
         <InsightsPanel escopo="geral" titulo="Gerar análise geral" />
       </GlassCard>
 
-      <GlassCard accent="cyan" tilt={0} className="p-4">
+      <GlassCard accent="cyan" tilt={0} className="p-6">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <div className="relative min-w-[12rem] flex-1">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-            <input className="input pl-9" placeholder="Buscar placa, modelo, motorista, local..." value={busca} onChange={(e) => setBusca(e.target.value)} data-testid="acomp-busca" />
+            <input
+              className="input pl-9"
+              placeholder="Buscar placa, modelo, motorista, local..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              data-testid="acomp-busca"
+            />
           </div>
-          <select className="input w-auto" value={filtro} onChange={(e) => setFiltro(e.target.value as StatusOperacionalVeiculo | '')} data-testid="acomp-filtro">
+          <select
+            className="input w-auto"
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value as StatusOperacionalVeiculo | '')}
+            data-testid="acomp-filtro"
+          >
             <option value="">Todos os status</option>
-            {(Object.keys(STATUS_LABEL) as StatusOperacionalVeiculo[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+            {(Object.keys(STATUS_LABEL) as StatusOperacionalVeiculo[]).map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
           </select>
         </div>
 
         {filtrados.length === 0 ? (
           <p className="py-10 text-center text-sm text-slate-500" data-testid="acomp-vazio">
-            {veiculos.length === 0 ? 'Nenhum veículo ainda. Importe a planilha da frota ou cadastre um veículo.' : 'Nenhum veículo corresponde ao filtro.'}
+            {veiculos.length === 0
+              ? 'Nenhum veículo ainda. Importe a planilha da frota ou cadastre um veículo.'
+              : 'Nenhum veículo corresponde ao filtro.'}
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[52rem] text-left text-sm text-slate-200" data-testid="acomp-tabela">
+            <table
+              className="w-full min-w-[52rem] text-left text-sm text-slate-700"
+              data-testid="acomp-tabela"
+            >
               <thead className="text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="p-2">Placa</th><th className="p-2">Veículo</th><th className="p-2">Status</th>
-                  <th className="p-2">Km</th><th className="p-2">Combustível</th><th className="p-2">Próx. manutenção</th>
-                  <th className="p-2">Local / viagem</th>{podeEditar && <th className="p-2 text-right">Ações</th>}
+                  <th className="p-2">Placa</th>
+                  <th className="p-2">Veículo</th>
+                  <th className="p-2">Status</th>
+                  <th className="p-2">Km</th>
+                  <th className="p-2">Combustível</th>
+                  <th className="p-2">Próx. manutenção</th>
+                  <th className="p-2">Local / viagem</th>
+                  {podeEditar && <th className="p-2 text-right">Ações</th>}
                 </tr>
               </thead>
               <tbody>
                 {filtrados.map((v) => {
                   const dias = diasAte(v.proxima_manutencao_data);
                   return (
-                    <tr key={v.id} className="border-t border-white/5" data-testid="acomp-linha">
-                      <td className="p-2 font-mono font-semibold text-white">{v.placa}</td>
-                      <td className="p-2"><div>{v.modelo ?? '—'}</div><div className="text-xs text-slate-500">{v.motorista_atual ?? 'sem motorista'}</div></td>
+                    <tr key={v.id} className="border-t border-slate-200" data-testid="acomp-linha">
+                      <td className="p-2 font-mono font-semibold text-slate-900">{v.placa}</td>
                       <td className="p-2">
-                        <span className="rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: `${STATUS_COLOR[v.status_operacional]}22`, color: STATUS_COLOR[v.status_operacional] }}>
+                        <div>{v.modelo ?? '—'}</div>
+                        <div className="text-xs text-slate-500">
+                          {v.motorista_atual ?? 'sem motorista'}
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        <span
+                          className="rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            background: `${STATUS_COLOR[v.status_operacional]}22`,
+                            color: STATUS_COLOR[v.status_operacional],
+                          }}
+                        >
                           {STATUS_LABEL[v.status_operacional]}
                         </span>
                       </td>
-                      <td className="p-2">{v.km_atual != null ? Number(v.km_atual).toLocaleString('pt-BR') : '—'}</td>
+                      <td className="p-2">
+                        {v.km_atual != null ? Number(v.km_atual).toLocaleString('pt-BR') : '—'}
+                      </td>
                       <td className="p-2">
                         {v.nivel_combustivel != null ? (
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-16 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full" style={{ width: `${v.nivel_combustivel}%`, background: corCombustivel(v.nivel_combustivel) }} /></div>
+                            <div className="h-2 w-16 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${v.nivel_combustivel}%`,
+                                  background: corCombustivel(v.nivel_combustivel),
+                                }}
+                              />
+                            </div>
                             <span className="text-xs">{v.nivel_combustivel}%</span>
                           </div>
-                        ) : '—'}
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="p-2">
                         {v.proxima_manutencao_data ? (
-                          <span className={dias !== null && dias < 0 ? 'text-red-400' : dias !== null && dias <= 30 ? 'text-amber-300' : ''}>
-                            {new Date(`${v.proxima_manutencao_data.slice(0, 10)}T00:00:00`).toLocaleDateString('pt-BR')}
+                          <span
+                            className={
+                              dias !== null && dias < 0
+                                ? 'text-red-600'
+                                : dias !== null && dias <= 30
+                                  ? 'text-amber-700'
+                                  : ''
+                            }
+                          >
+                            {new Date(
+                              `${v.proxima_manutencao_data.slice(0, 10)}T00:00:00`,
+                            ).toLocaleDateString('pt-BR')}
                             {dias !== null && dias < 0 && ' (vencida)'}
                           </span>
-                        ) : '—'}
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="p-2 text-xs">
                         <div>{v.localizacao_atual ?? '—'}</div>
-                        {v.viagem_ativa && <div className="text-tms-cyan">{v.viagem_ativa.origem} → {v.viagem_ativa.destino}</div>}
+                        {v.viagem_ativa && (
+                          <div className="text-blue-600">
+                            {v.viagem_ativa.origem} → {v.viagem_ativa.destino}
+                          </div>
+                        )}
                       </td>
                       {podeEditar && (
                         <td className="p-2 text-right">
-                          <button type="button" title="Editar" className="mr-2 text-slate-300 hover:text-white" onClick={() => setModal(v)} data-testid="acomp-editar"><Pencil className="inline h-4 w-4" /></button>
-                          {podeExcluir && <button type="button" title="Excluir" className="text-red-400 hover:text-red-300" onClick={() => void excluir(v)} data-testid="acomp-excluir"><Trash2 className="inline h-4 w-4" /></button>}
+                          <button
+                            type="button"
+                            title="Editar"
+                            className="mr-2 text-slate-600 hover:text-slate-900 transition-all duration-200"
+                            onClick={() => setModal(v)}
+                            data-testid="acomp-editar"
+                          >
+                            <Pencil className="inline h-4 w-4" />
+                          </button>
+                          {podeExcluir && (
+                            <button
+                              type="button"
+                              title="Excluir"
+                              className="text-red-600 hover:text-red-700 transition-all duration-200"
+                              onClick={() => void excluir(v)}
+                              data-testid="acomp-excluir"
+                            >
+                              <Trash2 className="inline h-4 w-4" />
+                            </button>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -439,18 +756,34 @@ export default function AcompanhamentoPage() {
       </GlassCard>
 
       {modal === 'importar' && (
-        <Modal titulo="Importar planilha com IA" onClose={() => { setModal(null); void reload(); }}>
+        <Modal
+          titulo="Importar planilha com IA"
+          onClose={() => {
+            setModal(null);
+            void reload();
+          }}
+        >
           <AiImportWizard onImported={() => void reload()} />
         </Modal>
       )}
       {modal === 'novo' && (
         <Modal titulo="Novo veículo" onClose={() => setModal(null)}>
-          <VeiculoForm inicial={FORM_VAZIO} editando={null} onSaved={() => void aposSalvar()} onCancel={() => setModal(null)} />
+          <VeiculoForm
+            inicial={FORM_VAZIO}
+            editando={null}
+            onSaved={() => void aposSalvar()}
+            onCancel={() => setModal(null)}
+          />
         </Modal>
       )}
       {modal && typeof modal === 'object' && (
         <Modal titulo={`Editar ${modal.placa}`} onClose={() => setModal(null)}>
-          <VeiculoForm inicial={doVeiculo(modal)} editando={modal} onSaved={() => void aposSalvar()} onCancel={() => setModal(null)} />
+          <VeiculoForm
+            inicial={doVeiculo(modal)}
+            editando={modal}
+            onSaved={() => void aposSalvar()}
+            onCancel={() => setModal(null)}
+          />
         </Modal>
       )}
     </div>

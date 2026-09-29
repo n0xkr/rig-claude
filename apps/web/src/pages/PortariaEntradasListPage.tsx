@@ -15,13 +15,13 @@ export default function PortariaEntradasListPage() {
     role === 'SUPERADMIN' || role === 'ADMIN' || role === 'OPERADOR' || role === 'PORTARIA';
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-white">Portaria</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Portaria</h1>
         {podeRegistrar && (
           <Link
             to="/portaria/nova"
-            className="flex items-center gap-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+            className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
           >
             <Plus className="h-4 w-4" /> Nova entrada
           </Link>
@@ -60,17 +60,18 @@ export default function PortariaEntradasListPage() {
             <Link
               key={entrada.id}
               to={`/portaria/${entrada.id}`}
-              className="flex items-center justify-between gap-3 rounded-lg border border-slate-800 p-4 hover:bg-slate-900/60"
+              className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
             >
               <div className="flex items-center gap-3">
                 <Truck className="h-5 w-5 text-rigabras-500" />
                 <div>
-                  <p className="font-medium text-slate-100">
+                  <p className="font-medium text-slate-900">
                     {entrada.placa_cavalo}
                     {entrada.placa_carreta ? ` / ${entrada.placa_carreta}` : ''}
                   </p>
-                  <p className="text-sm text-slate-400">
-                    {entrada.motorista_nome} · {new Date(entrada.data_entrada ?? '').toLocaleString('pt-BR')}
+                  <p className="text-sm text-slate-500">
+                    {entrada.motorista_nome} ·{' '}
+                    {new Date(entrada.data_entrada ?? '').toLocaleString('pt-BR')}
                   </p>
                 </div>
               </div>
@@ -85,9 +86,9 @@ export default function PortariaEntradasListPage() {
 
 function KpiCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-800 p-3">
-      <p className="text-2xl font-bold text-white">{value}</p>
-      <p className="text-xs text-slate-400">{label}</p>
+    <div className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm">
+      <p className="text-2xl font-bold text-slate-900">{value}</p>
+      <p className="text-xs text-slate-500">{label}</p>
     </div>
   );
 }

@@ -9,20 +9,20 @@ export default function ExpedicoesListPage() {
   const { state, expedicoes, error, reload } = useExpedicoesList();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Truck className="h-6 w-6 text-rigabras-500" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Expedições</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-2xl font-bold text-slate-900">Expedições</h1>
+            <p className="text-sm text-slate-500">
               Separação, reembalagem, etiquetagem, cross-docking e expedição.
             </p>
           </div>
         </div>
         <Link
           to="/wms/expedicoes/nova"
-          className="flex items-center gap-2 rounded-md bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
         >
           <Plus className="h-4 w-4" /> Nova expedição
         </Link>
@@ -37,18 +37,18 @@ export default function ExpedicoesListPage() {
         />
       )}
       {state === 'success' && expedicoes.length > 0 && (
-        <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+        <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white shadow-sm">
           {expedicoes.map((exp) => (
             <li key={exp.id}>
               <Link
                 to={`/wms/expedicoes/${exp.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-slate-900/60"
+                className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-slate-50 transition-all duration-200"
               >
                 <div>
-                  <p className="font-medium text-slate-100">
+                  <p className="font-medium text-slate-900">
                     {exp.referencia_documento ?? exp.id.slice(0, 8)}
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-500">
                     {exp.tipo === 'CROSS_DOCKING' ? 'Cross-docking' : 'Normal'}
                   </p>
                 </div>

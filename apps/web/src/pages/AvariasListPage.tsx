@@ -15,18 +15,18 @@ export default function AvariasListPage() {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <AlertOctagon className="h-6 w-6 text-red-400" />
+          <AlertOctagon className="h-6 w-6 text-red-600" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Avarias</h1>
-            <p className="text-sm text-slate-400">Registro de avarias de mercadoria no armazém.</p>
+            <h1 className="text-2xl font-bold text-slate-900">Avarias</h1>
+            <p className="text-sm text-slate-500">Registro de avarias de mercadoria no armazém.</p>
           </div>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="flex items-center gap-2 rounded-md bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
         >
           <Plus className="h-4 w-4" /> Nova avaria
         </button>
@@ -47,12 +47,12 @@ export default function AvariasListPage() {
         <EmptyState title="Nenhuma avaria registrada" description="Nenhuma avaria até o momento." />
       )}
       {state === 'success' && avarias.length > 0 && (
-        <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+        <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white shadow-sm">
           {avarias.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-4 px-4 py-4">
               <div>
-                <p className="font-medium text-slate-100">{a.descricao}</p>
-                <p className="text-sm text-slate-400">
+                <p className="font-medium text-slate-900">{a.descricao}</p>
+                <p className="text-sm text-slate-500">
                   quantidade: {a.quantidade} ·{' '}
                   {a.created_at && new Date(a.created_at).toLocaleString('pt-BR')}
                 </p>
@@ -100,7 +100,7 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-6 grid grid-cols-2 gap-3 rounded-lg border border-slate-800 p-4 sm:grid-cols-3"
+      className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 sm:grid-cols-3 bg-white shadow-sm"
     >
       <select
         required
@@ -158,16 +158,16 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
       <button
         type="submit"
         disabled={submitting}
-        className="col-span-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50 sm:col-span-3"
+        className="col-span-2 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:col-span-3 transition-all duration-200"
       >
         {submitting ? 'Salvando...' : 'Registrar avaria'}
       </button>
       {feedback && (
-        <p className="col-span-full flex items-center gap-2 text-sm text-amber-300">
+        <p className="col-span-full flex items-center gap-2 text-sm text-amber-700">
           <WifiOff className="h-4 w-4 shrink-0" /> {feedback}
         </p>
       )}
-      {error && <p className="col-span-full text-sm text-red-400">{error}</p>}
+      {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
     </form>
   );
 }

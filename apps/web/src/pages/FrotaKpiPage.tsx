@@ -21,14 +21,14 @@ export default function FrotaKpiPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
             <Truck className="h-6 w-6 text-rigabras-500" />
             Controle de Frota
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Quilometragem, custo/km, consumo médio e ocupação — indicadores prioritários de frota.
           </p>
         </div>
@@ -37,14 +37,14 @@ export default function FrotaKpiPage() {
             type="date"
             value={periodStart}
             onChange={(e) => setPeriodStart(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 focus:border-rigabras-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-rigabras-500 focus:outline-none"
           />
           <span className="text-slate-500">até</span>
           <input
             type="date"
             value={periodEnd}
             onChange={(e) => setPeriodEnd(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 focus:border-rigabras-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-rigabras-500 focus:outline-none"
           />
         </div>
       </div>
@@ -52,7 +52,7 @@ export default function FrotaKpiPage() {
       <div className="mb-8 flex flex-wrap gap-2">
         <Link
           to="/frota/manutencoes"
-          className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:text-white"
+          className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
         >
           <Wrench className="h-4 w-4" /> Manutenções da frota
         </Link>
@@ -93,16 +93,16 @@ export default function FrotaKpiPage() {
           <QuilometragemForm onSaved={reload} />
 
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-white">Por veículo</h2>
+            <h2 className="mb-3 text-lg font-bold text-slate-900">Por veículo</h2>
             {kpis.por_veiculo.length === 0 ? (
               <EmptyState
                 title="Nenhum veículo cadastrado"
                 description="Cadastre veículos no módulo de Gerenciamento de Risco para que apareçam aqui."
               />
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-slate-800">
+              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-900 text-slate-400">
+                  <thead className="bg-slate-50 text-slate-500">
                     <tr>
                       <th className="px-4 py-2 font-medium">Placa</th>
                       <th className="px-4 py-2 font-medium">Status</th>
@@ -114,16 +114,16 @@ export default function FrotaKpiPage() {
                       <th className="px-4 py-2 font-medium">Custo/km</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-200">
                     {kpis.por_veiculo.map((v) => (
-                      <tr key={v.veiculo_id} className="text-slate-200">
+                      <tr key={v.veiculo_id} className="text-slate-700">
                         <td className="px-4 py-2 font-medium">{v.placa}</td>
                         <td className="px-4 py-2">
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                               v.status === 'EM_VIAGEM'
-                                ? 'bg-blue-900/60 text-blue-200'
-                                : 'bg-emerald-900/60 text-emerald-200'
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-emerald-50 text-emerald-700'
                             }`}
                           >
                             {v.status === 'EM_VIAGEM' ? 'Em viagem' : 'Disponível'}
@@ -158,9 +158,9 @@ export default function FrotaKpiPage() {
 
 function Kpi({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold text-slate-100">{value}</dd>
+    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <dt className="text-sm text-slate-500">{label}</dt>
+      <dd className="mt-1 text-2xl font-bold text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -199,9 +199,9 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
   }
 
   return (
-    <section className="rounded-lg border border-slate-800 p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-        <Fuel className="h-4 w-4 text-amber-400" /> Registrar quilometragem/consumo de uma viagem
+    <section className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
+        <Fuel className="h-4 w-4 text-amber-600" /> Registrar quilometragem/consumo de uma viagem
       </h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <input
@@ -241,13 +241,13 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
         <button
           type="submit"
           disabled={submitting || !viagemId}
-          className="col-span-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50 sm:col-span-4"
+          className="col-span-2 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:col-span-4 transition-all duration-200"
         >
           {submitting ? 'Salvando...' : 'Salvar'}
         </button>
       </form>
-      {feedback && <p className="mt-2 text-sm text-emerald-400">{feedback}</p>}
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {feedback && <p className="mt-2 text-sm text-emerald-600">{feedback}</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
         <Gauge className="h-3 w-3" /> Preenchido a partir do hodômetro (integração Autotrac é
         trabalho futuro).

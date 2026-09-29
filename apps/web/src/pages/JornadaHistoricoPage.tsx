@@ -36,22 +36,22 @@ export default function JornadaHistoricoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/jornada"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para registro de jornada
       </Link>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <History className="h-6 w-6 text-purple-400" />
+          <History className="h-6 w-6 text-purple-600" />
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-slate-900">
               Histórico de jornada {historico ? `— ${historico.motorista_nome}` : ''}
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               Consolidado de sessões e achados de conformidade ADI 5322.
             </p>
           </div>
@@ -61,26 +61,26 @@ export default function JornadaHistoricoPage() {
             type="date"
             value={periodStart}
             onChange={(e) => setPeriodStart(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+            className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
           />
           <span className="text-slate-500">até</span>
           <input
             type="date"
             value={periodEnd}
             onChange={(e) => setPeriodEnd(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+            className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
           />
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:text-white disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 disabled:opacity-50 transition-all duration-200 bg-white shadow-sm"
           >
             <Download className="h-4 w-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </button>
         </div>
       </div>
 
-      {exportError && <p className="mb-4 text-sm text-red-400">{exportError}</p>}
+      {exportError && <p className="mb-4 text-sm text-red-600">{exportError}</p>}
 
       {state === 'loading' && <LoadingSkeleton rows={3} />}
       {state === 'error' && <ErrorCard message={error ?? 'Erro'} onRetry={reload} />}
@@ -95,9 +95,9 @@ export default function JornadaHistoricoPage() {
       {state === 'success' && historico && historico.sessoes.length > 0 && (
         <ul className="space-y-4">
           {[...historico.sessoes].reverse().map((sessao, idx) => (
-            <li key={idx} className="rounded-lg border border-slate-800 p-4">
+            <li key={idx} className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium text-slate-100">
+                <span className="font-medium text-slate-900">
                   {sessao.inicio_jornada
                     ? new Date(sessao.inicio_jornada).toLocaleString('pt-BR')
                     : '-'}
@@ -107,12 +107,12 @@ export default function JornadaHistoricoPage() {
                     : 'em andamento'}
                 </span>
                 {sessao.aberta && (
-                  <span className="rounded-full bg-blue-900/60 px-2 py-0.5 text-xs font-semibold text-blue-200">
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
                     Em andamento
                   </span>
                 )}
               </div>
-              <dl className="mb-3 grid grid-cols-2 gap-2 text-sm text-slate-400 sm:grid-cols-4">
+              <dl className="mb-3 grid grid-cols-2 gap-4 text-sm text-slate-500 sm:grid-cols-4">
                 <Info
                   label="Jornada total"
                   value={
@@ -138,7 +138,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-200">{value}</dd>
+      <dd className="font-medium text-slate-700">{value}</dd>
     </div>
   );
 }

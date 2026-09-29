@@ -33,20 +33,44 @@ function ToneMapping({ exposure }: { exposure: number }) {
   return null;
 }
 
-/** Estúdio procedural: faixas ciano/âmbar + softbox branca, assado uma única vez (frames=1). */
+/** Estúdio procedural: faixas azul/âmbar + softbox branca, assado uma única vez (frames=1). */
 function ProceduralStudio({ resolution, intensity }: { resolution: number; intensity: number }) {
   return (
     <Environment resolution={resolution} frames={1} environmentIntensity={intensity}>
-      <color attach="background" args={['#090d16']} />
-      <Lightformer form="rect" intensity={2.2} color="#ffffff" position={[0, 6, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} />
-      <Lightformer form="rect" intensity={4} color="#00f2fe" position={[-6, 2, -3]} rotation-y={Math.PI / 2} scale={[8, 1.2, 1]} />
-      <Lightformer form="rect" intensity={3.2} color="#ff9f43" position={[6, 1.5, 2]} rotation-y={-Math.PI / 2} scale={[8, 1.2, 1]} />
+      <color attach="background" args={['#f8fafc']} />
+      <Lightformer
+        form="rect"
+        intensity={2.2}
+        color="#ffffff"
+        position={[0, 6, 0]}
+        rotation-x={Math.PI / 2}
+        scale={[10, 10, 1]}
+      />
+      <Lightformer
+        form="rect"
+        intensity={2.4}
+        color="#60a5fa"
+        position={[-6, 2, -3]}
+        rotation-y={Math.PI / 2}
+        scale={[8, 1.2, 1]}
+      />
+      <Lightformer
+        form="rect"
+        intensity={1.8}
+        color="#fbbf24"
+        position={[6, 1.5, 2]}
+        rotation-y={-Math.PI / 2}
+        scale={[8, 1.2, 1]}
+      />
       <Lightformer form="ring" intensity={1.6} color="#7dd3fc" position={[0, 2, -8]} scale={6} />
     </Environment>
   );
 }
 
-class HdriBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+class HdriBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
@@ -66,7 +90,7 @@ export function HDRIEnvironment({
   exposure = 1.1,
   intensity = 1,
   resolution = 128,
-  fallbackColor = '#090d16',
+  fallbackColor = '#f8fafc',
   opaque = false,
 }: HDRIEnvironmentProps) {
   const procedural = <ProceduralStudio resolution={resolution} intensity={intensity} />;

@@ -117,22 +117,22 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
     <div>
       <Link
         to={`/viagens/${frete.viagem_id}`}
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para a viagem
       </Link>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Fechamento do frete</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-bold text-slate-900">Fechamento do frete</h1>
+          <p className="text-sm text-slate-500">
             {frete.numero_fatura ? `Fatura ${frete.numero_fatura}` : 'Sem número de fatura'}
           </p>
         </div>
         <FreteStatusBadge status={frete.status_fechamento} />
       </div>
 
-      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-slate-800 p-4 text-sm sm:grid-cols-3">
+      <dl className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 text-sm sm:grid-cols-3 bg-white shadow-sm">
         <Info label="Valor contratado" value={currency(frete.valor_contratado)} />
         <Info
           label="Retorno do veículo"
@@ -149,10 +149,10 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
       </dl>
 
       {saldo && (
-        <div className="mb-8 rounded-lg border border-slate-800 p-4">
+        <div className="mb-8 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
           <div className="mb-3 flex items-center gap-2">
-            <Receipt className="h-5 w-5 text-emerald-400" />
-            <h2 className="text-lg font-semibold text-white">Saldo do frete</h2>
+            <Receipt className="h-5 w-5 text-emerald-600" />
+            <h2 className="text-lg font-bold text-slate-900">Saldo do frete</h2>
           </div>
           <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-5">
             <Info label="Contratado" value={currency(saldo.valor_contratado)} />
@@ -161,19 +161,19 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
             <Info label="Multas" value={`- ${currency(saldo.total_multas)}`} />
             <Info label="Pago (confirmado)" value={`- ${currency(saldo.total_pago_confirmado)}`} />
           </dl>
-          <p className="mt-4 text-lg font-semibold text-white">
+          <p className="mt-4 text-lg font-semibold text-slate-900">
             Saldo devido:{' '}
-            <span className={saldo.saldo > 0 ? 'text-amber-300' : 'text-emerald-400'}>
+            <span className={saldo.saldo > 0 ? 'text-amber-700' : 'text-emerald-600'}>
               {currency(saldo.saldo)}
             </span>
           </p>
         </div>
       )}
 
-      <div className="mb-8 rounded-lg border border-slate-800 p-4">
+      <div className="mb-8 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-rigabras-500" />
-          <h2 className="text-lg font-semibold text-white">Transições de fechamento</h2>
+          <h2 className="text-lg font-bold text-slate-900">Transições de fechamento</h2>
         </div>
         {availableTransitions.length === 0 ? (
           <p className="text-sm text-slate-500">
@@ -193,10 +193,10 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
                   disabled={submittingStatus || !allowed}
                   onClick={() => void handleTransition(next)}
                   title={allowed ? undefined : `Requer um dos papéis: ${allowedRoles.join(', ')}`}
-                  className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
                     next === 'REJEITADO'
-                      ? 'border border-red-800 text-red-200 hover:bg-red-950/40'
-                      : 'bg-rigabras-500 text-white hover:bg-blue-600'
+                      ? 'border border-red-200 text-red-700 hover:bg-red-100 transition-all duration-200'
+                      : 'bg-rigabras-500 text-white hover:opacity-90 transition-all duration-200'
                   }`}
                 >
                   {next === 'REJEITADO' ? (
@@ -210,16 +210,16 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
             })}
           </div>
         )}
-        {statusError && <p className="mt-3 text-sm text-red-400">{statusError}</p>}
+        {statusError && <p className="mt-3 text-sm text-red-600">{statusError}</p>}
         {transitionFeedback && (
-          <p className="mt-3 text-sm text-emerald-400">{transitionFeedback}</p>
+          <p className="mt-3 text-sm text-emerald-600">{transitionFeedback}</p>
         )}
       </div>
 
-      <div className="mb-8 rounded-lg border border-slate-800 p-4">
+      <div className="mb-8 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <Banknote className="h-5 w-5 text-amber-400" />
-          <h2 className="text-lg font-semibold text-white">
+          <Banknote className="h-5 w-5 text-amber-600" />
+          <h2 className="text-lg font-bold text-slate-900">
             Lançamentos (adiantamentos, descontos, multas)
           </h2>
         </div>
@@ -239,12 +239,12 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
                 }
               });
             }}
-            className="mb-4 grid grid-cols-1 gap-2 rounded-md border border-slate-800 p-3 sm:grid-cols-4"
+            className="mb-4 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 p-3 sm:grid-cols-4 bg-white shadow-sm"
           >
             <select
               value={lancTipo}
               onChange={(e) => setLancTipo(e.target.value as TipoLancamentoFrete)}
-              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+              className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
             >
               {(Object.keys(LANCAMENTO_LABEL) as TipoLancamentoFrete[]).map((tipo) => (
                 <option key={tipo} value={tipo}>
@@ -260,24 +260,24 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
               placeholder="Valor (R$)"
               value={lancValor}
               onChange={(e) => setLancValor(e.target.value)}
-              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
+              className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500"
             />
             <input
               placeholder="Descrição (opcional)"
               value={lancDescricao}
               onChange={(e) => setLancDescricao(e.target.value)}
-              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 sm:col-span-1"
+              className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 sm:col-span-1"
             />
             <button
               type="submit"
               disabled={submittingLancamento}
-              className="rounded-md bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-xl bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
             >
               {submittingLancamento ? 'Lançando...' : 'Lançar'}
             </button>
           </form>
         )}
-        {lancamentoError && <p className="mb-3 text-sm text-red-400">{lancamentoError}</p>}
+        {lancamentoError && <p className="mb-3 text-sm text-red-600">{lancamentoError}</p>}
 
         {lancamentos.length === 0 ? (
           <p className="text-sm text-slate-500">Nenhum lançamento registrado.</p>
@@ -286,17 +286,17 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
             {lancamentos.map((l) => (
               <li
                 key={l.id}
-                className="flex items-center justify-between rounded-md border border-slate-800 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white shadow-sm"
               >
                 <div>
-                  <span className="font-medium text-slate-100">{LANCAMENTO_LABEL[l.tipo]}</span>{' '}
-                  <span className="text-slate-400">— {currency(l.valor)}</span>
+                  <span className="font-medium text-slate-900">{LANCAMENTO_LABEL[l.tipo]}</span>{' '}
+                  <span className="text-slate-500">— {currency(l.valor)}</span>
                   {l.descricao && <p className="text-xs text-slate-500">{l.descricao}</p>}
                 </div>
                 {canWriteFinanceiro && (
                   <button
                     onClick={() => void removeLancamento(l.id)}
-                    className="text-xs text-red-400 hover:text-red-300"
+                    className="text-xs text-red-600 hover:text-red-700 transition-all duration-200"
                   >
                     Remover
                   </button>
@@ -307,10 +307,10 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
         )}
       </div>
 
-      <div className="mb-8 rounded-lg border border-slate-800 p-4">
+      <div className="mb-8 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <Banknote className="h-5 w-5 text-emerald-400" />
-          <h2 className="text-lg font-semibold text-white">Pagamentos</h2>
+          <Banknote className="h-5 w-5 text-emerald-600" />
+          <h2 className="text-lg font-bold text-slate-900">Pagamentos</h2>
         </div>
 
         {canWriteFinanceiro && frete.status_fechamento === 'APROVADO' && (
@@ -328,7 +328,7 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
                 }
               });
             }}
-            className="mb-4 grid grid-cols-1 gap-2 rounded-md border border-slate-800 p-3 sm:grid-cols-3"
+            className="mb-4 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 p-3 sm:grid-cols-3 bg-white shadow-sm"
           >
             <input
               required
@@ -338,18 +338,18 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
               placeholder="Valor pago (R$)"
               value={pagValor}
               onChange={(e) => setPagValor(e.target.value)}
-              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
+              className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500"
             />
             <input
               placeholder="Forma de pagamento (opcional)"
               value={pagForma}
               onChange={(e) => setPagForma(e.target.value)}
-              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
+              className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500"
             />
             <button
               type="submit"
               disabled={submittingPagamento}
-              className="rounded-md bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-xl bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
             >
               {submittingPagamento ? 'Registrando...' : 'Registrar pagamento'}
             </button>
@@ -360,7 +360,7 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
             Pagamentos só podem ser registrados após a aprovação financeira do frete.
           </p>
         )}
-        {pagamentoError && <p className="mb-3 text-sm text-red-400">{pagamentoError}</p>}
+        {pagamentoError && <p className="mb-3 text-sm text-red-600">{pagamentoError}</p>}
 
         {pagamentos.length === 0 ? (
           <EmptyState
@@ -370,16 +370,17 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
         ) : (
           <ul className="space-y-2">
             {pagamentos.map((p) => (
-              <li key={p.id} className="rounded-md border border-slate-800 px-3 py-2 text-sm">
+              <li
+                key={p.id}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white shadow-sm"
+              >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-100">{currency(p.valor_pago)}</span>
+                  <span className="font-medium text-slate-900">{currency(p.valor_pago)}</span>
                   <span className="text-xs text-slate-500">{PAGAMENTO_STATUS_LABEL[p.status]}</span>
                 </div>
                 <p className="text-xs text-slate-500">
                   {p.forma_pagamento ?? 'Forma não informada'}
-                  {p.data_pagamento
-                    ? ` · ${formatDateOnly(p.data_pagamento)}`
-                    : ''}
+                  {p.data_pagamento ? ` · ${formatDateOnly(p.data_pagamento)}` : ''}
                 </p>
               </li>
             ))}
@@ -388,15 +389,15 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
       </div>
 
       <div className="mb-4 flex items-center gap-2">
-        <History className="h-5 w-5 text-slate-400" />
-        <h2 className="text-lg font-semibold text-white">Histórico do fechamento</h2>
+        <History className="h-5 w-5 text-slate-500" />
+        <h2 className="text-lg font-bold text-slate-900">Histórico do fechamento</h2>
       </div>
       {historicoState === 'loading' ? (
         <LoadingSkeleton rows={2} />
       ) : historico.length === 0 ? (
         <p className="text-sm text-slate-500">Nenhuma transição registrada ainda.</p>
       ) : (
-        <ol className="space-y-3 border-l border-slate-800 pl-4">
+        <ol className="space-y-3 border-l border-slate-200 pl-4">
           {historico.map((h) => (
             <li key={h.id} className="relative">
               <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-rigabras-500" />
@@ -411,7 +412,7 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
                   {h.created_at ? new Date(h.created_at).toLocaleString('pt-BR') : ''}
                 </span>
               </div>
-              {h.observacoes && <p className="mt-1 text-sm text-slate-400">{h.observacoes}</p>}
+              {h.observacoes && <p className="mt-1 text-sm text-slate-500">{h.observacoes}</p>}
             </li>
           ))}
         </ol>
@@ -425,7 +426,7 @@ export function RetornoVazioChip({ vazio }: { vazio: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-        vazio ? 'bg-slate-700 text-slate-200' : 'bg-teal-900/60 text-teal-200'
+        vazio ? 'bg-slate-200 text-slate-700' : 'bg-teal-50 text-teal-700'
       }`}
     >
       <PackageX className="h-3 w-3" /> {vazio ? 'Retorno vazio' : 'Retorno com carga'}
@@ -437,7 +438,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-100">{value}</dd>
+      <dd className="font-medium text-slate-900">{value}</dd>
     </div>
   );
 }

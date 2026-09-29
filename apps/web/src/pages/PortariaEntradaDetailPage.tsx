@@ -26,8 +26,14 @@ const TIPOS_DOCUMENTO: TipoDocumentoPortaria[] = [
 export default function PortariaEntradaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, entrada, error, reload } = usePortariaEntradaDetail(id);
-  const { atualizarStatus, anexarArquivo, obterUrlDocumento, registrarSaida, submitting, error: actionError } =
-    usePortariaActions();
+  const {
+    atualizarStatus,
+    anexarArquivo,
+    obterUrlDocumento,
+    registrarSaida,
+    submitting,
+    error: actionError,
+  } = usePortariaActions();
   // Só gating de UX — a autorização real é da API (RBAC): porteiro registra
   // (documentos/saída), OPERADOR+ confere e avança o status; VISITANTE só lê.
   const role = getCurrentUserRole();
@@ -40,7 +46,8 @@ export default function PortariaEntradaDetailPage() {
   const [situacaoDescarga, setSituacaoDescarga] = useState('FINALIZADA');
 
   if (state === 'loading' || state === 'idle') return <LoadingSkeleton />;
-  if (state === 'error' || !entrada) return <ErrorCard message={error ?? 'Erro'} onRetry={reload} />;
+  if (state === 'error' || !entrada)
+    return <ErrorCard message={error ?? 'Erro'} onRetry={reload} />;
 
   const status = entrada.status ?? 'AGUARDANDO_CONFERENCIA';
   const proximosStatus = TRANSICOES_STATUS_PORTARIA_ENTRADA[status].filter(
@@ -75,21 +82,21 @@ export default function PortariaEntradaDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/portaria"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para portaria
       </Link>
 
       <div className="mb-6 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-slate-900">
             {entrada.placa_cavalo}
             {entrada.placa_carreta ? ` / ${entrada.placa_carreta}` : ''}
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {entrada.motorista_nome} ·{' '}
             {entrada.data_entrada && new Date(entrada.data_entrada).toLocaleString('pt-BR')}
           </p>
@@ -100,15 +107,15 @@ export default function PortariaEntradaDetailPage() {
       {entrada.viagem_id && (
         <Link
           to={`/viagens/${entrada.viagem_id}`}
-          className="mb-6 block rounded-lg border border-slate-800 p-3 text-sm text-slate-300 hover:bg-slate-900/60"
+          className="mb-6 block rounded-xl border border-slate-200 p-3 text-sm text-slate-600 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
         >
           Vinculado à viagem {entrada.viagem_id.slice(0, 8)} (CRT {entrada.numero_crt ?? '—'})
         </Link>
       )}
 
       {/* Documentos */}
-      <section className="mb-6 rounded-lg border border-slate-800 p-4">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+      <section className="mb-6 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
           <FileText className="h-4 w-4" /> Documentos
         </h2>
         <div className="mb-3 space-y-2">
@@ -118,12 +125,12 @@ export default function PortariaEntradaDetailPage() {
           {entrada.documentos.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-center justify-between rounded-md bg-slate-900/60 px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"
             >
               <button
                 type="button"
                 onClick={() => void handleAbrirDocumento(doc.id)}
-                className="text-left text-slate-300 underline-offset-2 hover:underline"
+                className="text-left text-slate-600 underline-offset-2 hover:underline transition-all duration-200"
               >
                 {doc.tipo_documento} — {doc.nome_arquivo ?? doc.storage_path}
               </button>
@@ -134,39 +141,39 @@ export default function PortariaEntradaDetailPage() {
           ))}
         </div>
         {podeRegistrar && (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            className="input w-auto"
-            value={tipoDocumento}
-            onChange={(e) => setTipoDocumento(e.target.value as TipoDocumentoPortaria)}
-          >
-            {TIPOS_DOCUMENTO.map((t) => (
-              <option key={t} value={t}>
-                {t.replaceAll('_', ' ')}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
-          >
-            <Camera className="h-4 w-4" /> {uploading ? 'Enviando...' : 'Fotografar / anexar'}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,application/pdf"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void handleFileSelected(file);
-              e.target.value = '';
-            }}
-          />
-        </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="input w-auto"
+              value={tipoDocumento}
+              onChange={(e) => setTipoDocumento(e.target.value as TipoDocumentoPortaria)}
+            >
+              {TIPOS_DOCUMENTO.map((t) => (
+                <option key={t} value={t}>
+                  {t.replaceAll('_', ' ')}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50 transition-all duration-200 bg-white shadow-sm"
+            >
+              <Camera className="h-4 w-4" /> {uploading ? 'Enviando...' : 'Fotografar / anexar'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleFileSelected(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
         )}
       </section>
 
@@ -181,7 +188,7 @@ export default function PortariaEntradaDetailPage() {
                 await atualizarStatus(entrada.id, proximo);
                 reload();
               }}
-              className="rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
             >
               {PROXIMO_STATUS_LABEL[proximo] ?? proximo}
             </button>
@@ -191,12 +198,12 @@ export default function PortariaEntradaDetailPage() {
 
       {/* Saída */}
       {podeRegistrar && status === 'AGUARDANDO_SAIDA' && !entrada.saida && (
-        <section className="mb-6 rounded-lg border border-slate-800 p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+        <section className="mb-6 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700">
             <LogOut className="h-4 w-4" /> Registrar saída
           </h2>
           <label className="mb-3 block">
-            <span className="mb-1 block text-sm font-medium text-slate-300">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
               Situação da descarga
             </span>
             <select
@@ -215,7 +222,7 @@ export default function PortariaEntradaDetailPage() {
               await registrarSaida(entrada.id, { situacao_descarga: situacaoDescarga });
               reload();
             }}
-            className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+            className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
           >
             Confirmar saída
           </button>
@@ -223,13 +230,13 @@ export default function PortariaEntradaDetailPage() {
       )}
 
       {entrada.saida && (
-        <div className="mb-6 rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-4 text-sm text-emerald-200">
+        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
           Saída registrada em {new Date(entrada.saida.created_at ?? '').toLocaleString('pt-BR')} —
           permanência no pátio: {entrada.saida.tempo_patio_minutos} min.
         </div>
       )}
 
-      {actionError && <p className="text-sm text-red-400">{actionError}</p>}
+      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
     </div>
   );
 }

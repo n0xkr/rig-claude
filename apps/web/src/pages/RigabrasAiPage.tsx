@@ -51,9 +51,9 @@ export default function RigabrasAiPage() {
     <div className="mx-auto flex max-w-2xl flex-col px-4 py-8" style={{ minHeight: '70vh' }}>
       <div className="mb-4 flex items-center gap-2">
         <Bot className="h-6 w-6 text-rigabras-500" />
-        <h1 className="text-2xl font-bold text-white">RIGABRAS AI</h1>
+        <h1 className="text-2xl font-bold text-slate-900">RIGABRAS AI</h1>
       </div>
-      <p className="mb-6 text-sm text-slate-400">
+      <p className="mb-6 text-sm text-slate-500">
         Assistente operacional: responde só com dados reais consultados ao vivo no sistema — nunca
         inventa números.
       </p>
@@ -64,7 +64,7 @@ export default function RigabrasAiPage() {
             <button
               key={s}
               onClick={() => enviar(s)}
-              className="rounded-full border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 transition-all duration-200"
             >
               {s}
             </button>
@@ -75,14 +75,12 @@ export default function RigabrasAiPage() {
       <div className="mb-4 flex-1 space-y-4 overflow-y-auto">
         {mensagens.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.autor === 'usuario' ? 'justify-end' : ''}`}>
-            {m.autor === 'ia' && (
-              <Bot className="mt-1 h-5 w-5 shrink-0 text-rigabras-500" />
-            )}
+            {m.autor === 'ia' && <Bot className="mt-1 h-5 w-5 shrink-0 text-rigabras-500" />}
             <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 text-sm ${
+              className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
                 m.autor === 'usuario'
                   ? 'bg-rigabras-500 text-white'
-                  : 'border border-slate-800 bg-slate-900/60 text-slate-200'
+                  : 'border border-slate-200 bg-slate-50 text-slate-700'
               }`}
             >
               <p className="whitespace-pre-wrap">{m.texto}</p>
@@ -93,13 +91,13 @@ export default function RigabrasAiPage() {
                 </p>
               )}
             </div>
-            {m.autor === 'usuario' && <User className="mt-1 h-5 w-5 shrink-0 text-slate-400" />}
+            {m.autor === 'usuario' && <User className="mt-1 h-5 w-5 shrink-0 text-slate-500" />}
           </div>
         ))}
         {enviando && <p className="text-sm text-slate-500">Consultando os dados...</p>}
       </div>
 
-      {error && <p className="mb-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
 
       <form
         onSubmit={(e) => {
@@ -118,7 +116,7 @@ export default function RigabrasAiPage() {
         <button
           type="submit"
           disabled={enviando || !pergunta.trim()}
-          className="rounded-md bg-rigabras-500 px-4 py-2 text-white hover:bg-blue-600 disabled:opacity-50"
+          className="rounded-xl bg-rigabras-500 px-4 py-2 text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
         >
           <Send className="h-4 w-4" />
         </button>

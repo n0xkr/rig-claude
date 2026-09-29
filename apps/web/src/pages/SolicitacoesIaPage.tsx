@@ -39,9 +39,9 @@ const TIPO_ROTULO: Record<TipoSolicitacao, string> = {
 };
 
 const TIPO_ESTILO: Record<TipoSolicitacao, string> = {
-  CADASTRO: 'bg-emerald-900/60 text-emerald-200',
-  ATUALIZACAO: 'bg-amber-900/60 text-amber-200',
-  PERGUNTA: 'bg-violet-900/60 text-violet-200',
+  CADASTRO: 'bg-emerald-50 text-emerald-700',
+  ATUALIZACAO: 'bg-amber-50 text-amber-700',
+  PERGUNTA: 'bg-violet-50 text-violet-700',
 };
 
 const STATUS_ROTULO: Record<StatusSolicitacao, string> = {
@@ -53,11 +53,11 @@ const STATUS_ROTULO: Record<StatusSolicitacao, string> = {
 };
 
 const STATUS_ESTILO: Record<StatusSolicitacao, string> = {
-  PENDENTE: 'bg-slate-700 text-slate-200',
-  APROVADA: 'bg-emerald-900/60 text-emerald-200',
-  RECUSADA: 'bg-slate-700 text-slate-300',
-  RESPONDIDA: 'bg-cyan-900/60 text-cyan-200',
-  ERRO: 'bg-red-900/60 text-red-200',
+  PENDENTE: 'bg-slate-200 text-slate-700',
+  APROVADA: 'bg-emerald-50 text-emerald-700',
+  RECUSADA: 'bg-slate-200 text-slate-600',
+  RESPONDIDA: 'bg-cyan-50 text-cyan-700',
+  ERRO: 'bg-red-50 text-red-700',
 };
 
 const STATUS_HISTORICO: StatusSolicitacao[] = ['APROVADA', 'RECUSADA', 'RESPONDIDA', 'ERRO'];
@@ -109,24 +109,35 @@ function mensagemErroGenerica(erro: string | null | undefined): string {
 
 const CLASSE_BADGE = 'rounded-full px-2.5 py-1 text-xs font-semibold';
 const CLASSE_BTN_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-tms-cyan/60';
-const CLASSE_BTN_PRIMARIO = `${CLASSE_BTN_BASE} bg-tms-cyan text-slate-950 hover:brightness-110`;
-const CLASSE_BTN_SECUNDARIO = `${CLASSE_BTN_BASE} border border-slate-700 text-slate-200 hover:bg-slate-800`;
-const CLASSE_CARD = 'rounded-2xl border border-white/10 bg-white/5';
+  'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20';
+const CLASSE_BTN_PRIMARIO = `${CLASSE_BTN_BASE} bg-blue-600 text-white hover:opacity-90 transition-all duration-200`;
+const CLASSE_BTN_SECUNDARIO = `${CLASSE_BTN_BASE} border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 transition-all duration-200`;
+const CLASSE_CARD = 'rounded-xl border border-slate-200 bg-white shadow-sm';
 
 // ---------------------------------------------------------------------------
 // Blocos de dados
 // ---------------------------------------------------------------------------
 
-function TabelaChaveValor({ dados, testId, rotulos }: { dados: Record<string, unknown>; testId?: string; rotulos?: Rotulos }) {
+function TabelaChaveValor({
+  dados,
+  testId,
+  rotulos,
+}: {
+  dados: Record<string, unknown>;
+  testId?: string;
+  rotulos?: Rotulos;
+}) {
   const linhas = Object.entries(dados).filter(([, v]) => !vazio(v));
   if (linhas.length === 0) return <p className="text-sm text-slate-500">Sem dados informados.</p>;
   return (
-    <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[minmax(0,12rem)_1fr]" data-testid={testId}>
+    <dl
+      className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[minmax(0,12rem)_1fr]"
+      data-testid={testId}
+    >
       {linhas.map(([chave, valor]) => (
         <div key={chave} className="contents">
-          <dt className="text-slate-400">{rotuloChave(chave, rotulos)}</dt>
-          <dd className="break-words text-slate-100">{formatarValor(valor)}</dd>
+          <dt className="text-slate-500">{rotuloChave(chave, rotulos)}</dt>
+          <dd className="break-words text-slate-900">{formatarValor(valor)}</dd>
         </div>
       ))}
     </dl>
@@ -143,12 +154,18 @@ function Recolhivel({
   testId?: string;
 }) {
   return (
-    <details className="group rounded-lg border border-white/10 bg-black/20" data-testid={testId}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white">
+    <details
+      className="group rounded-xl border border-slate-200 bg-white shadow-sm"
+      data-testid={testId}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200">
         <span>{titulo}</span>
-        <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+        <ChevronDown
+          className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
       </summary>
-      <div className="border-t border-white/10 p-3">{children}</div>
+      <div className="border-t border-slate-200 p-3">{children}</div>
     </details>
   );
 }
@@ -187,15 +204,20 @@ function DiffAtualizacao({
   const { principais } = separarExtras(propostos ?? {});
   const base = atuais ?? {};
   const mudancas = Object.entries(principais).filter(
-    ([chave, proposto]) => !vazio(proposto) && formatarValor(base[chave]) !== formatarValor(proposto),
+    ([chave, proposto]) =>
+      !vazio(proposto) && formatarValor(base[chave]) !== formatarValor(proposto),
   );
   if (mudancas.length === 0) {
-    return <p className="text-sm text-slate-500">Nenhuma diferença encontrada em relação ao cadastro atual.</p>;
+    return (
+      <p className="text-sm text-slate-500">
+        Nenhuma diferença encontrada em relação ao cadastro atual.
+      </p>
+    );
   }
   return (
     <div className="overflow-x-auto" data-testid="solicitacao-diff">
       <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase text-slate-400">
+        <thead className="text-xs uppercase text-slate-500">
           <tr>
             <th className="py-1 pr-3 font-medium">Campo</th>
             <th className="py-1 pr-3 font-medium">Atual</th>
@@ -204,12 +226,12 @@ function DiffAtualizacao({
         </thead>
         <tbody>
           {mudancas.map(([chave, proposto]) => (
-            <tr key={chave} className="border-t border-white/10 align-top">
-              <td className="py-1.5 pr-3 text-slate-400">{rotuloChave(chave, rotulos)}</td>
-              <td className="py-1.5 pr-3 text-red-300/90 line-through decoration-red-400/40">
+            <tr key={chave} className="border-t border-slate-200 align-top">
+              <td className="py-1.5 pr-3 text-slate-500">{rotuloChave(chave, rotulos)}</td>
+              <td className="py-1.5 pr-3 text-red-600 line-through decoration-red-500/40">
                 {formatarValor(base[chave])}
               </td>
-              <td className="py-1.5 font-medium text-emerald-300">{formatarValor(proposto)}</td>
+              <td className="py-1.5 font-medium text-emerald-700">{formatarValor(proposto)}</td>
             </tr>
           ))}
         </tbody>
@@ -251,7 +273,8 @@ function SolicitacaoCard({
   const [texto, setTexto] = useState('');
 
   const ehPergunta = item.tipo === 'PERGUNTA';
-  const permiteDecidirCadastro = !ehPergunta && (item.status === 'PENDENTE' || item.status === 'ERRO');
+  const permiteDecidirCadastro =
+    !ehPergunta && (item.status === 'PENDENTE' || item.status === 'ERRO');
   const permiteResponder = ehPergunta && item.status === 'PENDENTE';
   const origem = [
     item.aba ? `Aba: ${item.aba}` : null,
@@ -266,12 +289,16 @@ function SolicitacaoCard({
     : '';
   const pctSugestao = sugestao ? Math.round(sugestao.confianca * 100) : 0;
   const respostaValida =
-    item.entrada === 'TEXTO' ? texto.trim().length > 0 : item.entrada === 'OPCAO' ? opcao !== null : false;
+    item.entrada === 'TEXTO'
+      ? texto.trim().length > 0
+      : item.entrada === 'OPCAO'
+        ? opcao !== null
+        : false;
   const rotuloIdEntrada = `pergunta-${item.id}`;
 
   return (
     <article
-      className={`${CLASSE_CARD} p-4 sm:p-5 ${selecionado ? 'ring-1 ring-tms-cyan/60' : ''}`}
+      className={`${CLASSE_CARD} p-4 sm:p-5 ${selecionado ? 'ring-2 ring-blue-500/30' : ''}`}
       data-testid="solicitacao-card"
       data-tipo={item.tipo}
       data-status={item.status}
@@ -291,14 +318,20 @@ function SolicitacaoCard({
         )}
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
-            <span className={`${CLASSE_BADGE} ${TIPO_ESTILO[item.tipo]}`}>{TIPO_ROTULO[item.tipo]}</span>
-            <span className={`${CLASSE_BADGE} bg-slate-800 text-slate-200`}>{ENTIDADE_ROTULO[item.entidade]}</span>
+            <span className={`${CLASSE_BADGE} ${TIPO_ESTILO[item.tipo]}`}>
+              {TIPO_ROTULO[item.tipo]}
+            </span>
+            <span className={`${CLASSE_BADGE} bg-slate-100 text-slate-700`}>
+              {ENTIDADE_ROTULO[item.entidade]}
+            </span>
             {item.status !== 'PENDENTE' && (
-              <span className={`${CLASSE_BADGE} ${STATUS_ESTILO[item.status]}`}>{STATUS_ROTULO[item.status]}</span>
+              <span className={`${CLASSE_BADGE} ${STATUS_ESTILO[item.status]}`}>
+                {STATUS_ROTULO[item.status]}
+              </span>
             )}
           </div>
-          <h3 className="break-words text-base font-semibold text-white">{item.titulo}</h3>
-          {item.descricao && <p className="mt-1 text-sm text-slate-300">{item.descricao}</p>}
+          <h3 className="break-words text-base font-bold text-slate-900">{item.titulo}</h3>
+          {item.descricao && <p className="mt-1 text-sm text-slate-600">{item.descricao}</p>}
           {(origem.length > 0 || item.chave_natural) && (
             <p className="mt-1.5 text-xs text-slate-500">
               {[...origem, item.chave_natural ? `Chave: ${item.chave_natural}` : null]
@@ -313,30 +346,40 @@ function SolicitacaoCard({
       </header>
 
       <div className="mt-4 space-y-3">
-        {item.tipo === 'CADASTRO' && item.dados_propostos && <DadosProposto dados={item.dados_propostos} rotulos={item.rotulos_campos} />}
+        {item.tipo === 'CADASTRO' && item.dados_propostos && (
+          <DadosProposto dados={item.dados_propostos} rotulos={item.rotulos_campos} />
+        )}
 
         {item.tipo === 'ATUALIZACAO' && (
-          <DiffAtualizacao atuais={item.dados_atuais} propostos={item.dados_propostos} rotulos={item.rotulos_campos} />
+          <DiffAtualizacao
+            atuais={item.dados_atuais}
+            propostos={item.dados_propostos}
+            rotulos={item.rotulos_campos}
+          />
         )}
 
         {ehPergunta && (
           <div className="space-y-3">
-            {item.pergunta && <p className="text-sm font-medium text-slate-100">{item.pergunta}</p>}
+            {item.pergunta && <p className="text-sm font-medium text-slate-900">{item.pergunta}</p>}
 
             {sugestao && (
               <div
-                className="rounded-lg border border-violet-500/30 bg-violet-950/30 p-3 text-sm"
+                className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm"
                 data-testid="solicitacao-sugestao"
               >
-                <p className="flex flex-wrap items-center gap-2 font-medium text-violet-200">
+                <p className="flex flex-wrap items-center gap-2 font-medium text-violet-700">
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
                   Sugestão da IA ({pctSugestao}% de confiança)
                 </p>
-                <p className="mt-1 text-slate-200">
+                <p className="mt-1 text-slate-700">
                   {rotuloSugestao}
-                  {sugestao.motivo ? <span className="text-slate-400"> — {sugestao.motivo}</span> : null}
+                  {sugestao.motivo ? (
+                    <span className="text-slate-500"> — {sugestao.motivo}</span>
+                  ) : null}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">É apenas uma sugestão: nada é aplicado sem a sua escolha.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  É apenas uma sugestão: nada é aplicado sem a sua escolha.
+                </p>
               </div>
             )}
 
@@ -352,10 +395,10 @@ function SolicitacaoCard({
                   return (
                     <label
                       key={o.valor}
-                      className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-all ${
                         marcada
-                          ? 'border-tms-cyan bg-tms-cyan/10 text-white'
-                          : `${reservada ? 'border-dashed' : ''} border-slate-700 text-slate-200 hover:bg-slate-800/60`
+                          ? 'border-blue-500 bg-blue-50 text-slate-900'
+                          : `${reservada ? 'border-dashed' : ''} border-slate-200 bg-white text-slate-700 hover:bg-slate-50`
                       }`}
                     >
                       <input
@@ -369,7 +412,7 @@ function SolicitacaoCard({
                       />
                       <span className="min-w-0 flex-1 break-words">{o.rotulo}</span>
                       {sugerida && sugestao && (
-                        <span className="shrink-0 rounded-full bg-violet-900/60 px-2 py-0.5 text-xs text-violet-200">
+                        <span className="shrink-0 rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">
                           Sugestão da IA ({pctSugestao}%)
                         </span>
                       )}
@@ -381,7 +424,7 @@ function SolicitacaoCard({
 
             {permiteResponder && item.entrada === 'TEXTO' && (
               <div>
-                <label htmlFor={`texto-${item.id}`} className="mb-1 block text-xs text-slate-400">
+                <label htmlFor={`texto-${item.id}`} className="mb-1 block text-xs text-slate-500">
                   Sua resposta
                 </label>
                 <input
@@ -404,8 +447,10 @@ function SolicitacaoCard({
             )}
 
             {item.status === 'RESPONDIDA' && item.resposta && (
-              <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-3">
-                <p className="mb-1 text-xs font-medium uppercase text-cyan-300">Resposta registrada</p>
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3">
+                <p className="mb-1 text-xs font-medium uppercase text-cyan-700">
+                  Resposta registrada
+                </p>
                 <TabelaChaveValor dados={item.resposta} />
               </div>
             )}
@@ -420,7 +465,7 @@ function SolicitacaoCard({
 
         {item.status === 'ERRO' && (
           <p
-            className="flex items-start gap-2 rounded-lg border border-red-900/60 bg-red-950/40 p-3 text-sm text-red-300"
+            className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
             role="alert"
             data-testid="solicitacao-erro"
           >
@@ -429,7 +474,9 @@ function SolicitacaoCard({
           </p>
         )}
 
-        {(item.status === 'APROVADA' || item.status === 'RECUSADA' || item.status === 'RESPONDIDA') &&
+        {(item.status === 'APROVADA' ||
+          item.status === 'RECUSADA' ||
+          item.status === 'RESPONDIDA') &&
           item.decidido_em && (
             <p className="text-xs text-slate-500">
               {STATUS_ROTULO[item.status]} em {formatarDataHora(item.decidido_em)}
@@ -438,7 +485,7 @@ function SolicitacaoCard({
       </div>
 
       {permiteDecidirCadastro && (
-        <div className="mt-4 border-t border-white/10 pt-4">
+        <div className="mt-4 border-t border-slate-200 pt-4">
           {recusando ? (
             <form
               className="flex flex-col gap-2 sm:flex-row sm:items-end"
@@ -448,7 +495,7 @@ function SolicitacaoCard({
               }}
             >
               <div className="flex-1">
-                <label htmlFor={`motivo-${item.id}`} className="mb-1 block text-xs text-slate-400">
+                <label htmlFor={`motivo-${item.id}`} className="mb-1 block text-xs text-slate-500">
                   Motivo da recusa (opcional)
                 </label>
                 <input
@@ -465,7 +512,7 @@ function SolicitacaoCard({
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className={`${CLASSE_BTN_BASE} bg-red-600 text-white hover:bg-red-500`}
+                  className={`${CLASSE_BTN_BASE} bg-red-600 text-white hover:opacity-90 transition-all duration-200`}
                   disabled={ocupado}
                   aria-label={`Confirmar recusa: ${item.titulo}`}
                   data-testid="solicitacao-recusar-confirmar"
@@ -499,7 +546,9 @@ function SolicitacaoCard({
                 onClick={() => void onAprovar(item)}
                 disabled={ocupado}
                 aria-label={
-                  item.status === 'ERRO' ? `Tentar aprovar novamente: ${item.titulo}` : `Aprovar: ${item.titulo}`
+                  item.status === 'ERRO'
+                    ? `Tentar aprovar novamente: ${item.titulo}`
+                    : `Aprovar: ${item.titulo}`
                 }
                 data-testid="solicitacao-aprovar"
               >
@@ -528,12 +577,15 @@ function SolicitacaoCard({
       )}
 
       {permiteResponder && (
-        <div className="mt-4 border-t border-white/10 pt-4">
+        <div className="mt-4 border-t border-slate-200 pt-4">
           <button
             type="button"
             className={CLASSE_BTN_PRIMARIO}
             onClick={() =>
-              void onResponder(item, item.entrada === 'TEXTO' ? { texto: texto.trim() } : { opcao: opcao ?? undefined })
+              void onResponder(
+                item,
+                item.entrada === 'TEXTO' ? { texto: texto.trim() } : { opcao: opcao ?? undefined },
+              )
             }
             disabled={ocupado || !respostaValida}
             aria-label={`Responder: ${item.titulo}`}
@@ -586,10 +638,10 @@ function Chip({
       onClick={onClick}
       aria-pressed={ativo}
       data-testid={testId}
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tms-cyan/60 ${
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 ${
         ativo
-          ? 'border-tms-cyan bg-tms-cyan/15 text-tms-cyan'
-          : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+          ? 'border-blue-500 bg-blue-50 text-blue-600'
+          : 'border-slate-200 text-slate-600 hover:bg-slate-100 transition-all duration-200'
       }`}
     >
       {children}
@@ -602,7 +654,7 @@ function Contador({ valor, alerta }: { valor: number | undefined; alerta?: boole
   return (
     <span
       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-        alerta && valor > 0 ? 'bg-red-900/70 text-red-200' : 'bg-slate-800 text-slate-200'
+        alerta && valor > 0 ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'
       }`}
     >
       {valor}
@@ -622,7 +674,8 @@ export default function SolicitacoesIaPage() {
 
   const filtros = useMemo(() => {
     const base = { entidade: entidade || undefined };
-    if (aba === 'perguntas') return { ...base, status: 'PENDENTE' as const, tipo: 'PERGUNTA' as const };
+    if (aba === 'perguntas')
+      return { ...base, status: 'PENDENTE' as const, tipo: 'PERGUNTA' as const };
     if (aba === 'historico') {
       return statusHistorico
         ? { ...base, status: statusHistorico }
@@ -655,7 +708,8 @@ export default function SolicitacoesIaPage() {
     [selecionaveis, selecionados],
   );
   const ocupado = decisoes.processandoId !== null;
-  const todosSelecionados = selecionaveis.length > 0 && idsSelecionados.length === selecionaveis.length;
+  const todosSelecionados =
+    selecionaveis.length > 0 && idsSelecionados.length === selecionaveis.length;
 
   async function atualizarTudo() {
     await Promise.all([recarregar(), recarregarResumo()]);
@@ -680,7 +734,10 @@ export default function SolicitacoesIaPage() {
     if (!res) return;
     setAviso(
       res.status === 'ERRO'
-        ? { tipo: 'erro', texto: `Não foi possível gravar "${item.titulo}": ${mensagemErroGenerica(res.erro)}` }
+        ? {
+            tipo: 'erro',
+            texto: `Não foi possível gravar "${item.titulo}": ${mensagemErroGenerica(res.erro)}`,
+          }
         : { tipo: 'ok', texto: `Solicitação aprovada: ${item.titulo}` },
     );
     await atualizarTudo();
@@ -700,7 +757,10 @@ export default function SolicitacoesIaPage() {
     if (!res) return;
     setAviso(
       res.status === 'ERRO'
-        ? { tipo: 'erro', texto: `A resposta foi recebida, mas a gravação falhou: ${mensagemErroGenerica(res.erro)}` }
+        ? {
+            tipo: 'erro',
+            texto: `A resposta foi recebida, mas a gravação falhou: ${mensagemErroGenerica(res.erro)}`,
+          }
         : { tipo: 'ok', texto: `Pergunta respondida: ${item.titulo}` },
     );
     await atualizarTudo();
@@ -733,25 +793,38 @@ export default function SolicitacoesIaPage() {
   const processandoLote = decisoes.processandoId === PROCESSANDO_LOTE;
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8" data-testid="solicitacoes-ia-page">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8" data-testid="solicitacoes-ia-page">
       <div className="mb-2 flex items-center gap-2">
-        <Sparkles className="h-6 w-6 text-tms-cyan" aria-hidden="true" />
-        <h1 className="text-2xl font-bold text-white">Solicitações da IA</h1>
+        <Sparkles className="h-6 w-6 text-blue-600" aria-hidden="true" />
+        <h1 className="text-2xl font-bold text-slate-900">Solicitações da IA</h1>
       </div>
-      <p className="mb-6 max-w-2xl text-sm text-slate-400">
-        A IA nunca grava sozinha: aprove, recuse ou responda. Ao ler uma planilha ela abre solicitações de cadastro e
-        atualização e, quando não tem certeza do que um dado significa, faz uma pergunta em vez de supor.
+      <p className="mb-6 max-w-2xl text-sm text-slate-500">
+        A IA nunca grava sozinha: aprove, recuse ou responda. Ao ler uma planilha ela abre
+        solicitações de cadastro e atualização e, quando não tem certeza do que um dado significa,
+        faz uma pergunta em vez de supor.
       </p>
 
       <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label="Seções">
-        <Chip ativo={aba === 'pendentes'} onClick={() => mudarAba('pendentes')} testId="aba-pendentes">
+        <Chip
+          ativo={aba === 'pendentes'}
+          onClick={() => mudarAba('pendentes')}
+          testId="aba-pendentes"
+        >
           Pendentes <Contador valor={resumo?.pendentes} />
         </Chip>
-        <Chip ativo={aba === 'perguntas'} onClick={() => mudarAba('perguntas')} testId="aba-perguntas">
+        <Chip
+          ativo={aba === 'perguntas'}
+          onClick={() => mudarAba('perguntas')}
+          testId="aba-perguntas"
+        >
           <MessageCircleQuestion className="h-4 w-4" aria-hidden="true" /> Perguntas{' '}
           <Contador valor={resumo?.perguntas} />
         </Chip>
-        <Chip ativo={aba === 'historico'} onClick={() => mudarAba('historico')} testId="aba-historico">
+        <Chip
+          ativo={aba === 'historico'}
+          onClick={() => mudarAba('historico')}
+          testId="aba-historico"
+        >
           Histórico <Contador valor={resumo?.erros} alerta />
         </Chip>
       </div>
@@ -814,10 +887,10 @@ export default function SolicitacoesIaPage() {
 
       {aviso && (
         <p
-          className={`mb-4 flex items-start gap-2 rounded-lg border p-3 text-sm ${
+          className={`mb-4 flex items-start gap-2 rounded-xl border p-3 text-sm ${
             aviso.tipo === 'erro'
-              ? 'border-red-900/60 bg-red-950/40 text-red-300'
-              : 'border-emerald-900/60 bg-emerald-950/30 text-emerald-300'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
           }`}
           role={aviso.tipo === 'erro' ? 'alert' : 'status'}
           data-testid="solicitacoes-aviso"
@@ -833,7 +906,7 @@ export default function SolicitacoesIaPage() {
 
       {decisoes.erro && (
         <p
-          className="mb-4 flex items-start gap-2 rounded-lg border border-red-900/60 bg-red-950/40 p-3 text-sm text-red-300"
+          className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
           role="alert"
           data-testid="solicitacoes-erro-acao"
         >
@@ -844,25 +917,26 @@ export default function SolicitacoesIaPage() {
 
       {lote && (
         <div
-          className="mb-4 rounded-lg border border-white/10 bg-white/5 p-3 text-sm"
+          className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm"
           role={lote.falhas.length > 0 ? 'alert' : 'status'}
           data-testid="solicitacoes-lote-resultado"
         >
-          <p className="text-slate-100">
-            Aprovação em lote: <span className="font-semibold text-emerald-300">{lote.ok} com sucesso</span>
+          <p className="text-slate-900">
+            Aprovação em lote:{' '}
+            <span className="font-semibold text-emerald-700">{lote.ok} com sucesso</span>
             {lote.falhas.length > 0 && (
               <>
                 {', '}
-                <span className="font-semibold text-red-300">{lote.falhas.length} com falha</span>
+                <span className="font-semibold text-red-700">{lote.falhas.length} com falha</span>
               </>
             )}
             .
           </p>
           {lote.falhas.length > 0 && (
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-red-300">
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-red-700">
               {lote.falhas.map((f) => (
                 <li key={f.id}>
-                  <span className="text-slate-200">{f.titulo}</span>: {f.erro}
+                  <span className="text-slate-700">{f.titulo}</span>: {f.erro}
                 </li>
               ))}
             </ul>
@@ -875,7 +949,7 @@ export default function SolicitacoesIaPage() {
           className={`${CLASSE_CARD} mb-4 flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between`}
           data-testid="solicitacoes-acoes-lote"
         >
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-200">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               className="h-4 w-4 accent-cyan-400"
@@ -940,7 +1014,7 @@ export default function SolicitacoesIaPage() {
             />
           ))}
           {erro && (
-            <p className="text-sm text-red-400" role="alert">
+            <p className="text-sm text-red-600" role="alert">
               {erro}
             </p>
           )}
@@ -949,7 +1023,7 @@ export default function SolicitacoesIaPage() {
               type="button"
               onClick={() => void carregarMais()}
               disabled={carregandoMais}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-all duration-200 bg-white shadow-sm"
               data-testid="solicitacoes-carregar-mais"
             >
               {carregandoMais && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

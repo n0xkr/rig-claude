@@ -19,12 +19,12 @@ export default function FretesListPage() {
   const { state, fretes, error, reload } = useFretesList(statusFilter || undefined);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center gap-2">
-        <Wallet className="h-6 w-6 text-emerald-400" />
+        <Wallet className="h-6 w-6 text-emerald-600" />
         <div>
-          <h1 className="text-2xl font-bold text-white">Controle Financeiro do Frete</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-bold text-slate-900">Controle Financeiro do Frete</h1>
+          <p className="text-sm text-slate-500">
             Frete contratado, fechamento da viagem e saldo — Rigabras Transportes
           </p>
         </div>
@@ -36,7 +36,7 @@ export default function FretesListPage() {
             key={s || 'TODOS'}
             onClick={() => setStatusFilter(s)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              statusFilter === s ? 'bg-rigabras-500 text-white' : 'bg-slate-800 text-slate-300'
+              statusFilter === s ? 'bg-rigabras-500 text-white' : 'bg-slate-100 text-slate-600'
             }`}
           >
             {s ? s.replaceAll('_', ' ') : 'Todos'}
@@ -55,19 +55,19 @@ export default function FretesListPage() {
       )}
 
       {state === 'success' && fretes.length > 0 && (
-        <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+        <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white shadow-sm">
           {fretes.map((f) => (
             <li key={f.id}>
               <Link
                 to={`/fretes/${f.id}`}
-                className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-slate-900/60"
+                className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-slate-50 transition-all duration-200"
               >
                 <div>
-                  <p className="font-medium text-slate-100">
+                  <p className="font-medium text-slate-900">
                     {f.numero_fatura ?? 'Sem fatura'} — R${' '}
                     {f.valor_contratado.toLocaleString('pt-BR')}
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-500">
                     {f.retorno_vazio ? 'Retorno vazio' : 'Retorno com carga (backhaul)'}
                   </p>
                 </div>

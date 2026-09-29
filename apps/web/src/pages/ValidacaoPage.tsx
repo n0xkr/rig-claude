@@ -6,9 +6,9 @@ import { EmptyState } from '../components/StateViews.js';
 import type { SeveridadeAchadoValidacao } from '@rigabras/shared';
 
 const SEVERIDADE_ICON: Record<SeveridadeAchadoValidacao, ReactElement> = {
-  INFO: <ClipboardCheck className="h-4 w-4 text-slate-400" />,
-  AVISO: <AlertTriangle className="h-4 w-4 text-amber-400" />,
-  BLOQUEANTE: <ShieldAlert className="h-4 w-4 text-red-400" />,
+  INFO: <ClipboardCheck className="h-4 w-4 text-slate-500" />,
+  AVISO: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+  BLOQUEANTE: <ShieldAlert className="h-4 w-4 text-red-600" />,
 };
 
 /**
@@ -24,12 +24,12 @@ export default function ValidacaoPage() {
   const [micDtaNumero, setMicDtaNumero] = useState('');
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold text-white">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <h1 className="mb-2 flex items-center gap-2 text-2xl font-bold text-slate-900">
         <ClipboardCheck className="h-6 w-6 text-rigabras-500" />
         Validação pré-embarque
       </h1>
-      <p className="mb-6 text-sm text-slate-400">
+      <p className="mb-6 text-sm text-slate-500">
         Cruza CRT, Fatura, MIC/DTA, dados do veículo e da viagem, retornando uma lista estruturada
         de inconsistências.
       </p>
@@ -43,38 +43,38 @@ export default function ValidacaoPage() {
             mic_dta_numero: micDtaNumero || null,
           });
         }}
-        className="mb-8 grid grid-cols-1 gap-3 rounded-lg border border-slate-800 p-4 sm:grid-cols-3"
+        className="mb-8 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 p-6 sm:grid-cols-3 bg-white shadow-sm"
       >
         <input
           value={faturaNumero}
           onChange={(e) => setFaturaNumero(e.target.value)}
           placeholder="Nº da fatura (opcional)"
-          className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none"
         />
         <input
           value={faturaValor}
           onChange={(e) => setFaturaValor(e.target.value)}
           placeholder="Valor da fatura (opcional)"
           inputMode="decimal"
-          className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none"
         />
         <input
           value={micDtaNumero}
           onChange={(e) => setMicDtaNumero(e.target.value)}
           placeholder="Nº do MIC/DTA (opcional)"
-          className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-rigabras-500 focus:outline-none"
         />
         <button
           type="submit"
           disabled={submitting}
-          className="col-span-full rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+          className="col-span-full rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
         >
           {submitting ? 'Validando…' : 'Executar validação cruzada'}
         </button>
       </form>
 
       {error && (
-        <div className="mb-6 rounded-md border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
@@ -87,10 +87,10 @@ export default function ValidacaoPage() {
       ) : (
         <div>
           <div
-            className={`mb-4 flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+            className={`mb-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
               resultado.aprovado
-                ? 'border-emerald-900/50 bg-emerald-950/30 text-emerald-200'
-                : 'border-red-900/50 bg-red-950/30 text-red-200'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-red-200 bg-red-50 text-red-700'
             }`}
           >
             {resultado.aprovado ? (
@@ -104,7 +104,7 @@ export default function ValidacaoPage() {
           </div>
 
           {resultado.documentos_faltantes.length > 0 && (
-            <p className="mb-4 text-sm text-amber-300">
+            <p className="mb-4 text-sm text-amber-700">
               Documentos faltantes: {resultado.documentos_faltantes.join(', ')}
             </p>
           )}
@@ -116,14 +116,14 @@ export default function ValidacaoPage() {
               {resultado.achados.map((achado, idx) => (
                 <li
                   key={`${achado.campo}-${idx}`}
-                  className="flex items-start gap-3 rounded-lg border border-slate-800 p-3"
+                  className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 bg-white shadow-sm"
                 >
                   {SEVERIDADE_ICON[achado.severidade]}
                   <div>
-                    <p className="text-sm font-medium text-slate-100">
+                    <p className="text-sm font-medium text-slate-900">
                       {achado.campo} — {achado.severidade}
                     </p>
-                    <p className="text-sm text-slate-400">{achado.mensagem}</p>
+                    <p className="text-sm text-slate-500">{achado.mensagem}</p>
                     {(achado.valorEsperado || achado.valorEncontrado) && (
                       <p className="mt-1 text-xs text-slate-500">
                         Esperado: {achado.valorEsperado ?? '-'} · Encontrado:{' '}

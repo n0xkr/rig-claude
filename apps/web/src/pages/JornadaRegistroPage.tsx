@@ -65,12 +65,12 @@ export default function JornadaRegistroPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center gap-2">
-        <Clock className="h-6 w-6 text-purple-400" />
+        <Clock className="h-6 w-6 text-purple-600" />
         <div>
-          <h1 className="text-2xl font-bold text-white">Controle de Jornada</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-bold text-slate-900">Controle de Jornada</h1>
+          <p className="text-sm text-slate-500">
             Registro contínuo de jornada do motorista — tempo de espera conta como jornada (STF ADI
             5322).
           </p>
@@ -80,14 +80,14 @@ export default function JornadaRegistroPage() {
       <div className="mb-6 flex flex-wrap gap-2">
         <Link
           to="/jornada/alertas"
-          className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:text-white"
+          className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
         >
           <ShieldAlert className="h-4 w-4" /> Alertas de conformidade
         </Link>
         {motoristaId && (
           <Link
             to={`/jornada/motoristas/${motoristaId}/historico`}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:text-white"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
           >
             <History className="h-4 w-4" /> Histórico consolidado
           </Link>
@@ -96,18 +96,18 @@ export default function JornadaRegistroPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="mb-8 space-y-4 rounded-lg border border-slate-800 p-6"
+        className="mb-8 space-y-4 rounded-xl border border-slate-200 p-6 bg-white shadow-sm"
       >
-        <h2 className="text-sm font-semibold text-slate-200">Registrar evento</h2>
+        <h2 className="text-sm font-bold text-slate-700">Registrar evento</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="text-xs text-slate-400">
+          <label className="text-xs text-slate-500">
             Motorista *
             <select
               required
               disabled={motoristasState === 'loading'}
               value={motoristaId}
               onChange={(e) => setMotoristaId(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
             >
               <option value="">Selecione...</option>
               {motoristas.map((m) => (
@@ -117,12 +117,12 @@ export default function JornadaRegistroPage() {
               ))}
             </select>
           </label>
-          <label className="text-xs text-slate-400">
+          <label className="text-xs text-slate-500">
             Tipo de evento *
             <select
               value={tipoEvento}
               onChange={(e) => setTipoEvento(e.target.value as TipoEventoJornada)}
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
             >
               {TIPOS_EVENTO.map((t) => (
                 <option key={t} value={t}>
@@ -131,34 +131,34 @@ export default function JornadaRegistroPage() {
               ))}
             </select>
           </label>
-          <label className="text-xs text-slate-400">
+          <label className="text-xs text-slate-500">
             Viagem (opcional)
             <input
               value={viagemId}
               onChange={(e) => setViagemId(e.target.value)}
               placeholder="ID da viagem"
-              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
             />
           </label>
         </div>
         <button
           type="submit"
           disabled={submitting || !motoristaId}
-          className="rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+          className="rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
         >
           {submitting ? 'Registrando...' : 'Registrar evento'}
         </button>
         {feedback && (
-          <div className="flex items-center gap-2 text-sm text-emerald-400">
+          <div className="flex items-center gap-2 text-sm text-emerald-600">
             <WifiOff className="h-4 w-4 shrink-0" /> {feedback}
           </div>
         )}
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </form>
 
       {motoristaId && (
         <>
-          <h2 className="mb-3 text-lg font-semibold text-white">Eventos recentes</h2>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">Eventos recentes</h2>
           {state === 'loading' && <LoadingSkeleton rows={3} />}
           {state === 'error' && <ErrorCard message={listError ?? 'Erro'} onRetry={reload} />}
           {state === 'success' && eventos.length === 0 && (
@@ -175,7 +175,7 @@ export default function JornadaRegistroPage() {
                 .map((ev) => (
                   <li
                     key={ev.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-800 px-4 py-2"
+                    className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-2 bg-white shadow-sm"
                   >
                     <EventoJornadaBadge tipo={ev.tipo_evento} />
                     <span className="text-xs text-slate-500">

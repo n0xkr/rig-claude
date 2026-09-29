@@ -91,25 +91,26 @@ function NavList({
               haptic('tap');
               onNavigate?.();
             }}
-            className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-              active ? 'text-white' : 'text-slate-400 hover:text-white'
+            className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+              active ? 'text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
             }`}
           >
             {active && (
               <motion.span
                 layoutId="nav-active"
-                className="absolute inset-0 rounded-xl border border-tms-cyan/30 bg-tms-cyan/10"
-                style={{ boxShadow: '0 0 18px rgba(0,242,254,0.18)' }}
+                className="absolute inset-0 rounded-xl bg-blue-50"
                 transition={{ type: 'spring', stiffness: 380, damping: 32 }}
               />
             )}
-            <Icon className={`relative h-[18px] w-[18px] shrink-0 ${active ? 'text-tms-cyan' : ''}`} />
+            <Icon
+              className={`relative h-[18px] w-[18px] shrink-0 ${active ? 'text-blue-600' : ''}`}
+            />
             {!collapsed && <span className="relative truncate">{label}</span>}
             {contagem > 0 && (
               <span
                 data-testid="nav-badge-solicitacoes"
                 aria-label={`${contagem} pendentes`}
-                className={`relative rounded-full bg-tms-cyan px-1.5 text-[10px] font-bold leading-4 text-slate-900 ${
+                className={`relative rounded-full bg-blue-600 px-1.5 text-[10px] font-bold leading-4 text-white ${
                   collapsed ? 'absolute right-1 top-1' : 'ml-auto'
                 }`}
               >
@@ -124,9 +125,8 @@ function NavList({
 }
 
 /**
- * Shell do TMS Rigabras: header responsivo, sidebar flutuante em vidro
- * (colapsável no desktop, drawer no mobile), transição de página estilo
- * "troca de câmera" e slots opcionais para viewport 3D central e painéis de
+ * Shell do TMS Rigabras: header responsivo, sidebar flutuante em card
+ * (colapsável no desktop, drawer no mobile), transição de página suave e slots opcionais para viewport 3D central e painéis de
  * telemetria acima do conteúdo da rota.
  */
 export function DashboardLayout({
@@ -156,7 +156,11 @@ export function DashboardLayout({
       .get<Perfil>('/perfil')
       .then((p) => ativo && setPerfil(p))
       .catch(() => undefined);
-    const aoAtualizar = (e: Event) => setPerfil((atual) => ({ ...(atual ?? ({} as Perfil)), ...(e as CustomEvent<Perfil>).detail }));
+    const aoAtualizar = (e: Event) =>
+      setPerfil((atual) => ({
+        ...(atual ?? ({} as Perfil)),
+        ...(e as CustomEvent<Perfil>).detail,
+      }));
     window.addEventListener('rigabras:perfil-atualizado', aoAtualizar);
     return () => {
       ativo = false;
@@ -176,36 +180,39 @@ export function DashboardLayout({
   function logout() {
     haptic('warning');
     localStorage.removeItem('rigabras_access_token');
+    // Apaga o cookie httpOnly do refresh token no servidor (senão a sessão seguia renovável).
+    void api.post('/auth/logout').catch(() => undefined);
     navigate('/login');
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-clip text-slate-100">
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          background:
-            'radial-gradient(1200px 600px at 12% -10%, rgba(0,242,254,0.10), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(255,159,67,0.08), transparent 55%), linear-gradient(180deg, #0e1726 0%, #090d16 60%)',
-        }}
-      />
+    <div className="relative min-h-screen overflow-x-clip text-slate-900">
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-slate-50" />
 
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#090d16]/70 backdrop-blur-xl">
-        <div className="flex items-center gap-3 px-4 py-3 lg:pl-[calc(var(--sidebar-w)+2rem)]" style={{ ['--sidebar-w' as string]: collapsed ? '4.5rem' : '15rem' }}>
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+        <div
+          className="flex items-center gap-3 px-4 py-3 lg:pl-[calc(var(--sidebar-w)+2rem)]"
+          style={{ ['--sidebar-w' as string]: collapsed ? '4.5rem' : '15rem' }}
+        >
           <button
             type="button"
-            className="rounded-lg p-2 text-slate-300 hover:bg-white/5 lg:hidden"
+            className="rounded-xl p-2 text-slate-600 hover:bg-slate-50 lg:hidden transition-all duration-200"
             onClick={() => setDrawer(true)}
             aria-label="Abrir menu"
             data-testid="menu-button"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-white lg:hidden">
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2 font-semibold text-slate-900 lg:hidden"
+          >
             <img src={logo} alt="Rigabras" className="h-7 w-7 shrink-0 rounded-lg object-cover" />
-            Rig<span className="text-tms-cyan">abras</span>
+            <span>
+              Rig<span className="text-blue-600">abras</span>
+            </span>
           </Link>
-          <p className="hidden text-sm font-medium tracking-wide text-slate-300 lg:block">
+          <p className="hidden text-sm font-semibold text-slate-900 lg:block">
             {current?.label ?? 'Rigabras TMS'}
           </p>
           <div className="ml-auto flex items-center gap-3">
@@ -214,25 +221,32 @@ export function DashboardLayout({
               data-testid="perfil-link"
               title="Meu perfil"
               aria-label="Meu perfil"
-              className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+              className="flex items-center gap-2 rounded-xl px-1.5 py-1 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
             >
               {perfil?.avatar_url ? (
-                <img src={perfil.avatar_url} alt="" className="h-7 w-7 rounded-full border border-white/10 object-cover" />
+                <img
+                  src={perfil.avatar_url}
+                  alt=""
+                  className="h-7 w-7 rounded-full border border-white/10 object-cover"
+                />
               ) : (
-                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-tms-cyan/30 bg-tms-cyan/10 text-xs font-semibold text-tms-cyan">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-xs font-semibold text-blue-600">
                   {(perfil?.nome_completo ?? '?').trim().charAt(0).toUpperCase() || '?'}
                 </span>
               )}
-              <span className="hidden max-w-[10rem] truncate sm:inline">{perfil?.nome_completo?.split(' ')[0] ?? ''}</span>
+              <span className="hidden max-w-[10rem] truncate sm:inline">
+                {perfil?.nome_completo?.split(' ')[0] ?? ''}
+              </span>
             </Link>
             <button
               type="button"
               data-testid="logout-button"
               onClick={logout}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+              className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
               title={`Papel atual: ${role ?? '-'}`}
             >
-              <LogOut className="h-4 w-4" /> Sair{role ? ` (${role})` : ""}
+              <LogOut className="h-4 w-4" /> Sair
+              {role && <span className="hidden text-slate-400 sm:inline">({role})</span>}
             </button>
           </div>
         </div>
@@ -240,17 +254,21 @@ export function DashboardLayout({
 
       {/* Sidebar flutuante (desktop) */}
       <aside
-        className="fixed bottom-4 left-4 top-4 z-[45] hidden flex-col rounded-2xl border border-white/10 bg-[#0e1726]/70 p-3 backdrop-blur-xl transition-[width] duration-300 lg:flex"
-        style={{
-          width: collapsed ? '4.5rem' : '15rem',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,242,254,0.08), 0 0 40px rgba(0,242,254,0.06)',
-        }}
+        className="fixed bottom-4 left-4 top-4 z-[45] hidden flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-[width] duration-300 lg:flex"
+        style={{ width: collapsed ? '4.5rem' : '15rem' }}
       >
-        <Link to="/dashboard" className="mb-4 flex shrink-0 items-center gap-2 px-1 font-semibold text-white">
-          <img src={logo} alt="Rigabras" className="aspect-square h-9 w-9 shrink-0 rounded-xl object-cover" />
+        <Link
+          to="/dashboard"
+          className="mb-4 flex shrink-0 items-center gap-2 px-1 font-semibold text-slate-900"
+        >
+          <img
+            src={logo}
+            alt="Rigabras"
+            className="aspect-square h-9 w-9 shrink-0 rounded-xl object-cover"
+          />
           {!collapsed && (
             <span>
-              Rig<span className="text-tms-cyan">abras</span>
+              Rig<span className="text-blue-600">abras</span>
             </span>
           )}
         </Link>
@@ -260,10 +278,14 @@ export function DashboardLayout({
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="mt-2 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-500 hover:text-white"
+          className="mt-2 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
         >
-          {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
+          {collapsed ? (
+            <PanelLeftOpen className="h-[18px] w-[18px]" />
+          ) : (
+            <PanelLeftClose className="h-[18px] w-[18px]" />
+          )}
           {!collapsed && 'Recolher'}
         </button>
       </aside>
@@ -273,29 +295,39 @@ export function DashboardLayout({
         {drawer && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDrawer(false)}
             />
             <motion.aside
-              className="fixed bottom-3 left-3 top-3 z-50 flex w-64 flex-col rounded-2xl border border-white/10 bg-[#0e1726]/95 p-3 backdrop-blur-xl lg:hidden"
+              className="fixed bottom-3 left-3 top-3 z-50 flex w-64 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-xl lg:hidden"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             >
               <div className="mb-3 flex shrink-0 items-center justify-between px-1">
-                <span className="font-semibold text-white">
-                  Rig<span className="text-tms-cyan">abras</span>
+                <span className="font-semibold text-slate-900">
+                  Rig<span className="text-blue-600">abras</span>
                 </span>
-                <button type="button" onClick={() => setDrawer(false)} aria-label="Fechar menu" className="p-1 text-slate-400">
+                <button
+                  type="button"
+                  onClick={() => setDrawer(false)}
+                  aria-label="Fechar menu"
+                  className="rounded-xl p-1 text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-slate-900"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <NavList items={items} collapsed={false} onNavigate={() => setDrawer(false)} badges={badges} />
+                <NavList
+                  items={items}
+                  collapsed={false}
+                  onNavigate={() => setDrawer(false)}
+                  badges={badges}
+                />
               </div>
             </motion.aside>
           </>
@@ -310,9 +342,9 @@ export function DashboardLayout({
         {telemetry && <section className="px-4 pt-4">{telemetry}</section>}
         <motion.div
           key={pathname}
-          initial={reduce ? false : { opacity: 0, scale: 1.02, filter: 'blur(6px)' }}
-          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
         >
           {children}
         </motion.div>

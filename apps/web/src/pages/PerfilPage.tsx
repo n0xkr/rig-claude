@@ -33,7 +33,10 @@ function paraForm(p: Perfil): FormState {
 }
 
 function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter((p) => /^\p{L}/u.test(p));
+  const partes = nome
+    .trim()
+    .split(/\s+/)
+    .filter((p) => /^\p{L}/u.test(p));
   if (partes.length === 0) return '?';
   const primeira = partes[0]?.[0] ?? '';
   const ultima = partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? '') : '';
@@ -59,10 +62,10 @@ export default function PerfilPage() {
 
   if (carregando && !perfil) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8" data-testid="perfil-page">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8" data-testid="perfil-page">
         <div className="space-y-3" role="status" aria-label="Carregando perfil">
-          <div className="h-32 animate-pulse rounded-2xl bg-white/5" />
-          <div className="h-64 animate-pulse rounded-2xl bg-white/5" />
+          <div className="h-32 animate-pulse rounded-xl bg-slate-50" />
+          <div className="h-64 animate-pulse rounded-xl bg-slate-50" />
           <span className="sr-only">Carregando...</span>
         </div>
       </div>
@@ -71,13 +74,13 @@ export default function PerfilPage() {
 
   if (!perfil || !form) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8" data-testid="perfil-page">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8" data-testid="perfil-page">
         <div
           role="alert"
-          className="flex flex-col items-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/5 p-8 text-center"
+          className="flex flex-col items-center gap-3 rounded-xl border border-red-200 bg-red-500/5 p-8 text-center"
         >
-          <AlertTriangle className="h-8 w-8 text-red-400" />
-          <p className="text-sm text-red-300">{erro ?? 'Não foi possível carregar seu perfil.'}</p>
+          <AlertTriangle className="h-8 w-8 text-red-600" />
+          <p className="text-sm text-red-700">{erro ?? 'Não foi possível carregar seu perfil.'}</p>
           <button type="button" className="btn-brand" onClick={() => void recarregar()}>
             Tentar novamente
           </button>
@@ -133,19 +136,19 @@ export default function PerfilPage() {
   const mensagemErro = erroLocal ?? erro;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8" data-testid="perfil-page">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8" data-testid="perfil-page">
       <div className="mb-6 flex items-center gap-2">
-        <UserCircle className="h-6 w-6 text-tms-cyan" />
-        <h1 className="text-2xl font-bold text-white">Meu perfil</h1>
+        <UserCircle className="h-6 w-6 text-blue-600" />
+        <h1 className="text-2xl font-bold text-slate-900">Meu perfil</h1>
       </div>
 
       <form onSubmit={onSubmit} noValidate className="space-y-6">
         <section
           aria-label="Foto de perfil"
-          className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 sm:flex-row sm:items-center"
+          className="flex flex-col items-center gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center"
         >
           <div
-            className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-tms-cyan/40 bg-slate-800 text-3xl font-bold text-tms-cyan"
+            className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-blue-200 bg-slate-100 text-3xl font-bold text-blue-600"
             data-testid="perfil-avatar"
           >
             {avatarAtual ? (
@@ -162,8 +165,8 @@ export default function PerfilPage() {
           </div>
           <div className="flex flex-col items-center gap-3 sm:items-start">
             <div className="text-center sm:text-left">
-              <p className="text-lg font-semibold text-white">{perfil.nome_completo}</p>
-              <p className="break-all text-sm text-slate-400">{perfil.email}</p>
+              <p className="text-lg font-semibold text-slate-900">{perfil.nome_completo}</p>
+              <p className="break-all text-sm text-slate-500">{perfil.email}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
               <input
@@ -177,7 +180,7 @@ export default function PerfilPage() {
               />
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-md border border-tms-cyan/40 px-3 py-2 text-sm text-tms-cyan transition-colors hover:bg-tms-cyan/10 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl border border-blue-200 px-3 py-2 text-sm text-blue-600 transition-all hover:bg-blue-100 disabled:opacity-50 duration-200"
                 onClick={() => fileRef.current?.click()}
                 disabled={processandoFoto || salvando}
                 data-testid="perfil-avatar-alterar"
@@ -192,7 +195,7 @@ export default function PerfilPage() {
               {avatarAtual && (
                 <button
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-red-500/50 hover:text-red-300 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 transition-all hover:border-red-200 hover:text-red-700 disabled:opacity-50 duration-200 bg-white shadow-sm"
                   onClick={() => {
                     setAvatar(null);
                     setSucesso(null);
@@ -213,11 +216,11 @@ export default function PerfilPage() {
 
         <section
           aria-label="Dados pessoais"
-          className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 sm:grid-cols-2"
+          className="grid gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2"
         >
           <div className="sm:col-span-2">
-            <label htmlFor="perfil-nome" className="mb-1 block text-sm font-medium text-slate-300">
-              Nome completo <span className="text-red-400">*</span>
+            <label htmlFor="perfil-nome" className="mb-1 block text-sm font-medium text-slate-600">
+              Nome completo <span className="text-red-600">*</span>
             </label>
             <input
               id="perfil-nome"
@@ -232,12 +235,15 @@ export default function PerfilPage() {
               data-testid="perfil-nome"
             />
             {!nomeValido && (
-              <p className="mt-1 text-xs text-red-400">Informe pelo menos 2 caracteres.</p>
+              <p className="mt-1 text-xs text-red-600">Informe pelo menos 2 caracteres.</p>
             )}
           </div>
 
           <div>
-            <label htmlFor="perfil-funcao" className="mb-1 block text-sm font-medium text-slate-300">
+            <label
+              htmlFor="perfil-funcao"
+              className="mb-1 block text-sm font-medium text-slate-600"
+            >
               Função / cargo
             </label>
             <input
@@ -254,7 +260,7 @@ export default function PerfilPage() {
           <div>
             <label
               htmlFor="perfil-departamento"
-              className="mb-1 block text-sm font-medium text-slate-300"
+              className="mb-1 block text-sm font-medium text-slate-600"
             >
               Departamento
             </label>
@@ -269,7 +275,10 @@ export default function PerfilPage() {
           </div>
 
           <div>
-            <label htmlFor="perfil-telefone" className="mb-1 block text-sm font-medium text-slate-300">
+            <label
+              htmlFor="perfil-telefone"
+              className="mb-1 block text-sm font-medium text-slate-600"
+            >
               Telefone
             </label>
             <input
@@ -289,7 +298,7 @@ export default function PerfilPage() {
           <div className="sm:col-span-2">
             <label
               htmlFor="perfil-atribuicoes"
-              className="mb-1 block text-sm font-medium text-slate-300"
+              className="mb-1 block text-sm font-medium text-slate-600"
             >
               Atribuições
             </label>
@@ -305,7 +314,7 @@ export default function PerfilPage() {
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor="perfil-bio" className="mb-1 block text-sm font-medium text-slate-300">
+            <label htmlFor="perfil-bio" className="mb-1 block text-sm font-medium text-slate-600">
               Sobre mim
             </label>
             <textarea
@@ -322,12 +331,12 @@ export default function PerfilPage() {
 
         <section
           aria-label="Dados da conta"
-          className="grid gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 sm:grid-cols-2"
+          className="grid gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2"
         >
           <div>
             <label
               htmlFor="perfil-email"
-              className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-300"
+              className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600"
             >
               <Lock className="h-3.5 w-3.5 text-slate-500" /> E-mail
             </label>
@@ -346,7 +355,7 @@ export default function PerfilPage() {
           <div>
             <label
               htmlFor="perfil-role"
-              className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-300"
+              className="mb-1 flex items-center gap-1 text-sm font-medium text-slate-600"
             >
               <Lock className="h-3.5 w-3.5 text-slate-500" /> Papel
             </label>
@@ -367,7 +376,7 @@ export default function PerfilPage() {
         {mensagemErro && (
           <p
             role="alert"
-            className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+            className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-500/10 px-3 py-2 text-sm text-red-700"
             data-testid="perfil-erro"
           >
             <AlertTriangle className="h-4 w-4 shrink-0" /> {mensagemErro}
@@ -376,7 +385,7 @@ export default function PerfilPage() {
         {sucesso && (
           <p
             role="status"
-            className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
+            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700"
             data-testid="perfil-sucesso"
           >
             <CheckCircle2 className="h-4 w-4 shrink-0" /> {sucesso}

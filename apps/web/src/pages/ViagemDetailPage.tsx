@@ -35,31 +35,34 @@ export default function ViagemDetailPage() {
 
   if (state === 'loading' || state === 'idle')
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         <LoadingSkeleton rows={3} />
       </div>
     );
   if (state === 'error')
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
         <ErrorCard message={error ?? 'Erro'} onRetry={reload} />
       </div>
     );
   if (!viagem) return null;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{viagem.numero_crt ?? 'CRT pendente'}</h1>
-          <p className="text-sm text-slate-400">
-            {viagem.origem} → {viagem.destino} {viagem.pais_destino ? `(${viagem.pais_destino})` : ''}
+          <h1 className="text-2xl font-bold text-slate-900">
+            {viagem.numero_crt ?? 'CRT pendente'}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {viagem.origem} → {viagem.destino}{' '}
+            {viagem.pais_destino ? `(${viagem.pais_destino})` : ''}
           </p>
         </div>
         <StatusBadge status={viagem.status} />
       </div>
 
-      <dl className="mb-8 grid grid-cols-2 gap-4 rounded-lg border border-slate-800 p-4 text-sm">
+      <dl className="mb-8 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 text-sm bg-white shadow-sm">
         <Info label="Placa do cavalo" value={viagem.placa_cavalo} />
         <Info label="MIC/DTA" value={viagem.numero_mic_dta ?? '-'} />
         <Info label="Peso (kg)" value={viagem.peso_kg?.toString() ?? '-'} />
@@ -72,26 +75,26 @@ export default function ViagemDetailPage() {
       <div className="mb-8 flex flex-wrap gap-3">
         <Link
           to={`/viagens/${viagem.id}/fronteira`}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
         >
           <MapPinned className="h-4 w-4" /> Travessia de fronteira
         </Link>
         <Link
           to={`/viagens/${viagem.id}/validacao-pre-embarque`}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
         >
           <ClipboardCheck className="h-4 w-4" /> Validação pré-embarque
         </Link>
         <Link
           to={`/viagens/${viagem.id}/frete`}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-900/60"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
         >
           <Wallet className="h-4 w-4" /> Fechamento financeiro do frete
         </Link>
       </div>
 
-      <div className="mb-8 rounded-lg border border-slate-800 p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-200">Avançar status da viagem</h2>
+      <div className="mb-8 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+        <h2 className="mb-3 text-sm font-bold text-slate-700">Avançar status da viagem</h2>
         {TRANSICOES_STATUS_VIAGEM[viagem.status].length === 0 ? (
           <p className="text-sm text-slate-500">
             Nenhuma transição disponível a partir de "{viagem.status.replaceAll('_', ' ')}".
@@ -124,18 +127,18 @@ export default function ViagemDetailPage() {
                   reloadHistorico();
                 }
               }}
-              className="rounded-md bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
             >
               {submittingStatus ? 'Aplicando...' : 'Confirmar transição'}
             </button>
           </div>
         )}
-        {statusError && <p className="mt-2 text-sm text-red-400">{statusError}</p>}
+        {statusError && <p className="mt-2 text-sm text-red-600">{statusError}</p>}
       </div>
 
       <div className="mb-4 flex items-center gap-2">
-        <History className="h-5 w-5 text-slate-400" />
-        <h2 className="text-lg font-semibold text-white">Linha do tempo do ciclo de vida</h2>
+        <History className="h-5 w-5 text-slate-500" />
+        <h2 className="text-lg font-bold text-slate-900">Linha do tempo do ciclo de vida</h2>
       </div>
 
       {historicoState === 'loading' ? (
@@ -143,7 +146,7 @@ export default function ViagemDetailPage() {
       ) : historico.length === 0 ? (
         <p className="mb-8 text-sm text-slate-500">Nenhuma transição de status registrada ainda.</p>
       ) : (
-        <ol className="mb-8 space-y-3 border-l border-slate-800 pl-4">
+        <ol className="mb-8 space-y-3 border-l border-slate-200 pl-4">
           {historico.map((h) => {
             const isWms = h.origem_evento === 'WMS';
             return (
@@ -153,7 +156,7 @@ export default function ViagemDetailPage() {
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   {isWms ? (
-                    <span className="inline-flex items-center gap-1 rounded border border-amber-700 bg-amber-950/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                    <span className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
                       <PackageSearch className="h-3 w-3" /> WMS
                     </span>
                   ) : (
@@ -168,7 +171,7 @@ export default function ViagemDetailPage() {
                     {h.created_at ? new Date(h.created_at).toLocaleString('pt-BR') : ''}
                   </span>
                 </div>
-                {h.observacoes && <p className="mt-1 text-sm text-slate-400">{h.observacoes}</p>}
+                {h.observacoes && <p className="mt-1 text-sm text-slate-500">{h.observacoes}</p>}
               </li>
             );
           })}
@@ -176,8 +179,8 @@ export default function ViagemDetailPage() {
       )}
 
       <div className="mb-4 flex items-center gap-2">
-        <PackageSearch className="h-5 w-5 text-slate-400" />
-        <h2 className="text-lg font-semibold text-white">Integração com o armazém (WMS)</h2>
+        <PackageSearch className="h-5 w-5 text-slate-500" />
+        <h2 className="text-lg font-bold text-slate-900">Integração com o armazém (WMS)</h2>
       </div>
 
       {wmsState === 'loading' ? (
@@ -191,11 +194,11 @@ export default function ViagemDetailPage() {
           {wmsStatus.expedicao && (
             <Link
               to={`/wms/expedicoes/${wmsStatus.expedicao.id}`}
-              className="flex items-center justify-between rounded-lg border border-slate-800 p-4 hover:bg-slate-900/60"
+              className="flex items-center justify-between rounded-xl border border-slate-200 p-4 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
             >
               <div>
-                <p className="text-sm text-slate-400">Expedição vinculada</p>
-                <p className="font-medium text-slate-100">
+                <p className="text-sm text-slate-500">Expedição vinculada</p>
+                <p className="font-medium text-slate-900">
                   {wmsStatus.expedicao.referencia_documento ?? wmsStatus.expedicao.id.slice(0, 8)}
                 </p>
               </div>
@@ -205,11 +208,11 @@ export default function ViagemDetailPage() {
           {wmsStatus.recebimento && (
             <Link
               to={`/wms/recebimentos/${wmsStatus.recebimento.id}`}
-              className="flex items-center justify-between rounded-lg border border-slate-800 p-4 hover:bg-slate-900/60"
+              className="flex items-center justify-between rounded-xl border border-slate-200 p-4 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
             >
               <div>
-                <p className="text-sm text-slate-400">Recebimento gerado a partir da entrega</p>
-                <p className="font-medium text-slate-100">
+                <p className="text-sm text-slate-500">Recebimento gerado a partir da entrega</p>
+                <p className="font-medium text-slate-900">
                   {wmsStatus.recebimento.referencia_documento ??
                     wmsStatus.recebimento.id.slice(0, 8)}
                 </p>
@@ -221,8 +224,8 @@ export default function ViagemDetailPage() {
       )}
 
       <div className="mb-4 flex items-center gap-2">
-        <ShieldAlert className="h-5 w-5 text-amber-400" />
-        <h2 className="text-lg font-semibold text-white">Eventos de risco</h2>
+        <ShieldAlert className="h-5 w-5 text-amber-600" />
+        <h2 className="text-lg font-bold text-slate-900">Eventos de risco</h2>
       </div>
 
       {eventos.length === 0 ? (
@@ -233,12 +236,12 @@ export default function ViagemDetailPage() {
       ) : (
         <ul className="space-y-3">
           {eventos.map((ev) => (
-            <li key={ev.id} className="rounded-lg border border-slate-800 p-4">
+            <li key={ev.id} className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
               <div className="mb-1 flex items-center justify-between">
-                <span className="font-medium text-slate-100">{ev.tipo}</span>
+                <span className="font-medium text-slate-900">{ev.tipo}</span>
                 <SeveridadeBadge severidade={ev.severidade} />
               </div>
-              <p className="text-sm text-slate-400">{ev.descricao}</p>
+              <p className="text-sm text-slate-500">{ev.descricao}</p>
             </li>
           ))}
         </ul>
@@ -251,7 +254,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-100">{value}</dd>
+      <dd className="font-medium text-slate-900">{value}</dd>
     </div>
   );
 }

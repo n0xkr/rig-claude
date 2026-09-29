@@ -50,26 +50,19 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8">
-      <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 animate-float rounded-full bg-brand-green/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 animate-float rounded-full bg-brand-yellow/20 blur-3xl [animation-delay:2s]" />
-
       <div className="card-glass relative w-full max-w-sm animate-fade-in px-8 py-10">
         <div className="mb-6 flex flex-col items-center text-center">
-          <img
-            src={logo}
-            alt="Rigabras"
-            className="mb-4 h-20 w-20 rounded-2xl shadow-glow-green"
-          />
-          <h1 className="text-2xl font-bold text-white">
+          <img src={logo} alt="Rigabras" className="mb-4 h-20 w-20 rounded-xl shadow-sm" />
+          <h1 className="text-2xl font-bold text-slate-900">
             Rig<span className="brand-text-gradient">abras</span>
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-slate-500">
             Ecossistema Integrado de Gestão Logística (TMS + WMS)
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" data-testid="login-form">
-          <label className="flex flex-col gap-1 text-sm text-slate-300">
+          <label className="flex flex-col gap-1 text-sm text-slate-600">
             E-mail
             <input
               type="email"
@@ -81,7 +74,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          <label className="flex flex-col gap-1 text-sm text-slate-300">
+          <label className="flex flex-col gap-1 text-sm text-slate-600">
             Senha
             <input
               type="password"
@@ -97,7 +90,7 @@ export default function LoginPage() {
             <div
               role="alert"
               data-testid="login-error"
-              className="rounded-md border border-red-800 bg-red-950/30 p-3 text-sm text-red-300"
+              className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
             >
               {error}
             </div>
@@ -107,9 +100,12 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-6 text-center text-sm text-slate-500">
           Ainda não tem conta?{' '}
-          <Link to="/registro" className="font-medium text-brand-green hover:text-brand-yellow">
+          <Link
+            to="/registro"
+            className="font-medium text-blue-600 hover:opacity-90 transition-all duration-200"
+          >
             Cadastre-se
           </Link>
         </p>

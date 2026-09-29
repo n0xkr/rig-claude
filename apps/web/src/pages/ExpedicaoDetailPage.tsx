@@ -37,20 +37,20 @@ export default function ExpedicaoDetailPage() {
   const proxima = PROXIMA_ACAO[expedicao.status ?? 'SOLICITADA'];
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/wms/expedicoes"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para expedições
       </Link>
 
       <div className="mb-6 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-slate-900">
             {expedicao.referencia_documento ?? expedicao.id.slice(0, 8)}
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {expedicao.tipo === 'CROSS_DOCKING' ? 'Cross-docking' : 'Normal'}
           </p>
         </div>
@@ -60,7 +60,7 @@ export default function ExpedicaoDetailPage() {
       {expedicao.viagem_id && (
         <Link
           to={`/viagens/${expedicao.viagem_id}`}
-          className="mb-6 flex items-center gap-2 rounded-lg border border-slate-800 p-3 text-sm text-slate-300 hover:bg-slate-900/60"
+          className="mb-6 flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm text-slate-600 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
         >
           <Truck className="h-4 w-4 text-rigabras-500" />
           Viagem vinculada (Módulo 6 — Integração TMS+WMS): {expedicao.viagem_id.slice(0, 8)}
@@ -94,7 +94,7 @@ export default function ExpedicaoDetailPage() {
               await workflow[proxima.acao](expedicao.id);
               reload();
             }}
-            className="rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
           >
             {proxima.label}
           </button>
@@ -106,14 +106,14 @@ export default function ExpedicaoDetailPage() {
               await workflow.cancelar(expedicao.id);
               reload();
             }}
-            className="rounded-md border border-red-800 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+            className="rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 transition-all duration-200"
           >
             Cancelar
           </button>
         )}
       </div>
 
-      {workflow.error && <p className="mt-3 text-sm text-red-400">{workflow.error}</p>}
+      {workflow.error && <p className="mt-3 text-sm text-red-600">{workflow.error}</p>}
     </div>
   );
 }
@@ -142,11 +142,11 @@ function ItemSeparacao({
   const jaSeparado = item.quantidade_separada != null;
 
   return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <p className="mb-2 text-sm text-slate-300">
-        Solicitado: <span className="font-medium text-slate-100">{item.quantidade_solicitada}</span>
+    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <p className="mb-2 text-sm text-slate-600">
+        Solicitado: <span className="font-medium text-slate-900">{item.quantidade_solicitada}</span>
         {jaSeparado && (
-          <span className="ml-2 text-emerald-400">separado: {item.quantidade_separada}</span>
+          <span className="ml-2 text-emerald-600">separado: {item.quantidade_separada}</span>
         )}
       </p>
 
@@ -179,7 +179,7 @@ function ItemSeparacao({
             onClick={() =>
               onSeparar({ quantidade_separada: Number(quantidade), endereco_id: enderecoId })
             }
-            className="rounded-md bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-xl bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
           >
             Separar
           </button>
@@ -188,7 +188,7 @@ function ItemSeparacao({
 
       {jaSeparado && (
         <div className="flex gap-2 text-sm">
-          <label className="flex items-center gap-1 text-slate-300">
+          <label className="flex items-center gap-1 text-slate-600">
             <input
               type="checkbox"
               checked={item.reembalado ?? false}
@@ -196,7 +196,7 @@ function ItemSeparacao({
             />
             Reembalado
           </label>
-          <label className="flex items-center gap-1 text-slate-300">
+          <label className="flex items-center gap-1 text-slate-600">
             <input
               type="checkbox"
               checked={item.etiquetado ?? false}

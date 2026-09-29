@@ -43,18 +43,21 @@ export default function ExpedicaoFormPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/wms/expedicoes"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para expedições
       </Link>
-      <h1 className="mb-6 text-2xl font-bold text-white">Nova expedição</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">Nova expedição</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-slate-800 p-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 rounded-xl border border-slate-200 p-6 bg-white shadow-sm"
+      >
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">Depositante *</span>
+          <span className="mb-1 block text-sm font-medium text-slate-600">Depositante *</span>
           <select
             required
             className="input"
@@ -75,7 +78,7 @@ export default function ExpedicaoFormPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-300">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
               Referência do documento
             </span>
             <input
@@ -85,7 +88,7 @@ export default function ExpedicaoFormPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-300">Tipo</span>
+            <span className="mb-1 block text-sm font-medium text-slate-600">Tipo</span>
             <select
               className="input"
               value={tipo}
@@ -98,7 +101,7 @@ export default function ExpedicaoFormPage() {
         </div>
 
         <div>
-          <span className="mb-2 block text-sm font-medium text-slate-300">Itens solicitados *</span>
+          <span className="mb-2 block text-sm font-medium text-slate-600">Itens solicitados *</span>
           <div className="space-y-2">
             {itens.map((item, index) => (
               <div key={index} className="flex gap-2">
@@ -140,7 +143,7 @@ export default function ExpedicaoFormPage() {
                 <button
                   type="button"
                   onClick={() => removeItem(index)}
-                  className="rounded-md border border-slate-700 px-2 text-slate-400 hover:text-red-400"
+                  className="rounded-xl border border-slate-200 px-2 text-slate-500 hover:text-red-600 transition-all duration-200 bg-white shadow-sm"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -150,18 +153,18 @@ export default function ExpedicaoFormPage() {
           <button
             type="button"
             onClick={addItem}
-            className="mt-2 flex items-center gap-1 text-sm text-slate-400 hover:text-white"
+            className="mt-2 flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
           >
             <Plus className="h-4 w-4" /> Adicionar item
           </button>
         </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-rigabras-500 px-4 py-2 font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+          className="w-full rounded-xl bg-rigabras-500 px-4 py-2 font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
         >
           {submitting ? 'Salvando...' : 'Solicitar expedição'}
         </button>

@@ -78,15 +78,15 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8" data-testid="usuarios-page">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8" data-testid="usuarios-page">
       <div className="mb-6 flex items-center gap-2">
         <Users className="h-6 w-6 text-rigabras-500" />
-        <h1 className="text-2xl font-bold text-white">Usuários</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Usuários</h1>
       </div>
 
       <form
         onSubmit={handleCreate}
-        className="mb-6 grid gap-3 rounded-lg border border-slate-800 p-4 md:grid-cols-5"
+        className="mb-6 grid gap-4 rounded-xl border border-slate-200 p-6 md:grid-cols-5 bg-white shadow-sm"
       >
         <input
           className="input"
@@ -138,7 +138,7 @@ export default function UsuariosPage() {
 
       {aviso && (
         <p
-          className={`mb-4 text-sm ${avisoErro ? 'text-red-400' : 'text-emerald-300'}`}
+          className={`mb-4 text-sm ${avisoErro ? 'text-red-600' : 'text-emerald-700'}`}
           data-testid="usuarios-aviso"
         >
           {aviso}
@@ -150,9 +150,9 @@ export default function UsuariosPage() {
       ) : error ? (
         <ErrorCard message={error} onRetry={load} />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-800">
-          <table className="w-full text-left text-sm text-slate-200">
-            <thead className="bg-slate-900 text-xs uppercase text-slate-400">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm text-slate-700">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="p-3">Nome</th>
                 <th className="p-3">E-mail</th>
@@ -163,7 +163,7 @@ export default function UsuariosPage() {
             </thead>
             <tbody>
               {usuarios.map((u) => (
-                <tr key={u.id} className="border-t border-slate-800">
+                <tr key={u.id} className="border-t border-slate-200">
                   <td className="p-3">{u.nome_completo}</td>
                   <td className="p-3">{u.email}</td>
                   <td className="p-3">
@@ -198,14 +198,14 @@ export default function UsuariosPage() {
                   </td>
                   <td className="p-3 text-right">
                     <button
-                      className="mr-3 text-slate-300 hover:text-white"
+                      className="mr-3 text-slate-600 hover:text-slate-900 transition-all duration-200"
                       title="Trocar senha"
                       onClick={() => trocarSenha(u)}
                     >
                       <KeyRound className="inline h-4 w-4" />
                     </button>
                     <button
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-600 hover:text-red-700 transition-all duration-200"
                       title="Excluir"
                       onClick={() => excluir(u)}
                     >

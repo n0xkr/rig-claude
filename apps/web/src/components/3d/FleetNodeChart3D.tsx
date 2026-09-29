@@ -17,7 +17,11 @@ import {
   type NodeKind,
 } from '../../lib/fleetGraph.js';
 
-const KIND_COLOR: Record<NodeKind, string> = { ORIGEM: '#ff9f43', DESTINO: '#00f2fe', HUB: '#10b981' };
+const KIND_COLOR: Record<NodeKind, string> = {
+  ORIGEM: '#f59e0b',
+  DESTINO: '#2563eb',
+  HUB: '#10b981',
+};
 const KIND_LABEL: Record<NodeKind, string> = { ORIGEM: 'Origem', DESTINO: 'Destino', HUB: 'Hub' };
 const PARTICLES_PER_EDGE = 6;
 const HOME_POS = new THREE.Vector3(0, 8.5, 13);
@@ -54,7 +58,10 @@ function Pacer({ active, fps }: { active: boolean; fps: number }) {
 
 /** Voo suave da câmera até o nó selecionado (ou de volta ao início). */
 function CameraRig({ focus }: { focus: THREE.Vector3 | null }) {
-  const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null;
+  const controls = useThree((s) => s.controls) as unknown as {
+    target: THREE.Vector3;
+    update: () => void;
+  } | null;
   const invalidate = useThree((s) => s.invalidate);
   const goalTarget = useRef(HOME_TARGET.clone());
   const goalPos = useRef(HOME_POS.clone());
@@ -127,7 +134,7 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
     if (!m) return;
     const c = new THREE.Color();
     graph.moving.forEach((t, i) => {
-      m.setColorAt(i, c.set(t.viagem.status === 'NA_FRONTEIRA' ? '#ff9f43' : '#e2f6ff'));
+      m.setColorAt(i, c.set(t.viagem.status === 'NA_FRONTEIRA' ? '#f59e0b' : '#334155'));
     });
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [graph]);
@@ -140,7 +147,13 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
         const halted = t.viagem.status === 'NA_FRONTEIRA';
         const u = halted ? 0.5 : (time * 0.06 + t.phase) % 1;
         bezierAt(p, t.edge.from.position, t.edge.control, t.edge.to.position, u);
-        bezierAt(q, t.edge.from.position, t.edge.control, t.edge.to.position, Math.min(u + 0.01, 1));
+        bezierAt(
+          q,
+          t.edge.from.position,
+          t.edge.control,
+          t.edge.to.position,
+          Math.min(u + 0.01, 1),
+        );
         dummy.position.copy(p);
         dummy.position.y += 0.05;
         dummy.lookAt(q.x, q.y + 0.05, q.z);
@@ -170,7 +183,7 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
   return (
     <>
       <instancedMesh ref={trucks} args={[geo, undefined, MAX_TRUCKS]} frustumCulled={false}>
-        <meshStandardMaterial metalness={0.85} roughness={0.28} envMapIntensity={1.4} />
+        <meshStandardMaterial metalness={0.5} roughness={0.35} envMapIntensity={1} />
       </instancedMesh>
       <instancedMesh
         ref={particles}
@@ -178,7 +191,7 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
         frustumCulled={false}
       >
         <sphereGeometry args={[0.045, 8, 8]} />
-        <meshBasicMaterial color="#7dfaff" toneMapped={false} />
+        <meshBasicMaterial color="#3b82f6" toneMapped={false} />
       </instancedMesh>
     </>
   );
@@ -190,10 +203,10 @@ function Edge({ edge, dim }: { edge: GraphEdge; dim: boolean }) {
       start={edge.from.position}
       end={edge.to.position}
       mid={edge.control}
-      color={edge.viagens.some((v) => v.status === 'NA_FRONTEIRA') ? '#ff9f43' : '#00f2fe'}
+      color={edge.viagens.some((v) => v.status === 'NA_FRONTEIRA') ? '#f59e0b' : '#2563eb'}
       lineWidth={dim ? 0.6 : 1.8}
       transparent
-      opacity={dim ? 0.18 : 0.85}
+      opacity={dim ? 0.15 : 0.7}
       toneMapped={false}
     />
   );
@@ -247,7 +260,7 @@ function NodeHologram({
         <meshPhysicalMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={selected ? 1.6 : 0.8}
+          emissiveIntensity={selected ? 0.6 : 0.25}
           metalness={0.4}
           roughness={0.2}
           clearcoat={1}
@@ -260,17 +273,23 @@ function NodeHologram({
         <meshBasicMaterial color={color} transparent opacity={0.55} toneMapped={false} />
       </mesh>
       {(hover || selected) && (
-        <Html position={[0, scale * 2.2, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: selected ? 'auto' : 'none' }}>
+        <Html
+          position={[0, scale * 2.2, 0]}
+          center
+          zIndexRange={[20, 0]}
+          style={{ pointerEvents: selected ? 'auto' : 'none' }}
+        >
           <div
-            className="w-56 rounded-xl border bg-[#0e1726]/85 p-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md"
-            style={{ borderColor: `${color}66`, boxShadow: `0 0 24px ${color}33` }}
+            className="w-56 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700 shadow-sm"
+            style={{ borderTopColor: color, borderTopWidth: 2 }}
           >
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">{node.label}</span>
+              <span className="font-semibold text-slate-900">{node.label}</span>
               <span style={{ color }}>{KIND_LABEL[node.kind]}</span>
             </div>
-            <div className="mt-1 text-slate-400">
-              {node.viagens.length} viagem(ns) · {(peso / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} t
+            <div className="mt-1 text-slate-500">
+              {node.viagens.length} viagem(ns) ·{' '}
+              {(peso / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} t
             </div>
             {selected && (
               <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto">
@@ -278,14 +297,14 @@ function NodeHologram({
                   <li key={v.id}>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-md bg-white/5 px-2 py-1 text-left hover:bg-white/10"
+                      className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-2 py-1 text-left hover:bg-slate-100 transition-all duration-200"
                       onClick={() => {
                         haptic('success');
                         onOpenViagem?.(v.id);
                       }}
                     >
                       <span className="font-mono">{v.placa_cavalo}</span>
-                      <span className="text-slate-400">{statusLabel(v.status)}</span>
+                      <span className="text-slate-500">{statusLabel(v.status)}</span>
                     </button>
                   </li>
                 ))}
@@ -305,7 +324,7 @@ class CanvasBoundary extends Component<{ children: ReactNode }, { failed: boolea
   }
   render() {
     return this.state.failed ? (
-      <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-400">
+      <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
         Não foi possível iniciar o visualizador 3D neste dispositivo (WebGL indisponível).
       </div>
     ) : (
@@ -316,7 +335,7 @@ class CanvasBoundary extends Component<{ children: ReactNode }, { failed: boolea
 
 /**
  * Grafo 3D interativo: nós (origens/destinos/hubs reais das viagens) como
- * hologramas clicáveis, rotas como feixes neon com partículas fluindo no
+ * nós clicáveis, rotas como feixes com partículas fluindo no
  * sentido do frete e caminhões instanciados. Render sob demanda: fora da tela,
  * aba oculta, sem viagens em trânsito ou com "reduzir movimento" o loop para.
  */
@@ -331,7 +350,9 @@ export default function FleetNodeChart3D({ viagens, height = 460, onOpenViagem }
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(([entry]) => setVisible(entry?.isIntersecting ?? true), { threshold: 0.05 });
+    const io = new IntersectionObserver(([entry]) => setVisible(entry?.isIntersecting ?? true), {
+      threshold: 0.05,
+    });
     io.observe(el);
     const onVis = () => setTabHidden(document.hidden);
     document.addEventListener('visibilitychange', onVis);
@@ -356,13 +377,17 @@ export default function FleetNodeChart3D({ viagens, height = 460, onOpenViagem }
             frameloop="demand"
             dpr={gpu.dpr}
             camera={{ position: HOME_POS.toArray(), fov: 45, near: 0.1, far: 120 }}
-            gl={{ antialias: gpu.antialias, alpha: true, powerPreference: gpu.lowPower ? 'low-power' : 'high-performance' }}
+            gl={{
+              antialias: gpu.antialias,
+              alpha: true,
+              powerPreference: gpu.lowPower ? 'low-power' : 'high-performance',
+            }}
             onPointerMissed={() => setSelected(null)}
           >
             <HDRIEnvironment resolution={gpu.envResolution} exposure={1.15} intensity={0.9} />
-            <ambientLight intensity={0.25} />
-            <fog attach="fog" args={['#090d16', 18, 46]} />
-            <gridHelper args={[60, 60, '#0b3b4a', '#0e1726']} position={[0, -1.6, 0]} />
+            <ambientLight intensity={0.6} />
+            <fog attach="fog" args={['#f8fafc', 18, 46]} />
+            <gridHelper args={[60, 60, '#cbd5e1', '#e2e8f0']} position={[0, -1.6, 0]} />
             <OrbitControls
               makeDefault
               enableDamping
@@ -375,7 +400,11 @@ export default function FleetNodeChart3D({ viagens, height = 460, onOpenViagem }
             <CameraRig focus={focus} />
             <Pacer active={animating} fps={gpu.isMobile || gpu.lowPower ? 30 : 60} />
             {graph.edges.map((e) => (
-              <Edge key={e.id} edge={e} dim={!!selected && e.from.id !== selected.id && e.to.id !== selected.id} />
+              <Edge
+                key={e.id}
+                edge={e}
+                dim={!!selected && e.from.id !== selected.id && e.to.id !== selected.id}
+              />
             ))}
             {graph.nodes.map((n) => (
               <NodeHologram

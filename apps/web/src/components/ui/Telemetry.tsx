@@ -22,7 +22,10 @@ export function AnimatedCounter({
     const el = ref.current;
     if (!el) return;
     const fmt = (n: number) =>
-      n.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+      n.toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }) + suffix;
     if (reduce || !inView) {
       el.textContent = fmt(value);
       prev.current = value;
@@ -41,17 +44,20 @@ export function AnimatedCounter({
 
   return (
     <span ref={ref} className={className}>
-      {value.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+      {value.toLocaleString('pt-BR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })}
       {suffix}
     </span>
   );
 }
 
-/** Barra de progresso circular com glow neon. */
+/** Barra de progresso circular. */
 export function CircularProgress({
   percent,
   size = 96,
-  color = '#00f2fe',
+  color = '#2563eb',
   label,
 }: {
   percent: number;
@@ -64,9 +70,25 @@ export function CircularProgress({
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" role="img" aria-label={`${label ?? 'Progresso'}: ${clamped}%`}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} fill="none" />
+    <div
+      className="relative inline-flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        width={size}
+        height={size}
+        className="-rotate-90"
+        role="img"
+        aria-label={`${label ?? 'Progresso'}: ${clamped}%`}
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="#F1F5F9"
+          strokeWidth={stroke}
+          fill="none"
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -77,10 +99,10 @@ export function CircularProgress({
           fill="none"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - clamped / 100)}
-          style={{ filter: `drop-shadow(0 0 6px ${color})`, transition: 'stroke-dashoffset 1s ease-out' }}
+          style={{ transition: 'stroke-dashoffset 1s ease-out' }}
         />
       </svg>
-      <span className="absolute text-sm font-semibold text-white">
+      <span className="absolute text-sm font-semibold text-slate-900">
         <AnimatedCounter value={clamped} suffix="%" />
       </span>
     </div>

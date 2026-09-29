@@ -28,10 +28,10 @@ export default function ManutencaoDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/frota/manutencoes"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para manutenções
       </Link>
@@ -42,13 +42,13 @@ export default function ManutencaoDetailPage() {
       {state === 'success' && manutencao && (
         <div className="space-y-6">
           <div className="flex items-center justify-between gap-2">
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-slate-900">
               {veiculo?.placa ?? manutencao.veiculo_id}
             </h1>
             <ManutencaoTipoBadge tipo={manutencao.tipo} />
           </div>
 
-          <dl className="grid grid-cols-2 gap-4 rounded-lg border border-slate-800 p-4 text-sm">
+          <dl className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 text-sm bg-white shadow-sm">
             <Info label="Data" value={formatDateOnly(manutencao.data_manutencao)} />
             <Info label="Custo" value={`R$ ${manutencao.custo.toLocaleString('pt-BR')}`} />
             <Info
@@ -71,25 +71,25 @@ export default function ManutencaoDetailPage() {
 
           {manutencao.descricao && (
             <div>
-              <h2 className="mb-1 text-sm font-semibold text-slate-200">Descrição</h2>
-              <p className="text-sm text-slate-400">{manutencao.descricao}</p>
+              <h2 className="mb-1 text-sm font-bold text-slate-700">Descrição</h2>
+              <p className="text-sm text-slate-500">{manutencao.descricao}</p>
             </div>
           )}
           {manutencao.observacoes && (
             <div>
-              <h2 className="mb-1 text-sm font-semibold text-slate-200">Observações</h2>
-              <p className="text-sm text-slate-400">{manutencao.observacoes}</p>
+              <h2 className="mb-1 text-sm font-bold text-slate-700">Observações</h2>
+              <p className="text-sm text-slate-500">{manutencao.observacoes}</p>
             </div>
           )}
 
           <button
             onClick={handleDelete}
             disabled={submitting}
-            className="flex items-center gap-2 rounded-md border border-red-800 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 transition-all duration-200"
           >
             <Trash2 className="h-4 w-4" /> {submitting ? 'Excluindo...' : 'Excluir manutenção'}
           </button>
-          {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
+          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
         </div>
       )}
     </div>
@@ -100,7 +100,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-slate-500">{label}</dt>
-      <dd className="font-medium text-slate-200">{value}</dd>
+      <dd className="font-medium text-slate-700">{value}</dd>
     </div>
   );
 }

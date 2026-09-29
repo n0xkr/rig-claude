@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Rigabras - Gestão Logística',
         short_name: 'Rigabras TMS',
         description: 'Ecossistema Integrado de Gestão Logística (TMS + WMS) - Rigabras Transportes',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#f8fafc',
+        background_color: '#f8fafc',
         display: 'standalone',
         start_url: '/',
         icons: [

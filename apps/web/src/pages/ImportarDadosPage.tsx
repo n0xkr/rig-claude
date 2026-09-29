@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle } from 'lucide-react';
-import type { ImportTarget, ValidarImportacaoResult, ImportDataset, PlanilhaEscaneada } from '@rigabras/shared';
+import type {
+  ImportTarget,
+  ValidarImportacaoResult,
+  ImportDataset,
+  PlanilhaEscaneada,
+} from '@rigabras/shared';
 import { IMPORT_TARGET_FIELDS, mapearPorNome, pontuarAlvo } from '@rigabras/shared';
 import { lerPlanilhaCompleta } from '../lib/lerPlanilha.js';
 import { useImportacaoActions } from '../hooks/useImportacao.js';
@@ -118,34 +123,39 @@ export default function ImportarDadosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/importar-ia"
-        className="mb-3 inline-block text-xs text-tms-cyan hover:underline"
+        className="mb-3 inline-block text-xs text-blue-600 hover:underline transition-all duration-200"
         data-testid="link-importar-ia"
       >
         Importar planilha completa com a IA (cadastros com aprovação) →
       </Link>
-      <h1 className="mb-2 text-2xl font-bold text-white">Importar dados</h1>
-      <p className="mb-6 text-sm text-slate-400">
+      <h1 className="mb-2 text-2xl font-bold text-slate-900">Importar dados</h1>
+      <p className="mb-6 text-sm text-slate-500">
         Upload manual de planilhas (.xlsx, .xls, .csv) — usado enquanto a integração automática com
         Google Sheets não existe. Os dados entram pelas mesmas regras de validação dos formulários
         normais.
       </p>
 
-      <section className="mb-8 rounded-xl border border-tms-cyan/30 bg-tms-cyan/5 p-5" data-testid="secao-importacao-ia">
-        <h2 className="mb-1 text-lg font-semibold text-white">Importação inteligente (IA)</h2>
-        <p className="mb-4 text-xs text-slate-400">
-          Envie qualquer planilha da operação: a IA identifica o tipo de dado, mapeia as colunas e normaliza os valores.
-          Você revisa e confirma antes de gravar.
+      <section
+        className="mb-8 rounded-xl border border-blue-200 bg-blue-50 p-5"
+        data-testid="secao-importacao-ia"
+      >
+        <h2 className="mb-1 text-lg font-bold text-slate-900">Importação inteligente (IA)</h2>
+        <p className="mb-4 text-xs text-slate-500">
+          Envie qualquer planilha da operação: a IA identifica o tipo de dado, mapeia as colunas e
+          normaliza os valores. Você revisa e confirma antes de gravar.
         </p>
         <AiImportWizard />
       </section>
 
-      <h2 className="mb-2 text-base font-semibold text-slate-200">Importação manual (mapeamento de colunas)</h2>
-      <div className="mb-6 space-y-4 rounded-lg border border-slate-800 p-5">
+      <h2 className="mb-2 text-base font-bold text-slate-700">
+        Importação manual (mapeamento de colunas)
+      </h2>
+      <div className="mb-6 space-y-4 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">
+          <span className="mb-1 block text-sm font-medium text-slate-600">
             O que esta planilha representa? *
           </span>
           <select
@@ -169,7 +179,7 @@ export default function ImportarDadosPage() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+            className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-all duration-200 bg-white shadow-sm"
           >
             <UploadCloud className="h-4 w-4" /> Selecionar planilha
           </button>
@@ -185,7 +195,7 @@ export default function ImportarDadosPage() {
             }}
           />
           {nomeArquivo && (
-            <span className="ml-3 inline-flex items-center gap-2 text-sm text-slate-400">
+            <span className="ml-3 inline-flex items-center gap-2 text-sm text-slate-500">
               <FileSpreadsheet className="h-4 w-4" /> {nomeArquivo} ({linhasBrutas.length} linhas)
             </span>
           )}
@@ -193,7 +203,7 @@ export default function ImportarDadosPage() {
 
         {scan && (
           <label className="block" data-testid="manual-aba">
-            <span className="mb-1 block text-sm font-medium text-slate-300">
+            <span className="mb-1 block text-sm font-medium text-slate-600">
               Aba da planilha ({scan.resumo.totalAbas} abas lidas, {abasComDados.length} com dados)
             </span>
             <select
@@ -207,30 +217,34 @@ export default function ImportarDadosPage() {
                 </option>
               ))}
             </select>
-            {scan.abas.find((a) => a.nome === abaAtual)?.observacoes.map((o) => (
-              <span key={o} className="mt-1 block text-xs text-slate-500">
-                • {o}
-              </span>
-            ))}
+            {scan.abas
+              .find((a) => a.nome === abaAtual)
+              ?.observacoes.map((o) => (
+                <span key={o} className="mt-1 block text-xs text-slate-500">
+                  • {o}
+                </span>
+              ))}
           </label>
         )}
         {scan && abasComDados.length === 0 && (
-          <p className="text-sm text-amber-300">Nenhuma aba com tabela de dados foi encontrada neste arquivo.</p>
+          <p className="text-sm text-amber-700">
+            Nenhuma aba com tabela de dados foi encontrada neste arquivo.
+          </p>
         )}
       </div>
 
       {headers.length > 0 && (
         <>
-          <section className="mb-6 rounded-lg border border-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold text-slate-200">
+          <section className="mb-6 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+            <h2 className="mb-3 text-sm font-bold text-slate-700">
               Mapeamento de colunas — planilha → sistema
             </h2>
             <div className="space-y-2">
               {campos.map((campo) => (
                 <div key={campo.key} className="flex items-center gap-3">
-                  <span className="w-48 shrink-0 text-sm text-slate-300">
+                  <span className="w-48 shrink-0 text-sm text-slate-600">
                     {campo.label}
-                    {campo.required && <span className="text-red-400"> *</span>}
+                    {campo.required && <span className="text-red-600"> *</span>}
                   </span>
                   <select
                     className="input flex-1"
@@ -251,14 +265,14 @@ export default function ImportarDadosPage() {
             </div>
           </section>
 
-          <section className="mb-6 rounded-lg border border-slate-800 p-5">
-            <h2 className="mb-3 text-sm font-semibold text-slate-200">
+          <section className="mb-6 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+            <h2 className="mb-3 text-sm font-bold text-slate-700">
               Pré-visualização (5 primeiras linhas)
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="text-slate-400">
+                  <tr className="text-slate-500">
                     {campos.map((c) => (
                       <th key={c.key} className="whitespace-nowrap px-2 py-1">
                         {c.label}
@@ -268,7 +282,7 @@ export default function ImportarDadosPage() {
                 </thead>
                 <tbody>
                   {linhasMapeadas.slice(0, 5).map((linha, i) => (
-                    <tr key={i} className="border-t border-slate-800 text-slate-300">
+                    <tr key={i} className="border-t border-slate-200 text-slate-600">
                       {campos.map((c) => (
                         <td key={c.key} className="whitespace-nowrap px-2 py-1">
                           {String(linha[c.key] ?? '')}
@@ -285,14 +299,14 @@ export default function ImportarDadosPage() {
             <button
               disabled={submitting}
               onClick={handleValidar}
-              className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50 transition-all duration-200 bg-white shadow-sm"
             >
               Validar
             </button>
             <button
               disabled={submitting || !validacao || validacao.linhasValidas === 0}
               onClick={handleImportar}
-              className="rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+              className="rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
             >
               Importar {validacao ? `(${validacao.linhasValidas} registros novos)` : ''}
             </button>
@@ -319,16 +333,16 @@ export default function ImportarDadosPage() {
         </>
       )}
 
-      {error && <p className="mb-6 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-6 text-sm text-red-600">{error}</p>}
 
       {historico.length > 0 && (
-        <section className="rounded-lg border border-slate-800 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-200">Histórico de importações</h2>
+        <section className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+          <h2 className="mb-3 text-sm font-bold text-slate-700">Histórico de importações</h2>
           <div className="space-y-2">
             {historico.map((d) => (
               <div
                 key={d.id}
-                className="flex items-center justify-between rounded-md bg-slate-900/60 px-3 py-2 text-sm text-slate-300"
+                className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600"
               >
                 <span>
                   {d.nome} — {TARGET_LABELS[d.target]}
@@ -360,31 +374,31 @@ function ResultadoValidacao({
   importado?: boolean;
 }) {
   return (
-    <div className="mb-6 rounded-lg border border-slate-800 p-5">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
+    <div className="mb-6 rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
         {linhasComErro === 0 ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
         ) : (
-          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
         )}
         {importado ? 'Resultado da importação' : 'Resultado da validação'}
       </div>
-      <div className="mb-3 grid grid-cols-3 gap-3 text-center">
+      <div className="mb-3 grid grid-cols-3 gap-4 text-center">
         <div>
-          <p className="text-xl font-bold text-white">{totalLinhas}</p>
-          <p className="text-xs text-slate-400">linhas na planilha</p>
+          <p className="text-xl font-bold text-slate-900">{totalLinhas}</p>
+          <p className="text-xs text-slate-500">linhas na planilha</p>
         </div>
         <div>
-          <p className="text-xl font-bold text-emerald-400">{linhasValidas}</p>
-          <p className="text-xs text-slate-400">{importado ? 'importadas' : 'válidas'}</p>
+          <p className="text-xl font-bold text-emerald-600">{linhasValidas}</p>
+          <p className="text-xs text-slate-500">{importado ? 'importadas' : 'válidas'}</p>
         </div>
         <div>
-          <p className="text-xl font-bold text-red-400">{linhasComErro}</p>
-          <p className="text-xs text-slate-400">com erro</p>
+          <p className="text-xl font-bold text-red-600">{linhasComErro}</p>
+          <p className="text-xs text-slate-500">com erro</p>
         </div>
       </div>
       {erros.length > 0 && (
-        <div className="max-h-48 space-y-1 overflow-y-auto text-xs text-red-300">
+        <div className="max-h-48 space-y-1 overflow-y-auto text-xs text-red-700">
           {erros.map((e, i) => (
             <p key={i}>
               {e.linha >= 0 ? `Linha ${e.linha}` : 'Registro'}

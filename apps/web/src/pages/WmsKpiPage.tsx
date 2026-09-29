@@ -16,14 +16,14 @@ export default function WmsKpiPage() {
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
             <Warehouse className="h-6 w-6 text-rigabras-500" />
             WMS — Armazém Geral
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             Ocupação, giro de estoque e avarias — indicadores do serviço de Armazém Geral.
           </p>
         </div>
@@ -32,14 +32,14 @@ export default function WmsKpiPage() {
             type="date"
             value={periodStart}
             onChange={(e) => setPeriodStart(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 focus:border-rigabras-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-rigabras-500 focus:outline-none"
           />
           <span className="text-slate-500">até</span>
           <input
             type="date"
             value={periodEnd}
             onChange={(e) => setPeriodEnd(e.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100 focus:border-rigabras-500 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-rigabras-500 focus:outline-none"
           />
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function WmsKpiPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-white">Avarias por severidade</h2>
+            <h2 className="mb-3 text-lg font-bold text-slate-900">Avarias por severidade</h2>
             {Object.keys(kpis.avarias_por_severidade).length === 0 ? (
               <EmptyState title="Sem avarias no período" description="Nenhuma avaria registrada." />
             ) : (
@@ -117,9 +117,9 @@ export default function WmsKpiPage() {
 
 function Kpi({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold text-slate-100">{value}</dd>
+    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <dt className="text-sm text-slate-500">{label}</dt>
+      <dd className="mt-1 text-2xl font-bold text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -128,7 +128,7 @@ function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label
   return (
     <Link
       to={to}
-      className="flex items-center gap-2 rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:text-white"
+      className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
     >
       {icon} {label}
     </Link>

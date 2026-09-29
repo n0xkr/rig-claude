@@ -25,20 +25,20 @@ export default function RecebimentoDetailPage() {
     return <ErrorCard message={error ?? 'Erro'} onRetry={reload} />;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/wms/recebimentos"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar para recebimentos
       </Link>
 
       <div className="mb-6 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-slate-900">
             {recebimento.referencia_documento ?? recebimento.id.slice(0, 8)}
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {recebimento.data_prevista &&
               `previsto para ${new Date(`${recebimento.data_prevista}T00:00:00`).toLocaleDateString('pt-BR')}`}
           </p>
@@ -49,7 +49,7 @@ export default function RecebimentoDetailPage() {
       {recebimento.viagem_id && (
         <Link
           to={`/viagens/${recebimento.viagem_id}`}
-          className="mb-6 flex items-center gap-2 rounded-lg border border-slate-800 p-3 text-sm text-slate-300 hover:bg-slate-900/60"
+          className="mb-6 flex items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm text-slate-600 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
         >
           <Truck className="h-4 w-4 text-rigabras-500" />
           Gerado automaticamente pela entrega da viagem (Módulo 6 — Integração TMS+WMS):{' '}
@@ -64,7 +64,7 @@ export default function RecebimentoDetailPage() {
             await iniciarConferencia(recebimento.id);
             reload();
           }}
-          className="mb-6 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+          className="mb-6 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
         >
           Iniciar conferência
         </button>
@@ -94,13 +94,13 @@ export default function RecebimentoDetailPage() {
               await concluirConferencia(recebimento.id);
               reload();
             }}
-            className="mt-6 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+            className="mt-6 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
           >
             Concluir conferência
           </button>
         )}
 
-      {wfError && <p className="mt-3 text-sm text-red-400">{wfError}</p>}
+      {wfError && <p className="mt-3 text-sm text-red-600">{wfError}</p>}
     </div>
   );
 }
@@ -127,11 +127,11 @@ function ItemConferencia({
   const jaConferido = item.quantidade_conferida != null;
 
   return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <p className="mb-2 text-sm text-slate-300">
-        Esperado: <span className="font-medium text-slate-100">{item.quantidade_esperada}</span>
+    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <p className="mb-2 text-sm text-slate-600">
+        Esperado: <span className="font-medium text-slate-900">{item.quantidade_esperada}</span>
         {jaConferido && (
-          <span className="ml-2 text-emerald-400">conferido: {item.quantidade_conferida}</span>
+          <span className="ml-2 text-emerald-600">conferido: {item.quantidade_conferida}</span>
         )}
       </p>
       {!jaConferido && (
@@ -163,7 +163,7 @@ function ItemConferencia({
             onClick={() =>
               onConferido({ quantidade_conferida: Number(quantidade), endereco_id: enderecoId })
             }
-            className="rounded-md bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-xl bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
           >
             Conferir
           </button>

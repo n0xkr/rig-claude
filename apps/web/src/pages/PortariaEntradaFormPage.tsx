@@ -40,18 +40,21 @@ export default function PortariaEntradaFormPage() {
   }
 
   return (
-    <div className="mx-auto max-w-md px-4 py-6">
+    <div className="mx-auto max-w-md px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/portaria"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Voltar
       </Link>
-      <h1 className="mb-6 text-2xl font-bold text-white">Nova entrada</h1>
+      <h1 className="mb-6 text-2xl font-bold text-slate-900">Nova entrada</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-slate-800 p-5">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 rounded-xl border border-slate-200 p-6 bg-white shadow-sm"
+      >
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">Placa do cavalo *</span>
+          <span className="mb-1 block text-sm font-medium text-slate-600">Placa do cavalo *</span>
           <input
             required
             autoFocus
@@ -63,7 +66,7 @@ export default function PortariaEntradaFormPage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">Placa da carreta</span>
+          <span className="mb-1 block text-sm font-medium text-slate-600">Placa da carreta</span>
           <input
             className="input uppercase"
             value={placaCarreta}
@@ -72,7 +75,7 @@ export default function PortariaEntradaFormPage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">Motorista *</span>
+          <span className="mb-1 block text-sm font-medium text-slate-600">Motorista *</span>
           <input
             required
             className="input"
@@ -82,7 +85,7 @@ export default function PortariaEntradaFormPage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">
+          <span className="mb-1 block text-sm font-medium text-slate-600">
             CPF/documento do motorista
           </span>
           <input
@@ -93,7 +96,7 @@ export default function PortariaEntradaFormPage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">
+          <span className="mb-1 block text-sm font-medium text-slate-600">
             Empresa/proprietário
           </span>
           <input
@@ -105,7 +108,7 @@ export default function PortariaEntradaFormPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-300">Número do CRT</span>
+            <span className="mb-1 block text-sm font-medium text-slate-600">Número do CRT</span>
             <input
               className="input"
               value={numeroCrt}
@@ -113,15 +116,13 @@ export default function PortariaEntradaFormPage() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-300">Cliente</span>
+            <span className="mb-1 block text-sm font-medium text-slate-600">Cliente</span>
             <input className="input" value={cliente} onChange={(e) => setCliente(e.target.value)} />
           </label>
         </div>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">
-            Tipo de operação *
-          </span>
+          <span className="mb-1 block text-sm font-medium text-slate-600">Tipo de operação *</span>
           <select
             className="input"
             value={tipoOperacao}
@@ -134,7 +135,7 @@ export default function PortariaEntradaFormPage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-300">Observações</span>
+          <span className="mb-1 block text-sm font-medium text-slate-600">Observações</span>
           <textarea
             className="input"
             rows={2}
@@ -143,17 +144,18 @@ export default function PortariaEntradaFormPage() {
           />
         </label>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-rigabras-500 px-4 py-3 text-base font-semibold text-white hover:bg-blue-600 disabled:opacity-50"
+          className="w-full rounded-xl bg-rigabras-500 px-4 py-3 text-base font-semibold text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
         >
           {submitting ? 'Registrando...' : 'Registrar entrada'}
         </button>
         <p className="text-center text-xs text-slate-500">
-          Após confirmar, você poderá fotografar os documentos (CRT, ordem de coleta) na tela seguinte.
+          Após confirmar, você poderá fotografar os documentos (CRT, ordem de coleta) na tela
+          seguinte.
         </p>
       </form>
     </div>

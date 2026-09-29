@@ -11,23 +11,25 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ACTION_STYLES: Record<string, string> = {
-  CREATE: 'bg-emerald-900/60 text-emerald-200',
-  UPDATE: 'bg-cyan-900/60 text-cyan-200',
-  DELETE: 'bg-red-900/60 text-red-200',
-  STATUS_CHANGE: 'bg-amber-900/60 text-amber-200',
+  CREATE: 'bg-emerald-50 text-emerald-700',
+  UPDATE: 'bg-cyan-50 text-cyan-700',
+  DELETE: 'bg-red-50 text-red-700',
+  STATUS_CHANGE: 'bg-amber-50 text-amber-700',
 };
 
 /** Trilha de auditoria (critério #21): quem fez o quê, quando, e o antes/depois — acesso restrito a ADMIN/SUPERADMIN. */
 export default function AuditoriaListPage() {
   const [entityFiltro, setEntityFiltro] = useState('');
-  const { state, logs, error, hasMore, loadMore, reload } = useAuditoriaList(entityFiltro || undefined);
+  const { state, logs, error, hasMore, loadMore, reload } = useAuditoriaList(
+    entityFiltro || undefined,
+  );
   const [expandido, setExpandido] = useState<string | null>(null);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex items-center gap-2">
         <ShieldCheck className="h-6 w-6 text-rigabras-500" />
-        <h1 className="text-2xl font-bold text-white">Auditoria</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Auditoria</h1>
       </div>
 
       <div className="mb-6">
@@ -44,24 +46,30 @@ export default function AuditoriaListPage() {
       ) : state === 'error' ? (
         <ErrorCard message={error ?? 'Erro'} onRetry={reload} />
       ) : logs.length === 0 ? (
-        <EmptyState title="Nenhum registro de auditoria" description="Ainda não há ações registradas para este filtro." />
+        <EmptyState
+          title="Nenhum registro de auditoria"
+          description="Ainda não há ações registradas para este filtro."
+        />
       ) : (
         <div className="space-y-2">
           {logs.map((log) => {
             const aberto = expandido === log.id;
             return (
-              <div key={log.id} className="rounded-lg border border-slate-800 p-3">
+              <div
+                key={log.id}
+                className="rounded-xl border border-slate-200 p-3 bg-white shadow-sm"
+              >
                 <button
                   className="flex w-full items-center justify-between gap-2 text-left"
                   onClick={() => setExpandido(aberto ? null : log.id)}
                 >
                   <div className="flex items-center gap-3">
                     <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ACTION_STYLES[log.action] ?? 'bg-slate-700 text-slate-200'}`}
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ACTION_STYLES[log.action] ?? 'bg-slate-200 text-slate-700'}`}
                     >
                       {ACTION_LABELS[log.action] ?? log.action}
                     </span>
-                    <span className="text-sm text-slate-200">
+                    <span className="text-sm text-slate-700">
                       {log.user?.nome_completo ?? 'Sistema'}{' '}
                       <span className="text-slate-500">
                         alterou <span className="font-mono">{log.entity}</span>
@@ -81,7 +89,7 @@ export default function AuditoriaListPage() {
                   </div>
                 </button>
                 {aberto && log.changes_json && (
-                  <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-400">
+                  <pre className="mt-3 max-h-64 overflow-auto rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
                     {JSON.stringify(log.changes_json, null, 2)}
                   </pre>
                 )}
@@ -91,7 +99,7 @@ export default function AuditoriaListPage() {
           {hasMore && (
             <button
               onClick={loadMore}
-              className="w-full rounded-md border border-slate-700 py-2 text-sm text-slate-300 hover:bg-slate-800"
+              className="w-full rounded-xl border border-slate-200 py-2 text-sm text-slate-600 hover:bg-slate-100 transition-all duration-200 bg-white shadow-sm"
             >
               Carregar mais
             </button>

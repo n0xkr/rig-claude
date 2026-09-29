@@ -14,18 +14,18 @@ import type {
 } from '@rigabras/shared';
 
 const STATUS_STYLES: Record<StatusViagem, string> = {
-  PROGRAMADA: 'bg-slate-700 text-slate-200',
-  AGUARDANDO_COLETA: 'bg-amber-950/60 text-amber-300',
-  EM_COLETA: 'bg-amber-900/60 text-amber-200',
-  EM_DOCUMENTACAO: 'bg-cyan-900/60 text-cyan-200',
-  VEICULO_MOTORISTA_DEFINIDO: 'bg-teal-900/60 text-teal-200',
-  EM_VALIDACAO_PRE_EMBARQUE: 'bg-indigo-900/60 text-indigo-200',
-  EM_TRANSITO: 'bg-blue-900/60 text-blue-200',
-  NA_FRONTEIRA: 'bg-purple-900/60 text-purple-200',
-  EM_MONITORAMENTO: 'bg-sky-900/60 text-sky-200',
-  ENTREGUE: 'bg-emerald-900/60 text-emerald-200',
-  ENCERRADA: 'bg-slate-800 text-slate-400',
-  CANCELADA: 'bg-red-900/60 text-red-200',
+  PROGRAMADA: 'bg-slate-200 text-slate-700',
+  AGUARDANDO_COLETA: 'bg-amber-50 text-amber-700',
+  EM_COLETA: 'bg-amber-50 text-amber-700',
+  EM_DOCUMENTACAO: 'bg-cyan-50 text-cyan-700',
+  VEICULO_MOTORISTA_DEFINIDO: 'bg-teal-50 text-teal-700',
+  EM_VALIDACAO_PRE_EMBARQUE: 'bg-indigo-50 text-indigo-700',
+  EM_TRANSITO: 'bg-blue-50 text-blue-700',
+  NA_FRONTEIRA: 'bg-purple-50 text-purple-700',
+  EM_MONITORAMENTO: 'bg-sky-50 text-sky-700',
+  ENTREGUE: 'bg-emerald-50 text-emerald-700',
+  ENCERRADA: 'bg-slate-100 text-slate-500',
+  CANCELADA: 'bg-red-50 text-red-700',
 };
 
 export function StatusBadge({ status }: { status: StatusViagem }) {
@@ -37,10 +37,10 @@ export function StatusBadge({ status }: { status: StatusViagem }) {
 }
 
 const SEVERIDADE_STYLES: Record<SeveridadeRisco, string> = {
-  BAIXA: 'bg-slate-700 text-slate-200',
-  MEDIA: 'bg-amber-900/60 text-amber-200',
-  ALTA: 'bg-orange-900/60 text-orange-200',
-  CRITICA: 'bg-red-900/60 text-red-200',
+  BAIXA: 'bg-slate-200 text-slate-700',
+  MEDIA: 'bg-amber-50 text-amber-700',
+  ALTA: 'bg-orange-50 text-orange-700',
+  CRITICA: 'bg-red-50 text-red-700',
 };
 
 export function SeveridadeBadge({ severidade }: { severidade: SeveridadeRisco }) {
@@ -54,11 +54,11 @@ export function SeveridadeBadge({ severidade }: { severidade: SeveridadeRisco })
 }
 
 const STATUS_FECHAMENTO_FRETE_STYLES: Record<StatusFechamentoFrete, string> = {
-  ABERTO: 'bg-slate-700 text-slate-200',
-  EM_CONFERENCIA: 'bg-amber-900/60 text-amber-200',
-  APROVADO: 'bg-teal-900/60 text-teal-200',
-  REJEITADO: 'bg-red-900/60 text-red-200',
-  PAGO: 'bg-emerald-900/60 text-emerald-200',
+  ABERTO: 'bg-slate-200 text-slate-700',
+  EM_CONFERENCIA: 'bg-amber-50 text-amber-700',
+  APROVADO: 'bg-teal-50 text-teal-700',
+  REJEITADO: 'bg-red-50 text-red-700',
+  PAGO: 'bg-emerald-50 text-emerald-700',
 };
 
 /** Badge do status de fechamento financeiro do frete (Módulo 3, critério #1). */
@@ -73,11 +73,11 @@ export function FreteStatusBadge({ status }: { status: StatusFechamentoFrete }) 
 }
 
 const TIPO_MANUTENCAO_STYLES: Record<TipoManutencaoVeiculo, string> = {
-  PREVENTIVA: 'bg-teal-900/60 text-teal-200',
-  CORRETIVA: 'bg-red-900/60 text-red-200',
-  REVISAO: 'bg-cyan-900/60 text-cyan-200',
-  TROCA_PNEUS: 'bg-amber-900/60 text-amber-200',
-  OUTRO: 'bg-slate-700 text-slate-200',
+  PREVENTIVA: 'bg-teal-50 text-teal-700',
+  CORRETIVA: 'bg-red-50 text-red-700',
+  REVISAO: 'bg-cyan-50 text-cyan-700',
+  TROCA_PNEUS: 'bg-amber-50 text-amber-700',
+  OUTRO: 'bg-slate-200 text-slate-700',
 };
 
 /** Badge do tipo de manutenção de veículo (Módulo 4, Controle de Frota). */
@@ -92,14 +92,14 @@ export function ManutencaoTipoBadge({ tipo }: { tipo: TipoManutencaoVeiculo }) {
 }
 
 const TIPO_EVENTO_JORNADA_STYLES: Record<TipoEventoJornada, string> = {
-  INICIO_JORNADA: 'bg-emerald-900/60 text-emerald-200',
-  FIM_JORNADA: 'bg-slate-800 text-slate-400',
-  INICIO_DIRECAO: 'bg-blue-900/60 text-blue-200',
-  FIM_DIRECAO: 'bg-blue-950/60 text-blue-300',
-  INICIO_ESPERA: 'bg-amber-900/60 text-amber-200',
-  FIM_ESPERA: 'bg-amber-950/60 text-amber-300',
-  INICIO_DESCANSO: 'bg-purple-900/60 text-purple-200',
-  FIM_DESCANSO: 'bg-purple-950/60 text-purple-300',
+  INICIO_JORNADA: 'bg-emerald-50 text-emerald-700',
+  FIM_JORNADA: 'bg-slate-100 text-slate-500',
+  INICIO_DIRECAO: 'bg-blue-50 text-blue-700',
+  FIM_DIRECAO: 'bg-blue-50 text-blue-700',
+  INICIO_ESPERA: 'bg-amber-50 text-amber-700',
+  FIM_ESPERA: 'bg-amber-50 text-amber-700',
+  INICIO_DESCANSO: 'bg-purple-50 text-purple-700',
+  FIM_DESCANSO: 'bg-purple-50 text-purple-700',
 };
 
 /** Badge do tipo de evento de jornada (Módulo 4, Controle de Jornada — ADI 5322). */
@@ -114,9 +114,9 @@ export function EventoJornadaBadge({ tipo }: { tipo: TipoEventoJornada }) {
 }
 
 const STATUS_ENDERECO_STYLES: Record<StatusEnderecoArmazem, string> = {
-  LIVRE: 'bg-emerald-900/60 text-emerald-200',
-  OCUPADO: 'bg-blue-900/60 text-blue-200',
-  BLOQUEADO: 'bg-red-900/60 text-red-200',
+  LIVRE: 'bg-emerald-50 text-emerald-700',
+  OCUPADO: 'bg-blue-50 text-blue-700',
+  BLOQUEADO: 'bg-red-50 text-red-700',
 };
 
 /** Badge do status de um endereço/bin do armazém (Módulo 5, WMS — mapa de ocupação). */
@@ -131,11 +131,11 @@ export function EnderecoStatusBadge({ status }: { status: StatusEnderecoArmazem 
 }
 
 const STATUS_RECEBIMENTO_STYLES: Record<StatusRecebimento, string> = {
-  AGUARDANDO: 'bg-slate-700 text-slate-200',
-  EM_CONFERENCIA: 'bg-amber-900/60 text-amber-200',
-  CONFERIDO: 'bg-cyan-900/60 text-cyan-200',
-  ENDERECADO: 'bg-emerald-900/60 text-emerald-200',
-  DIVERGENTE: 'bg-red-900/60 text-red-200',
+  AGUARDANDO: 'bg-slate-200 text-slate-700',
+  EM_CONFERENCIA: 'bg-amber-50 text-amber-700',
+  CONFERIDO: 'bg-cyan-50 text-cyan-700',
+  ENDERECADO: 'bg-emerald-50 text-emerald-700',
+  DIVERGENTE: 'bg-red-50 text-red-700',
 };
 
 /** Badge do status de um recebimento (Módulo 5, WMS — Recebimento e Conferência). */
@@ -150,13 +150,13 @@ export function RecebimentoStatusBadge({ status }: { status: StatusRecebimento }
 }
 
 const STATUS_EXPEDICAO_STYLES: Record<StatusExpedicao, string> = {
-  SOLICITADA: 'bg-slate-700 text-slate-200',
-  EM_SEPARACAO: 'bg-amber-900/60 text-amber-200',
-  SEPARADA: 'bg-cyan-900/60 text-cyan-200',
-  EM_REEMBALAGEM: 'bg-indigo-900/60 text-indigo-200',
-  PRONTA_EXPEDICAO: 'bg-teal-900/60 text-teal-200',
-  EXPEDIDA: 'bg-emerald-900/60 text-emerald-200',
-  CANCELADA: 'bg-red-900/60 text-red-200',
+  SOLICITADA: 'bg-slate-200 text-slate-700',
+  EM_SEPARACAO: 'bg-amber-50 text-amber-700',
+  SEPARADA: 'bg-cyan-50 text-cyan-700',
+  EM_REEMBALAGEM: 'bg-indigo-50 text-indigo-700',
+  PRONTA_EXPEDICAO: 'bg-teal-50 text-teal-700',
+  EXPEDIDA: 'bg-emerald-50 text-emerald-700',
+  CANCELADA: 'bg-red-50 text-red-700',
 };
 
 /** Badge do status de uma expedição (Módulo 5, WMS — Separação/Reembalagem/Etiquetagem/Cross-docking/Expedição). */
@@ -171,10 +171,10 @@ export function ExpedicaoStatusBadge({ status }: { status: StatusExpedicao }) {
 }
 
 const SEVERIDADE_AVARIA_STYLES: Record<SeveridadeAvaria, string> = {
-  LEVE: 'bg-amber-950/60 text-amber-300',
-  MODERADA: 'bg-amber-900/60 text-amber-200',
-  GRAVE: 'bg-orange-900/60 text-orange-200',
-  PERDA_TOTAL: 'bg-red-900/60 text-red-200',
+  LEVE: 'bg-amber-50 text-amber-700',
+  MODERADA: 'bg-amber-50 text-amber-700',
+  GRAVE: 'bg-orange-50 text-orange-700',
+  PERDA_TOTAL: 'bg-red-50 text-red-700',
 };
 
 /** Badge de severidade de uma avaria (Módulo 5, WMS — Controle de avarias). */
@@ -189,10 +189,10 @@ export function AvariaSeveridadeBadge({ severidade }: { severidade: SeveridadeAv
 }
 
 const STATUS_INVENTARIO_STYLES: Record<StatusInventario, string> = {
-  ABERTO: 'bg-slate-700 text-slate-200',
-  EM_CONTAGEM: 'bg-amber-900/60 text-amber-200',
-  RECONCILIADO: 'bg-cyan-900/60 text-cyan-200',
-  ENCERRADO: 'bg-emerald-900/60 text-emerald-200',
+  ABERTO: 'bg-slate-200 text-slate-700',
+  EM_CONTAGEM: 'bg-amber-50 text-amber-700',
+  RECONCILIADO: 'bg-cyan-50 text-cyan-700',
+  ENCERRADO: 'bg-emerald-50 text-emerald-700',
 };
 
 /** Badge do status de um inventário/contagem física (Módulo 5, WMS — Controle de Inventário). */
@@ -207,12 +207,12 @@ export function InventarioStatusBadge({ status }: { status: StatusInventario }) 
 }
 
 const STATUS_PORTARIA_ENTRADA_STYLES: Record<StatusPortariaEntrada, string> = {
-  AGUARDANDO_CONFERENCIA: 'bg-amber-900/60 text-amber-200',
-  CONFERIDO: 'bg-cyan-900/60 text-cyan-200',
-  LIBERADO_PATIO: 'bg-teal-900/60 text-teal-200',
-  AGUARDANDO_SAIDA: 'bg-indigo-900/60 text-indigo-200',
-  SAIDA_REGISTRADA: 'bg-emerald-900/60 text-emerald-200',
-  CANCELADA: 'bg-red-900/60 text-red-200',
+  AGUARDANDO_CONFERENCIA: 'bg-amber-50 text-amber-700',
+  CONFERIDO: 'bg-cyan-50 text-cyan-700',
+  LIBERADO_PATIO: 'bg-teal-50 text-teal-700',
+  AGUARDANDO_SAIDA: 'bg-indigo-50 text-indigo-700',
+  SAIDA_REGISTRADA: 'bg-emerald-50 text-emerald-700',
+  CANCELADA: 'bg-red-50 text-red-700',
 };
 
 /** Badge do status de uma entrada de portaria (Módulo 8 — Portaria). */
@@ -227,10 +227,10 @@ export function PortariaEntradaStatusBadge({ status }: { status: StatusPortariaE
 }
 
 const STATUS_ORDEM_SERVICO_STYLES: Record<StatusOrdemServico, string> = {
-  ABERTA: 'bg-slate-700 text-slate-200',
-  EM_EXECUCAO: 'bg-amber-900/60 text-amber-200',
-  FINALIZADA: 'bg-emerald-900/60 text-emerald-200',
-  CANCELADA: 'bg-red-900/60 text-red-200',
+  ABERTA: 'bg-slate-200 text-slate-700',
+  EM_EXECUCAO: 'bg-amber-50 text-amber-700',
+  FINALIZADA: 'bg-emerald-50 text-emerald-700',
+  CANCELADA: 'bg-red-50 text-red-700',
 };
 
 /** Badge do status de uma ordem de serviço (Módulo 8 — Portaria, gerada automaticamente na chegada). */

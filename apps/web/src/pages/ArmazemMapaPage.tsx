@@ -31,13 +31,13 @@ export default function ArmazemMapaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Warehouse className="h-6 w-6 text-rigabras-500" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Mapa do armazém</h1>
-            <p className="text-sm text-slate-400">
+            <h1 className="text-2xl font-bold text-slate-900">Mapa do armazém</h1>
+            <p className="text-sm text-slate-500">
               Ocupação por área/rua/prateleira/posição — armazém coberto de 5.500 m².
             </p>
           </div>
@@ -56,7 +56,7 @@ export default function ArmazemMapaPage() {
           </select>
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="flex items-center gap-2 rounded-md bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+            className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
           >
             <Plus className="h-4 w-4" /> Novo endereço
           </button>
@@ -100,12 +100,12 @@ export default function ArmazemMapaPage() {
       {state === 'success' &&
         Array.from(porArea.entries()).map(([area, itens]) => (
           <section key={area} className="mb-6">
-            <h2 className="mb-2 text-sm font-semibold text-slate-300">Área {area}</h2>
+            <h2 className="mb-2 text-sm font-bold text-slate-600">Área {area}</h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-6">
               {itens.map((e) => (
                 <div
                   key={e.id}
-                  className="rounded-md border border-slate-800 p-3 text-center text-xs text-slate-300"
+                  className="rounded-xl border border-slate-200 p-3 text-center text-xs text-slate-600 bg-white shadow-sm"
                 >
                   <p className="font-medium">
                     {e.rua}-{e.prateleira}-{e.posicao}
@@ -124,9 +124,9 @@ export default function ArmazemMapaPage() {
 
 function Kpi({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-slate-800 p-4">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold text-slate-100">{value}</dd>
+    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+      <dt className="text-sm text-slate-500">{label}</dt>
+      <dd className="mt-1 text-2xl font-bold text-slate-900">{value}</dd>
     </div>
   );
 }
@@ -149,7 +149,7 @@ function EnderecoForm({ armazemId, onCreated }: { armazemId: string; onCreated: 
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-6 grid grid-cols-2 gap-3 rounded-lg border border-slate-800 p-4 sm:grid-cols-5"
+      className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 sm:grid-cols-5 bg-white shadow-sm"
     >
       <input
         required
@@ -182,11 +182,11 @@ function EnderecoForm({ armazemId, onCreated }: { armazemId: string; onCreated: 
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50"
+        className="rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
       >
         {submitting ? 'Salvando...' : 'Criar'}
       </button>
-      {error && <p className="col-span-full text-sm text-red-400">{error}</p>}
+      {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
     </form>
   );
 }

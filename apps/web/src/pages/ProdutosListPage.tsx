@@ -14,10 +14,10 @@ export default function ProdutosListPage() {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         to="/wms/depositantes"
-        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
       >
         <ArrowLeft className="h-4 w-4" /> Depositantes
       </Link>
@@ -25,13 +25,13 @@ export default function ProdutosListPage() {
         <div className="flex items-center gap-2">
           <Package className="h-6 w-6 text-rigabras-500" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Produtos armazenados</h1>
-            <p className="text-sm text-slate-400">Catálogo de SKUs por depositante.</p>
+            <h1 className="text-2xl font-bold text-slate-900">Produtos armazenados</h1>
+            <p className="text-sm text-slate-500">Catálogo de SKUs por depositante.</p>
           </div>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
-          className="flex items-center gap-2 rounded-md bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
         >
           <Plus className="h-4 w-4" /> Novo produto
         </button>
@@ -69,14 +69,14 @@ export default function ProdutosListPage() {
         <EmptyState title="Nenhum produto cadastrado" description="Cadastre o primeiro SKU." />
       )}
       {state === 'success' && produtos.length > 0 && (
-        <ul className="divide-y divide-slate-800 rounded-lg border border-slate-800">
+        <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white shadow-sm">
           {produtos.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-4">
               <div>
-                <p className="font-medium text-slate-100">
+                <p className="font-medium text-slate-900">
                   {p.sku} — {p.descricao}
                 </p>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-500">
                   {p.unidade_medida ?? 'UN'}
                   {p.peso_kg != null && ` · ${p.peso_kg} kg`}
                   {p.volume_m3 != null && ` · ${p.volume_m3} m³`}
@@ -84,7 +84,7 @@ export default function ProdutosListPage() {
               </div>
               <Link
                 to={`/wms/produtos/${p.id}/rastreio`}
-                className="text-sm text-slate-400 hover:text-white"
+                className="text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
               >
                 Rastreio
               </Link>
@@ -131,7 +131,7 @@ function ProdutoForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-6 grid grid-cols-2 gap-3 rounded-lg border border-slate-800 p-4 sm:grid-cols-4"
+      className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 sm:grid-cols-4 bg-white shadow-sm"
     >
       <select
         required
@@ -181,11 +181,11 @@ function ProdutoForm({
       <button
         type="submit"
         disabled={submitting}
-        className="col-span-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-50 sm:col-span-4"
+        className="col-span-2 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:col-span-4 transition-all duration-200"
       >
         {submitting ? 'Salvando...' : 'Salvar produto'}
       </button>
-      {error && <p className="col-span-full text-sm text-red-400">{error}</p>}
+      {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
     </form>
   );
 }

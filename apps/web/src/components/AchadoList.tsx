@@ -3,9 +3,9 @@ import { AlertTriangle, ClipboardCheck, ShieldAlert } from 'lucide-react';
 import type { SeveridadeAchadoValidacao } from '@rigabras/shared';
 
 const SEVERIDADE_ICON: Record<SeveridadeAchadoValidacao, ReactElement> = {
-  INFO: <ClipboardCheck className="h-4 w-4 text-slate-400" />,
-  AVISO: <AlertTriangle className="h-4 w-4 text-amber-400" />,
-  BLOQUEANTE: <ShieldAlert className="h-4 w-4 text-red-400" />,
+  INFO: <ClipboardCheck className="h-4 w-4 text-slate-500" />,
+  AVISO: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+  BLOQUEANTE: <ShieldAlert className="h-4 w-4 text-red-600" />,
 };
 
 export interface Achado {
@@ -24,21 +24,21 @@ export interface Achado {
  */
 export function AchadoList({ achados }: { achados: Achado[] }) {
   if (achados.length === 0) {
-    return <p className="text-sm text-emerald-400">Nenhum achado — conforme.</p>;
+    return <p className="text-sm text-emerald-600">Nenhum achado — conforme.</p>;
   }
   return (
     <ul className="space-y-2">
       {achados.map((achado, idx) => (
         <li
           key={`${achado.campo}-${idx}`}
-          className="flex items-start gap-3 rounded-lg border border-slate-800 p-3"
+          className="flex items-start gap-3 rounded-xl border border-slate-200 p-3 bg-white shadow-sm"
         >
           {SEVERIDADE_ICON[achado.severidade]}
           <div>
-            <p className="text-sm font-medium text-slate-100">
+            <p className="text-sm font-medium text-slate-900">
               {achado.campo} — {achado.severidade}
             </p>
-            <p className="text-sm text-slate-400">{achado.mensagem}</p>
+            <p className="text-sm text-slate-500">{achado.mensagem}</p>
             {(achado.valorEsperado || achado.valorEncontrado) && (
               <p className="mt-1 text-xs text-slate-500">
                 Esperado: {achado.valorEsperado ?? '-'} · Encontrado:{' '}
