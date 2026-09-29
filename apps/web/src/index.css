@@ -9,16 +9,13 @@ body,
 }
 
 body {
-  background-color: #0a0f1e;
-  background-image:
-    radial-gradient(circle at 15% -10%, rgba(34, 197, 94, 0.16), transparent 45%),
-    radial-gradient(circle at 100% 0%, rgba(250, 204, 21, 0.1), transparent 40%);
-  background-attachment: fixed;
+  background-color: #090d16;
+  color: #e2e8f0;
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-md border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition-colors duration-200 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green/50;
+    @apply w-full rounded-md border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition-colors duration-200 focus:border-tms-cyan focus:outline-none focus:ring-1 focus:ring-tms-cyan/50;
   }
 
   .card-glass {

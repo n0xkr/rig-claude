@@ -11,6 +11,12 @@ export default {
           500: '#2563eb',
           100: '#dbeafe',
         },
+        tms: {
+          cyan: '#00f2fe',
+          amber: '#ff9f43',
+          bg: '#090d16',
+          surface: '#0e1726',
+        },
         brand: {
           green: '#22c55e',
           greendark: '#15803d',

@@ -11,8 +11,11 @@
     "lint": "echo \"(lint placeholder - configure eslint)\""
   },
   "dependencies": {
+    "@react-three/drei": "^10",
+    "@react-three/fiber": "^9",
     "@rigabras/shared": "workspace:*",
     "@supabase/supabase-js": "^2.45.4",
+    "framer-motion": "^12",
     "idb": "^8.0.0",
     "lucide-react": "^0.446.0",
     "react": "^19.0.0",

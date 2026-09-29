@@ -25,6 +25,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
@@ -40,6 +41,17 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three'],
+          r3f: ['@react-three/fiber', '@react-three/drei'],
+          motion: ['framer-motion'],
+        },
+      },
+    },
+  },
   // `host: '127.0.0.1'` (em vez do padrão do Vite, que só faz bind em `::1`
   // nesta máquina Windows): sem isso, qualquer cliente que resolva
   // `localhost`/`127.0.0.1` para IPv4 primeiro (curl neste sandbox,

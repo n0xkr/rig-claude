@@ -26,6 +26,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [avisoErro, setAvisoErro] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const load = useCallback(async () => {
@@ -47,6 +48,7 @@ export default function UsuariosPage() {
 
   async function run(action: () => Promise<unknown>, ok: string): Promise<boolean> {
     setAviso(null);
+    setAvisoErro(false);
     try {
       await action();
       setAviso(ok);
@@ -54,6 +56,7 @@ export default function UsuariosPage() {
       return true;
     } catch (err) {
       setAviso(errMsg(err));
+      setAvisoErro(true);
       return false;
     }
   }
@@ -134,7 +137,10 @@ export default function UsuariosPage() {
       </form>
 
       {aviso && (
-        <p className="mb-4 text-sm text-emerald-300" data-testid="usuarios-aviso">
+        <p
+          className={`mb-4 text-sm ${avisoErro ? 'text-red-400' : 'text-emerald-300'}`}
+          data-testid="usuarios-aviso"
+        >
           {aviso}
         </p>
       )}
