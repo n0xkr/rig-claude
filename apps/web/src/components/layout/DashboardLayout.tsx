@@ -24,18 +24,21 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import type { UserRole } from '@rigabras/shared';
+import type { ModuloKey, UserRole } from '@rigabras/shared';
 import logo from '../../assets/logo-rigabras.jpg';
 import type { Perfil } from '@rigabras/shared';
 import { api, getCurrentUserRole } from '../../lib/apiClient.js';
 import { useResumoSolicitacoesIa } from '../../hooks/useSolicitacoesIa.js';
 import { haptic } from '../../lib/haptics.js';
+import { podeAcessar } from '../../lib/permissoes.js';
 
 interface NavItem {
   to: string;
   label: string;
   icon: LucideIcon;
   roles?: UserRole[];
+  /** Módulo exigido (categorias/permissões do usuário). */
+  modulo?: ModuloKey;
   /** Só aparece para quem a API autoriza (ex.: Auditoria restrita ao proprietário). */
   exigeAuditoria?: boolean;
   /** Mostra o contador de solicitações pendentes da IA. */
@@ -43,20 +46,33 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: '/dashboard', label: 'Painel', icon: LayoutDashboard },
-  { to: '/viagens', label: 'Viagens', icon: Truck },
-  { to: '/rigabras-ai', label: 'RIGABRAS AI', icon: Bot },
-  { to: '/portaria', label: 'Portaria', icon: ClipboardCheck },
-  { to: '/fronteira/kpis', label: 'KPIs de fronteira', icon: Gauge },
-  { to: '/fretes', label: 'Financeiro do frete', icon: Wallet },
-  { to: '/acompanhamento', label: 'Acompanhamento', icon: Radar },
-  { to: '/frota/kpis', label: 'Frota', icon: Wrench },
-  { to: '/jornada', label: 'Jornada', icon: Clock },
-  { to: '/wms', label: 'WMS', icon: Warehouse },
-  { to: '/exportacoes', label: 'Exportações', icon: UploadCloud },
-  { to: '/importar-dados', label: 'Importar dados', icon: UploadCloud },
-  { to: '/importar-ia', label: 'Importar com IA', icon: FileSpreadsheet, roles: ['SUPERADMIN', 'ADMIN', 'OPERADOR'] },
-  { to: '/solicitacoes-ia', label: 'Solicitações da IA', icon: Sparkles, roles: ['SUPERADMIN', 'ADMIN'], badge: 'solicitacoes' },
+  { to: '/dashboard', label: 'Painel', icon: LayoutDashboard, modulo: 'painel' },
+  { to: '/viagens', label: 'Viagens', icon: Truck, modulo: 'viagens' },
+  { to: '/rigabras-ai', label: 'RIGABRAS AI', icon: Bot, modulo: 'rigabras_ai' },
+  { to: '/portaria', label: 'Portaria', icon: ClipboardCheck, modulo: 'portaria' },
+  { to: '/fronteira/kpis', label: 'KPIs de fronteira', icon: Gauge, modulo: 'fronteira' },
+  { to: '/fretes', label: 'Financeiro do frete', icon: Wallet, modulo: 'fretes' },
+  { to: '/acompanhamento', label: 'Acompanhamento', icon: Radar, modulo: 'acompanhamento' },
+  { to: '/frota/kpis', label: 'Frota', icon: Wrench, modulo: 'frota' },
+  { to: '/jornada', label: 'Jornada', icon: Clock, modulo: 'jornada' },
+  { to: '/wms', label: 'WMS', icon: Warehouse, modulo: 'wms' },
+  { to: '/exportacoes', label: 'Exportações', icon: UploadCloud, modulo: 'exportacoes' },
+  { to: '/importar-dados', label: 'Importar dados', icon: UploadCloud, modulo: 'importacao' },
+  {
+    to: '/importar-ia',
+    label: 'Importar com IA',
+    icon: FileSpreadsheet,
+    roles: ['SUPERADMIN', 'ADMIN', 'OPERADOR'],
+    modulo: 'importacao',
+  },
+  {
+    to: '/solicitacoes-ia',
+    label: 'Solicitações da IA',
+    icon: Sparkles,
+    roles: ['SUPERADMIN', 'ADMIN'],
+    badge: 'solicitacoes',
+    modulo: 'solicitacoes_ia',
+  },
   { to: '/auditoria', label: 'Auditoria', icon: ShieldCheck, exigeAuditoria: true },
   { to: '/usuarios', label: 'Usuários', icon: Users, roles: ['SUPERADMIN'] },
 ];
@@ -168,12 +184,16 @@ export function DashboardLayout({
     };
   }, []);
 
-  const podeDecidirIa = role === 'SUPERADMIN' || role === 'ADMIN';
+  const podeDecidirIa =
+    (role === 'SUPERADMIN' || role === 'ADMIN') && podeAcessar('solicitacoes_ia');
   const { resumo } = useResumoSolicitacoesIa({ pollMs: podeDecidirIa ? 30000 : 0 });
   const badges = { solicitacoes: podeDecidirIa ? (resumo?.pendentes ?? 0) : 0 };
 
   const items = NAV.filter(
-    (i) => (!i.roles || (role && i.roles.includes(role))) && (!i.exigeAuditoria || perfil?.pode_ver_auditoria === true),
+    (i) =>
+      (!i.roles || (role && i.roles.includes(role))) &&
+      (!i.modulo || podeAcessar(i.modulo)) &&
+      (!i.exigeAuditoria || perfil?.pode_ver_auditoria === true),
   );
   const current = items.find((i) => isActive(pathname, i.to));
 

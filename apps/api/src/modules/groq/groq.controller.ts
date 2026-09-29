@@ -31,7 +31,10 @@ export const GroqController = {
       .maybeSingle();
 
     if (viagemError) {
-      logger.error({ err: viagemError, viagemId: id }, 'Falha ao consultar a viagem para análise de risco');
+      logger.error(
+        { err: viagemError, viagemId: id },
+        'Falha ao consultar a viagem para análise de risco',
+      );
       return Problems.internal(reply, 'Falha ao consultar a viagem');
     }
     if (!viagem) {

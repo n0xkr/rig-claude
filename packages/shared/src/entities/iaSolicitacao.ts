@@ -18,7 +18,13 @@ export const IaEntidadeSchema = z.enum([
 export type IaEntidade = z.infer<typeof IaEntidadeSchema>;
 
 /** Entidades que têm tabela de cadastro (as demais são perguntas sobre a estrutura da planilha). */
-export const ENTIDADES_CADASTRO = ['veiculos', 'motoristas', 'rastreadores', 'clientes', 'pontos_apoio'] as const;
+export const ENTIDADES_CADASTRO = [
+  'veiculos',
+  'motoristas',
+  'rastreadores',
+  'clientes',
+  'pontos_apoio',
+] as const;
 export type EntidadeCadastro = (typeof ENTIDADES_CADASTRO)[number];
 
 export const ENTIDADE_ROTULO: Record<IaEntidade, string> = {
@@ -34,7 +40,13 @@ export const ENTIDADE_ROTULO: Record<IaEntidade, string> = {
 export const TipoSolicitacaoSchema = z.enum(['CADASTRO', 'ATUALIZACAO', 'PERGUNTA']);
 export type TipoSolicitacao = z.infer<typeof TipoSolicitacaoSchema>;
 
-export const StatusSolicitacaoSchema = z.enum(['PENDENTE', 'APROVADA', 'RECUSADA', 'RESPONDIDA', 'ERRO']);
+export const StatusSolicitacaoSchema = z.enum([
+  'PENDENTE',
+  'APROVADA',
+  'RECUSADA',
+  'RESPONDIDA',
+  'ERRO',
+]);
 export type StatusSolicitacao = z.infer<typeof StatusSolicitacaoSchema>;
 
 /** Valores reservados de resposta. */
@@ -137,7 +149,9 @@ export const ResponderSolicitacaoInputSchema = z
   });
 export type ResponderSolicitacaoInput = z.infer<typeof ResponderSolicitacaoInputSchema>;
 
-export const RecusarSolicitacaoInputSchema = z.object({ motivo: z.string().trim().max(500).optional() });
+export const RecusarSolicitacaoInputSchema = z.object({
+  motivo: z.string().trim().max(500).optional(),
+});
 export type RecusarSolicitacaoInput = z.infer<typeof RecusarSolicitacaoInputSchema>;
 
 export const DecidirLoteInputSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });

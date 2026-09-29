@@ -13,7 +13,11 @@ import {
   type PerguntaCampo,
 } from './entidades.js';
 import { celulaVazia, comoPlaca, hashCurto, normTexto, valorBruto } from './leitura.js';
-import { IaSolicitacoesRepository, type NovaSolicitacao, type Row } from './iaSolicitacoes.repository.js';
+import {
+  IaSolicitacoesRepository,
+  type NovaSolicitacao,
+  type Row,
+} from './iaSolicitacoes.repository.js';
 import { sugerirDestinosDeColunas, sugerirEntidadeDeAba } from './sugestaoIa.js';
 
 const MAX_AVISOS = 25;
@@ -42,7 +46,12 @@ export class IndiceCadastro {
     for (const k of this.def.chavesDoNovo(dados)) {
       const r = this.mapa.get(k);
       if (!r) continue;
-      if (dados.codigo_externo && r.codigo_externo && String(dados.codigo_externo) !== String(r.codigo_externo)) continue;
+      if (
+        dados.codigo_externo &&
+        r.codigo_externo &&
+        String(dados.codigo_externo) !== String(r.codigo_externo)
+      )
+        continue;
       return r;
     }
     return null;
@@ -93,7 +102,9 @@ class Acumulador {
     else this.avisosOmitidos++;
   }
   finalizarAvisos(): string[] {
-    return this.avisosOmitidos > 0 ? [...this.avisos, `… e mais ${this.avisosOmitidos} avisos semelhantes.`] : this.avisos;
+    return this.avisosOmitidos > 0
+      ? [...this.avisos, `… e mais ${this.avisosOmitidos} avisos semelhantes.`]
+      : this.avisos;
   }
   add(s: NovaSolicitacao): void {
     this.novas.push(s);
@@ -103,7 +114,8 @@ class Acumulador {
   }
 }
 
-const linhaVazia = (l: Linha): boolean => Object.values(l).every((v) => celulaVazia(v) || valorBruto(v) === null);
+const linhaVazia = (l: Linha): boolean =>
+  Object.values(l).every((v) => celulaVazia(v) || valorBruto(v) === null);
 
 function amostrasDistintas(linhas: Linha[], coluna: string): string[] {
   const vistos = new Set<string>();
@@ -115,7 +127,8 @@ function amostrasDistintas(linhas: Linha[], coluna: string): string[] {
   return [...vistos];
 }
 
-const colunaTemDado = (linhas: Linha[], coluna: string): boolean => linhas.some((l) => valorBruto(l[coluna]) !== null);
+const colunaTemDado = (linhas: Linha[], coluna: string): boolean =>
+  linhas.some((l) => valorBruto(l[coluna]) !== null);
 
 // ---------------------------------------------------------------------------
 // Ponto de entrada: analisa UMA aba e devolve o resumo; grava só solicitações
@@ -132,7 +145,10 @@ export async function analisarAba(
   const linhas = input.linhas.filter((l) => !linhaVazia(l));
   const calculadas = new Set(input.colunasCalculadas);
 
-  const base = (situacao: AnalisarAbaResult['situacao'], entidade: string | null): AnalisarAbaResult => ({
+  const base = (
+    situacao: AnalisarAbaResult['situacao'],
+    entidade: string | null,
+  ): AnalisarAbaResult => ({
     aba: input.aba,
     situacao,
     entidade,
@@ -156,13 +172,17 @@ export async function analisarAba(
   }
 
   let def: EntidadeDef | null = entidadePorAba(abaNorm);
-  if (!def && decisaoAba && decisaoAba in ENTIDADES) def = ENTIDADES[decisaoAba as keyof typeof ENTIDADES];
+  if (!def && decisaoAba && decisaoAba in ENTIDADES)
+    def = ENTIDADES[decisaoAba as keyof typeof ENTIDADES];
 
   if (!def && !ABAS_SEM_CADASTRO.has(abaNorm)) {
     // Aba desconhecida: pergunta em vez de supor o que ela é.
     const sugestao = await sugerirEntidadeDeAba(input.aba, input.cabecalhos, linhas.slice(0, 3));
     const opcoes: OpcaoPergunta[] = [
-      ...Object.values(ENTIDADES).map((e) => ({ valor: e.entidade, rotulo: `É cadastro de: ${e.rotulo}` })),
+      ...Object.values(ENTIDADES).map((e) => ({
+        valor: e.entidade,
+        rotulo: `É cadastro de: ${e.rotulo}`,
+      })),
       { valor: RESPOSTA_IGNORAR, rotulo: 'Ignorar esta aba' },
     ];
     acc.add({
@@ -184,12 +204,17 @@ export async function analisarAba(
     return base('desconhecida', null);
   }
 
-  if (def) await processarEntidade(ctx, def, datasetId, input, linhas, calculadas, conhecimento, acc);
+  if (def)
+    await processarEntidade(ctx, def, datasetId, input, linhas, calculadas, conhecimento, acc);
   await descobrirEntidades(ctx, def, datasetId, input, linhas, calculadas, acc);
   const pendentesInseridas = acc.novas.length;
   await persistir(repo, acc);
-  if (!def) acc.aviso('Cadastro dos registros desta aba ainda não implementado — extraí placas, motoristas, clientes e pontos frequentes.');
-  if (def && pendentesInseridas === 0 && acc.jaCadastrados === 0) acc.aviso('Nenhuma linha com dados para cadastrar.');
+  if (!def)
+    acc.aviso(
+      'Cadastro dos registros desta aba ainda não implementado — extraí placas, motoristas, clientes e pontos frequentes.',
+    );
+  if (def && pendentesInseridas === 0 && acc.jaCadastrados === 0)
+    acc.aviso('Nenhuma linha com dados para cadastrar.');
   return base(def ? 'processada' : 'nao_suportada', def?.entidade ?? null);
 }
 
@@ -210,7 +235,10 @@ async function persistir(repo: IaSolicitacoesRepository, acc: Acumulador): Promi
     }
   }
   acc.jaCadastrados += repetidas;
-  if (repetidas > 0) acc.aviso(`${repetidas} pedido(s) já haviam sido feitos/decididos antes (ou repetem outra linha) — não foram criados de novo.`);
+  if (repetidas > 0)
+    acc.aviso(
+      `${repetidas} pedido(s) já haviam sido feitos/decididos antes (ou repetem outra linha) — não foram criados de novo.`,
+    );
   await repo.inserir(novas);
   acc.novas.length = 0;
 }
@@ -244,7 +272,10 @@ async function processarEntidade(
     const aprendido = conhecimento.colunas.get(`${abaNorm}|${norm}`);
     let destino: Destino | null = null;
     if (doDicionario) {
-      if ('campo' in doDicionario) destino = def.campos[doDicionario.campo] ? { kind: 'campo', campo: doDicionario.campo } : null;
+      if ('campo' in doDicionario)
+        destino = def.campos[doDicionario.campo]
+          ? { kind: 'campo', campo: doDicionario.campo }
+          : null;
       else if ('extra' in doDicionario) destino = { kind: 'extra' };
       else destino = { kind: 'ignorar', motivo: 'conhecida' };
     } else if (aprendido) {
@@ -254,7 +285,9 @@ async function processarEntidade(
     }
     if (destino?.kind === 'campo') {
       if (camposUsados.has(destino.campo)) {
-        acc.aviso(`Coluna "${header}" também aponta para "${def.campos[destino.campo]!.label}": guardada como informação extra.`);
+        acc.aviso(
+          `Coluna "${header}" também aponta para "${def.campos[destino.campo]!.label}": guardada como informação extra.`,
+        );
         destino = { kind: 'extra' };
       } else camposUsados.add(destino.campo);
     }
@@ -266,7 +299,9 @@ async function processarEntidade(
 
   // Colunas que a IA não conhece: pergunta (com sugestão da IA, nunca aplicada sozinha).
   if (desconhecidas.length > 0) {
-    const livres = Object.keys(def.campos).filter((k) => !camposUsados.has(k) && !def.campos[k]!.aux);
+    const livres = Object.keys(def.campos).filter(
+      (k) => !camposUsados.has(k) && !def.campos[k]!.aux,
+    );
     const sugestoes = await sugerirDestinosDeColunas(
       input.aba,
       def,
@@ -276,7 +311,10 @@ async function processarEntidade(
     for (const coluna of desconhecidas) {
       const amostras = amostrasDistintas(linhas, coluna);
       const opcoes: OpcaoPergunta[] = [
-        ...livres.map((k) => ({ valor: k, rotulo: `Campo "${def.campos[k]!.label}" do cadastro de ${def.rotulo}` })),
+        ...livres.map((k) => ({
+          valor: k,
+          rotulo: `Campo "${def.campos[k]!.label}" do cadastro de ${def.rotulo}`,
+        })),
         { valor: RESPOSTA_EXTRA, rotulo: 'Guardar como informação extra (sem campo próprio)' },
         { valor: RESPOSTA_IGNORAR, rotulo: 'Ignorar esta coluna' },
       ];
@@ -310,16 +348,22 @@ async function processarEntidade(
 
     const faltando = def.obrigatorios.filter((k) => reg.dados[k] === undefined);
     if (faltando.length > 0) {
-      acc.aviso(`Linha ${numeroLinha}: sem ${faltando.map((k) => def.campos[k]!.label).join(', ')} — não gerou solicitação.`);
+      acc.aviso(
+        `Linha ${numeroLinha}: sem ${faltando.map((k) => def.campos[k]!.label).join(', ')} — não gerou solicitação.`,
+      );
       continue;
     }
     const chave = def.chavePrincipal(reg.dados);
     if (!chave) {
-      acc.aviso(`Linha ${numeroLinha}: não há como identificar o registro (sem código nem nome) — não gerou solicitação.`);
+      acc.aviso(
+        `Linha ${numeroLinha}: não há como identificar o registro (sem código nem nome) — não gerou solicitação.`,
+      );
       continue;
     }
     if (chavesVistas.has(chave)) {
-      acc.aviso(`Linha ${numeroLinha}: repete "${chave}" (já lido em outra linha desta aba) — mantida a primeira.`);
+      acc.aviso(
+        `Linha ${numeroLinha}: repete "${chave}" (já lido em outra linha desta aba) — mantida a primeira.`,
+      );
       continue;
     }
     chavesVistas.add(chave);
@@ -329,7 +373,10 @@ async function processarEntidade(
 
     // Perguntas que só existem para criar um registro novo: se ele já existe, o valor atual prevalece.
     let perguntas: PerguntaCampo[] = reg.perguntas;
-    if (existente) perguntas = perguntas.filter((p) => existente[p.campo] === undefined || existente[p.campo] === null);
+    if (existente)
+      perguntas = perguntas.filter(
+        (p) => existente[p.campo] === undefined || existente[p.campo] === null,
+      );
 
     if (perguntas.length > 0) {
       const [primeira, ...restantes] = perguntas;
@@ -411,7 +458,8 @@ function classePorCabecalho(norm: string): ClassePlaca {
   return 'INDEFINIDO';
 }
 
-const cabecalhoDePlaca = (norm: string) => norm === 'placa' || norm.startsWith('placa ') || norm.includes(' placa');
+const cabecalhoDePlaca = (norm: string) =>
+  norm === 'placa' || norm.startsWith('placa ') || norm.includes(' placa');
 
 async function descobrirEntidades(
   ctx: Contexto,
@@ -438,7 +486,11 @@ async function descobrirEntidades(
       const norm = normTexto(h);
       if (!cabecalhoDePlaca(norm)) continue;
       const classe = classePorCabecalho(norm);
-      const estrita = norm === 'placa' || norm === 'placa cavalo' || norm.includes('carreta') || norm.includes('reboque');
+      const estrita =
+        norm === 'placa' ||
+        norm === 'placa cavalo' ||
+        norm.includes('carreta') ||
+        norm.includes('reboque');
       for (const l of linhas) {
         const v = valorBruto(l[h]);
         if (v === null || celulaVazia(v)) continue;
@@ -451,14 +503,21 @@ async function descobrirEntidades(
           }
           continue;
         }
-        const a = achados.get(p) ?? { classes: new Set<ClassePlaca>(), colunas: new Set<string>(), ocorrencias: 0 };
+        const a = achados.get(p) ?? {
+          classes: new Set<ClassePlaca>(),
+          colunas: new Set<string>(),
+          ocorrencias: 0,
+        };
         a.classes.add(classe);
         a.colunas.add(h);
         a.ocorrencias++;
         achados.set(p, a);
       }
     }
-    for (const [col, exemplos] of invalidas) acc.aviso(`Coluna "${col}": valores que não parecem placa (ex.: ${exemplos.join(', ')}) foram ignorados.`);
+    for (const [col, exemplos] of invalidas)
+      acc.aviso(
+        `Coluna "${col}": valores que não parecem placa (ex.: ${exemplos.join(', ')}) foram ignorados.`,
+      );
 
     if (achados.size > 0) {
       const defV = ENTIDADES.veiculos;
@@ -479,7 +538,14 @@ async function descobrirEntidades(
             titulo: `Cavalo ${placa}`,
             descricao: `Só a placa é conhecida: ${origem}. O cabeçalho da coluna diz que é cavalo. Vínculo e demais dados não informados.`,
             aba: input.aba,
-            dados_propostos: { placa, tipo: 'CAVALO', dados_extras: { 'Origem do cadastro': origem, Vínculo: 'não informado (frota própria é o padrão do sistema)' } },
+            dados_propostos: {
+              placa,
+              tipo: 'CAVALO',
+              dados_extras: {
+                'Origem do cadastro': origem,
+                Vínculo: 'não informado (frota própria é o padrão do sistema)',
+              },
+            },
             evidencia: { aba: input.aba, colunas: [...a.colunas], ocorrencias: a.ocorrencias },
             chave_natural: placa,
             chave_dedup: `c:veiculos:${placa}:auto`,
@@ -487,7 +553,9 @@ async function descobrirEntidades(
           continue;
         }
         const opcoes: OpcaoPergunta[] = [
-          ...(unica === 'REBOQUE' ? OPCOES_TIPO_VEICULO.filter((o) => o.valor !== 'CAVALO') : OPCOES_TIPO_VEICULO),
+          ...(unica === 'REBOQUE'
+            ? OPCOES_TIPO_VEICULO.filter((o) => o.valor !== 'CAVALO')
+            : OPCOES_TIPO_VEICULO),
           { valor: RESPOSTA_IGNORAR, rotulo: 'Não é um veículo / ignorar esta placa' },
         ];
         acc.add({
@@ -504,8 +572,19 @@ async function descobrirEntidades(
           campo_pergunta: 'tipo',
           entrada: 'OPCAO',
           opcoes,
-          dados_propostos: { placa, dados_extras: { 'Origem do cadastro': origem, Vínculo: 'não informado (frota própria é o padrão do sistema)' } },
-          evidencia: { aba: input.aba, colunas: [...a.colunas], ocorrencias: a.ocorrencias, perguntas_restantes: [] },
+          dados_propostos: {
+            placa,
+            dados_extras: {
+              'Origem do cadastro': origem,
+              Vínculo: 'não informado (frota própria é o padrão do sistema)',
+            },
+          },
+          evidencia: {
+            aba: input.aba,
+            colunas: [...a.colunas],
+            ocorrencias: a.ocorrencias,
+            perguntas_restantes: [],
+          },
           chave_natural: placa,
           chave_dedup: `p:veiculos:${placa}:tipo`,
         });
@@ -545,7 +624,12 @@ async function descobrirEntidades(
           campo_pergunta: 'nome_completo',
           entrada: 'TEXTO',
           dados_propostos: { codigo_externo: id },
-          evidencia: { aba: input.aba, colunas: [...a.colunas], ocorrencias: a.ocorrencias, perguntas_restantes: [] },
+          evidencia: {
+            aba: input.aba,
+            colunas: [...a.colunas],
+            ocorrencias: a.ocorrencias,
+            perguntas_restantes: [],
+          },
           chave_natural: id,
           chave_dedup: `p:motoristas:${id}:nome_completo`,
         });
@@ -593,7 +677,10 @@ async function descobrirEntidades(
 
   // ---- Pontos mais frequentes (origem/destino nas viagens, local nas posições) ---
   if (defAba?.entidade !== 'pontos_apoio' && ABAS_SEM_CADASTRO.has(abaNorm)) {
-    const contagem = new Map<string, { nomes: Map<string, number>; porColuna: Record<string, number> }>();
+    const contagem = new Map<
+      string,
+      { nomes: Map<string, number>; porColuna: Record<string, number> }
+    >();
     for (const h of cabecalhos) {
       const norm = normTexto(h);
       if (!['origem', 'destino', 'local'].includes(norm)) continue;
@@ -608,11 +695,16 @@ async function descobrirEntidades(
         contagem.set(k, a);
       }
     }
-    const frequentes = [...contagem.entries()].filter(([, a]) => Object.values(a.porColuna).reduce((x, y) => x + y, 0) >= FREQUENCIA_MINIMA);
+    const frequentes = [...contagem.entries()].filter(
+      ([, a]) => Object.values(a.porColuna).reduce((x, y) => x + y, 0) >= FREQUENCIA_MINIMA,
+    );
     if (frequentes.length > 0) {
       const defP = ENTIDADES.pontos_apoio;
       const indiceP = await ctx.indice(defP);
-      const conhecidos = await ctx.repo.chavesNaturaisConhecidas('pontos_apoio', frequentes.map(([k]) => k));
+      const conhecidos = await ctx.repo.chavesNaturaisConhecidas(
+        'pontos_apoio',
+        frequentes.map(([k]) => k),
+      );
       for (const [k, a] of frequentes) {
         if (indiceP.tem(`nome:${k}`) || conhecidos.has(k)) continue;
         const nome = [...a.nomes.entries()].sort((x, y) => y[1] - x[1])[0]![0];
@@ -624,9 +716,16 @@ async function descobrirEntidades(
           titulo: defP.titulo({ nome, frequencia: total }),
           descricao: `Ponto frequente detectado na aba ${input.aba}: ${Object.entries(a.porColuna)
             .map(([c, n]) => `${n}× em "${c}"`)
-            .join(', ')}. O tipo (base, posto, pátio...) não é informado nessas colunas — fica em branco.`,
+            .join(
+              ', ',
+            )}. O tipo (base, posto, pátio...) não é informado nessas colunas — fica em branco.`,
           aba: input.aba,
-          dados_propostos: { nome, frequencia: total, origem_registro: 'FREQUENTE', dados_extras: { 'Contagem por coluna': a.porColuna, Aba: input.aba } },
+          dados_propostos: {
+            nome,
+            frequencia: total,
+            origem_registro: 'FREQUENTE',
+            dados_extras: { 'Contagem por coluna': a.porColuna, Aba: input.aba },
+          },
           evidencia: { aba: input.aba, contagem: a.porColuna },
           chave_natural: k,
           chave_dedup: `c:pontos_apoio:${k}:auto`,

@@ -103,7 +103,10 @@ export class PortariaRepository {
     return data as PortariaDocumento;
   }
 
-  async findDocumentoById(entradaId: string, documentoId: string): Promise<PortariaDocumento | null> {
+  async findDocumentoById(
+    entradaId: string,
+    documentoId: string,
+  ): Promise<PortariaDocumento | null> {
     const { data, error } = await supabaseAdmin
       .from(DOCUMENTOS)
       .select('*')

@@ -65,7 +65,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     if (reply.statusCode < 500) return payload;
     const pgProblem = pgErrorToProblem(payload);
     if (!pgProblem) return payload;
-    logger.warn({ err: payload, correlationId: request.id, url: request.url }, 'Erro de banco mapeado');
+    logger.warn(
+      { err: payload, correlationId: request.id, url: request.url },
+      'Erro de banco mapeado',
+    );
     reply.status(pgProblem.status).type('application/problem+json');
     return {
       type: 'about:blank',
@@ -116,7 +119,10 @@ export async function buildApp(): Promise<FastifyInstance> {
     // como PostgrestError (não é `Error`): devolve 409/422/400 em vez de 500.
     const pgProblem = pgErrorToProblem(error);
     if (pgProblem) {
-      logger.warn({ err: error, correlationId: request.id, url: request.url }, 'Erro de banco mapeado');
+      logger.warn(
+        { err: error, correlationId: request.id, url: request.url },
+        'Erro de banco mapeado',
+      );
       sendProblem(reply, pgProblem.status, pgProblem.title, pgProblem.detail);
       return;
     }

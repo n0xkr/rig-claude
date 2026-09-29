@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { UserRoleSchema } from '@rigabras/shared';
+import { PermissoesSchema, UserRoleSchema } from '@rigabras/shared';
 import { UsuariosService } from './usuarios.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
 import { DomainError } from '../../lib/errors.js';
@@ -13,6 +13,8 @@ const CreateSchema = z.object({
   password: z.string().min(8).max(72),
   role: UserRoleSchema,
   ativo: z.boolean().optional(),
+  categoria_id: z.string().uuid().nullable().optional(),
+  permissoes: PermissoesSchema.nullable().optional(),
 });
 
 const PatchSchema = z
@@ -21,8 +23,12 @@ const PatchSchema = z
     role: UserRoleSchema,
     ativo: z.boolean(),
     password: z.string().min(8).max(72),
+    categoria_id: z.string().uuid().nullable(),
+    /** `null` volta a herdar as permissões da categoria. */
+    permissoes: PermissoesSchema.nullable(),
   })
-  .partial();
+  .partial()
+  .strict();
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
@@ -65,6 +71,6 @@ export const UsuariosController = {
   async remove(request: FastifyRequest, reply: FastifyReply) {
     const params = parseOrProblem(ParamsSchema, request.params, reply);
     if (!params) return;
-    return run(reply, () => service.remove(params.id, request.user!.sub, request.ip), 204);
+    return run(reply, () => service.remove(params.id, request.user!.sub, request.ip));
   },
 };

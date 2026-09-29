@@ -13,7 +13,9 @@ export interface ListAuditLogsFilter {
 
 /** Leitura da trilha de auditoria (critério #21) — escrita é feita exclusivamente por `writeAuditLog`, já usado por todos os módulos. */
 export class AuditoriaRepository {
-  async list(filter: ListAuditLogsFilter): Promise<{ data: AuditLog[]; nextCursor: string | null }> {
+  async list(
+    filter: ListAuditLogsFilter,
+  ): Promise<{ data: AuditLog[]; nextCursor: string | null }> {
     let query = supabaseAdmin
       .from(TABLE)
       .select('*, user:profiles(nome_completo, email)')

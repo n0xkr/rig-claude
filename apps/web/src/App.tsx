@@ -1,5 +1,5 @@
 import { Route, Routes, useLocation } from 'react-router-dom';
-import { AuthGate } from './components/AuthGate.js';
+import { AuthGate, RotaInicial } from './components/AuthGate.js';
 import { DashboardLayout } from './components/layout/DashboardLayout.js';
 import LoginPage from './pages/LoginPage.js';
 import RegisterPage from './pages/RegisterPage.js';
@@ -51,354 +51,347 @@ export default function App() {
   const isPublicRoute = location.pathname === '/login' || location.pathname === '/registro';
 
   const routes = (
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/registro" element={<RegisterPage />} />
-            <Route
-              path="/dashboard"
-              element={
-                <AuthGate>
-                  <DashboardPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <AuthGate>
-                  <ViagensListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/viagens"
-              element={
-                <AuthGate>
-                  <ViagensListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/viagens/nova"
-              element={
-                <AuthGate>
-                  <ViagemFormPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/viagens/:id"
-              element={
-                <AuthGate>
-                  <ViagemDetailPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/viagens/:id/fronteira"
-              element={
-                <AuthGate>
-                  <FronteiraTravessiaPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/viagens/:id/validacao-pre-embarque"
-              element={
-                <AuthGate>
-                  <ValidacaoPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/viagens/:id/frete"
-              element={
-                <AuthGate>
-                  <ViagemFechamentoPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/fronteira/kpis"
-              element={
-                <AuthGate>
-                  <FronteiraKpiPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/fretes"
-              element={
-                <AuthGate>
-                  <FretesListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/fretes/:id"
-              element={
-                <AuthGate>
-                  <FreteDetailPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/frota/kpis"
-              element={
-                <AuthGate>
-                  <FrotaKpiPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/frota/manutencoes"
-              element={
-                <AuthGate>
-                  <ManutencoesListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/frota/manutencoes/nova"
-              element={
-                <AuthGate>
-                  <ManutencaoFormPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/frota/manutencoes/:id"
-              element={
-                <AuthGate>
-                  <ManutencaoDetailPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/jornada"
-              element={
-                <AuthGate>
-                  <JornadaRegistroPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/jornada/alertas"
-              element={
-                <AuthGate>
-                  <JornadaAlertasPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/jornada/motoristas/:motoristaId/historico"
-              element={
-                <AuthGate>
-                  <JornadaHistoricoPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms"
-              element={
-                <AuthGate>
-                  <WmsKpiPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/depositantes"
-              element={
-                <AuthGate>
-                  <DepositantesListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/depositantes/novo"
-              element={
-                <AuthGate>
-                  <DepositanteFormPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/produtos"
-              element={
-                <AuthGate>
-                  <ProdutosListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/produtos/:produtoId/rastreio"
-              element={
-                <AuthGate>
-                  <RastreioProdutoPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/armazem/mapa"
-              element={
-                <AuthGate>
-                  <ArmazemMapaPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/recebimentos"
-              element={
-                <AuthGate>
-                  <RecebimentosListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/recebimentos/novo"
-              element={
-                <AuthGate>
-                  <RecebimentoFormPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/recebimentos/:id"
-              element={
-                <AuthGate>
-                  <RecebimentoDetailPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/expedicoes"
-              element={
-                <AuthGate>
-                  <ExpedicoesListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/expedicoes/nova"
-              element={
-                <AuthGate>
-                  <ExpedicaoFormPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/expedicoes/:id"
-              element={
-                <AuthGate>
-                  <ExpedicaoDetailPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/wms/avarias"
-              element={
-                <AuthGate>
-                  <AvariasListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/exportacoes"
-              element={
-                <AuthGate>
-                  <ExportacoesPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/portaria"
-              element={
-                <AuthGate>
-                  <PortariaEntradasListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/portaria/nova"
-              element={
-                <AuthGate>
-                  <PortariaEntradaFormPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/portaria/:id"
-              element={
-                <AuthGate>
-                  <PortariaEntradaDetailPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/importar-dados"
-              element={
-                <AuthGate>
-                  <ImportarDadosPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/importar-ia"
-              element={
-                <AuthGate>
-                  <ImportarPlanilhaIaPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/solicitacoes-ia"
-              element={
-                <AuthGate>
-                  <SolicitacoesIaPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/perfil"
-              element={
-                <AuthGate>
-                  <PerfilPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/rigabras-ai"
-              element={
-                <AuthGate>
-                  <RigabrasAiPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/auditoria"
-              element={
-                <AuthGate>
-                  <AuditoriaListPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/acompanhamento"
-              element={
-                <AuthGate>
-                  <AcompanhamentoPage />
-                </AuthGate>
-              }
-            />
-            <Route
-              path="/usuarios"
-              element={
-                <AuthGate>
-                  <UsuariosPage />
-                </AuthGate>
-              }
-            />
-          </Routes>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/registro" element={<RegisterPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <AuthGate modulo="painel">
+            <DashboardPage />
+          </AuthGate>
+        }
+      />
+      <Route path="/" element={<RotaInicial />} />
+      <Route
+        path="/viagens"
+        element={
+          <AuthGate modulo="viagens">
+            <ViagensListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/viagens/nova"
+        element={
+          <AuthGate modulo="viagens">
+            <ViagemFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/viagens/:id"
+        element={
+          <AuthGate modulo="viagens">
+            <ViagemDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/viagens/:id/fronteira"
+        element={
+          <AuthGate modulo="viagens">
+            <FronteiraTravessiaPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/viagens/:id/validacao-pre-embarque"
+        element={
+          <AuthGate modulo="viagens">
+            <ValidacaoPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/viagens/:id/frete"
+        element={
+          <AuthGate modulo="viagens">
+            <ViagemFechamentoPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/fronteira/kpis"
+        element={
+          <AuthGate modulo="fronteira">
+            <FronteiraKpiPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/fretes"
+        element={
+          <AuthGate modulo="fretes">
+            <FretesListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/fretes/:id"
+        element={
+          <AuthGate modulo="fretes">
+            <FreteDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/frota/kpis"
+        element={
+          <AuthGate modulo="frota">
+            <FrotaKpiPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/frota/manutencoes"
+        element={
+          <AuthGate modulo="frota">
+            <ManutencoesListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/frota/manutencoes/nova"
+        element={
+          <AuthGate modulo="frota">
+            <ManutencaoFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/frota/manutencoes/:id"
+        element={
+          <AuthGate modulo="frota">
+            <ManutencaoDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/jornada"
+        element={
+          <AuthGate modulo="jornada">
+            <JornadaRegistroPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/jornada/alertas"
+        element={
+          <AuthGate modulo="jornada">
+            <JornadaAlertasPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/jornada/motoristas/:motoristaId/historico"
+        element={
+          <AuthGate modulo="jornada">
+            <JornadaHistoricoPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms"
+        element={
+          <AuthGate modulo="wms">
+            <WmsKpiPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/depositantes"
+        element={
+          <AuthGate modulo="wms">
+            <DepositantesListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/depositantes/novo"
+        element={
+          <AuthGate modulo="wms">
+            <DepositanteFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/produtos"
+        element={
+          <AuthGate modulo="wms">
+            <ProdutosListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/produtos/:produtoId/rastreio"
+        element={
+          <AuthGate modulo="wms">
+            <RastreioProdutoPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/armazem/mapa"
+        element={
+          <AuthGate modulo="wms">
+            <ArmazemMapaPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/recebimentos"
+        element={
+          <AuthGate modulo="wms">
+            <RecebimentosListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/recebimentos/novo"
+        element={
+          <AuthGate modulo="wms">
+            <RecebimentoFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/recebimentos/:id"
+        element={
+          <AuthGate modulo="wms">
+            <RecebimentoDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/expedicoes"
+        element={
+          <AuthGate modulo="wms">
+            <ExpedicoesListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/expedicoes/nova"
+        element={
+          <AuthGate modulo="wms">
+            <ExpedicaoFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/expedicoes/:id"
+        element={
+          <AuthGate modulo="wms">
+            <ExpedicaoDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/wms/avarias"
+        element={
+          <AuthGate modulo="wms">
+            <AvariasListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/exportacoes"
+        element={
+          <AuthGate modulo="exportacoes">
+            <ExportacoesPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/portaria"
+        element={
+          <AuthGate modulo="portaria">
+            <PortariaEntradasListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/portaria/nova"
+        element={
+          <AuthGate modulo="portaria">
+            <PortariaEntradaFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/portaria/:id"
+        element={
+          <AuthGate modulo="portaria">
+            <PortariaEntradaDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/importar-dados"
+        element={
+          <AuthGate modulo="importacao">
+            <ImportarDadosPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/importar-ia"
+        element={
+          <AuthGate modulo="importacao">
+            <ImportarPlanilhaIaPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/solicitacoes-ia"
+        element={
+          <AuthGate modulo="solicitacoes_ia">
+            <SolicitacoesIaPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <AuthGate>
+            <PerfilPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/rigabras-ai"
+        element={
+          <AuthGate modulo="rigabras_ai">
+            <RigabrasAiPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/auditoria"
+        element={
+          <AuthGate>
+            <AuditoriaListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/acompanhamento"
+        element={
+          <AuthGate modulo="acompanhamento">
+            <AcompanhamentoPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/usuarios"
+        element={
+          <AuthGate>
+            <UsuariosPage />
+          </AuthGate>
+        }
+      />
+    </Routes>
   );
 
   if (isPublicRoute) return <div className="min-h-screen">{routes}</div>;

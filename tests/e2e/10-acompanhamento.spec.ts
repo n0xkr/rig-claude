@@ -27,7 +27,9 @@ test.describe('Acompanhamento de veículos', () => {
     await expect(linha).toContainText('130.500');
   });
 
-  test('importa planilha CSV: IA/heurística mapeia colunas, valida e grava; reimportar atualiza', async ({ page }) => {
+  test('importa planilha CSV: IA/heurística mapeia colunas, valida e grava; reimportar atualiza', async ({
+    page,
+  }) => {
     await loginAs(page, 'OPERADOR');
     await page.goto('/acompanhamento');
     const p1 = randomPlaca();
@@ -56,7 +58,9 @@ test.describe('Acompanhamento de veículos', () => {
     await expect(linha1).toContainText('Em trânsito');
     await expect(linha1).toContainText('120.300');
     await expect(linha1).toContainText('55%');
-    await expect(page.getByTestId('acomp-linha').filter({ hasText: p2 })).toContainText('(vencida)');
+    await expect(page.getByTestId('acomp-linha').filter({ hasText: p2 })).toContainText(
+      '(vencida)',
+    );
 
     // Reimportar a mesma placa ATUALIZA (não duplica).
     await page.getByTestId('btn-importar-ia').click();

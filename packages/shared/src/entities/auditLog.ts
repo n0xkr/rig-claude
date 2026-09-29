@@ -10,9 +10,6 @@ export const AuditLogSchema = z.object({
   changes_json: z.record(z.unknown()).nullable().optional(),
   ip: z.string().nullable().optional(),
   created_at: z.string().datetime().optional(),
-  user: z
-    .object({ nome_completo: z.string(), email: z.string() })
-    .nullable()
-    .optional(),
+  user: z.object({ nome_completo: z.string(), email: z.string() }).nullable().optional(),
 });
 export type AuditLog = z.infer<typeof AuditLogSchema>;

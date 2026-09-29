@@ -26,7 +26,12 @@ export const ViagensController = {
     const query = request.query as { status?: string; cursor?: string; limit?: string };
     const limit = query.limit ? Number(query.limit) : 20;
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
-      return sendProblem(reply, 422, 'Parâmetro inválido', 'limit deve ser um inteiro entre 1 e 200');
+      return sendProblem(
+        reply,
+        422,
+        'Parâmetro inválido',
+        'limit deve ser um inteiro entre 1 e 200',
+      );
     }
     try {
       // `status` inválido (fora do enum do banco) vira DomainError 422 no repository.

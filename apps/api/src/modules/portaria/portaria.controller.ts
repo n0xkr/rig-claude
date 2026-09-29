@@ -31,7 +31,12 @@ function handleDomainError(error: unknown, reply: FastifyReply): boolean {
       : null;
   switch (code) {
     case '23505':
-      sendProblem(reply, 409, 'Conflito de estado', 'Registro duplicado (já existe um registro com estes dados)');
+      sendProblem(
+        reply,
+        409,
+        'Conflito de estado',
+        'Registro duplicado (já existe um registro com estes dados)',
+      );
       return true;
     case '23503':
       sendProblem(
@@ -42,7 +47,12 @@ function handleDomainError(error: unknown, reply: FastifyReply): boolean {
       );
       return true;
     case '23514':
-      sendProblem(reply, 422, 'Entidade não processável', 'Algum valor viola uma regra de validação do banco');
+      sendProblem(
+        reply,
+        422,
+        'Entidade não processável',
+        'Algum valor viola uma regra de validação do banco',
+      );
       return true;
     case '23502':
       sendProblem(reply, 422, 'Entidade não processável', 'Campo obrigatório ausente');

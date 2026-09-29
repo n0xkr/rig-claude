@@ -119,7 +119,10 @@ export async function askOperationalQuestion(
     max_tokens: 600,
     messages: [
       { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
-      { role: 'user', content: `SNAPSHOT DE DADOS (JSON):\n${snapshotJson}\n\nPERGUNTA: ${pergunta}` },
+      {
+        role: 'user',
+        content: `SNAPSHOT DE DADOS (JSON):\n${snapshotJson}\n\nPERGUNTA: ${pergunta}`,
+      },
     ],
   });
 
@@ -135,7 +138,11 @@ export async function askOperationalQuestion(
  * recursos de IA de importação e insights. Devolve o objeto já parseado —
  * quem chama SEMPRE valida o formato com Zod antes de confiar no conteúdo.
  */
-export async function completeJson(system: string, user: string, maxTokens = 1500): Promise<unknown> {
+export async function completeJson(
+  system: string,
+  user: string,
+  maxTokens = 1500,
+): Promise<unknown> {
   if (!isGroqConfigured) {
     throw new GroqNotConfiguredError();
   }

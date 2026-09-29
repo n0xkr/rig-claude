@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { IMPORT_TARGET_FIELDS, ImportTargetSchema, mapearPorNome, pontuarAlvo } from '@rigabras/shared';
+import {
+  IMPORT_TARGET_FIELDS,
+  ImportTargetSchema,
+  mapearPorNome,
+  pontuarAlvo,
+} from '@rigabras/shared';
 import type { AnalisarPlanilhaInput, AnalisarPlanilhaResult, ImportTarget } from '@rigabras/shared';
 import { completeJson } from '../groq/groq.client.js';
 import { isGroqConfigured } from '../../config/env.js';
@@ -21,7 +26,9 @@ export function analisarHeuristica(input: AnalisarPlanilhaInput): AnalisarPlanil
     confianca: Math.max(0.1, Math.min(0.75, mapeadas / Math.max(input.cabecalhos.length, 1))),
     mapeamento,
     valueMaps: {},
-    observacoes: ['Mapeamento sugerido por nome de coluna (IA indisponível). Revise antes de importar.'],
+    observacoes: [
+      'Mapeamento sugerido por nome de coluna (IA indisponível). Revise antes de importar.',
+    ],
   };
 }
 
@@ -113,7 +120,9 @@ function sanear(
   };
 }
 
-export async function analisarPlanilha(input: AnalisarPlanilhaInput): Promise<AnalisarPlanilhaResult> {
+export async function analisarPlanilha(
+  input: AnalisarPlanilhaInput,
+): Promise<AnalisarPlanilhaResult> {
   if (!isGroqConfigured) return analisarHeuristica(input);
   try {
     const usuario = JSON.stringify(
@@ -138,7 +147,9 @@ export async function analisarPlanilha(input: AnalisarPlanilhaInput): Promise<An
   } catch (err) {
     logger.warn({ err }, 'Análise de planilha por IA falhou; usando heurística');
     const fallback = analisarHeuristica(input);
-    fallback.observacoes.unshift('A IA não respondeu; usei um mapeamento automático por nome de coluna.');
+    fallback.observacoes.unshift(
+      'A IA não respondeu; usei um mapeamento automático por nome de coluna.',
+    );
     return fallback;
   }
 }

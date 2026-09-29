@@ -67,14 +67,20 @@ export const IaSolicitacoesController = {
   async aprovarLote(request: FastifyRequest, reply: FastifyReply) {
     const body = parseOrProblem(DecidirLoteInputSchema, request.body, reply);
     if (!body) return;
-    return run(reply, async () => ({ resultados: await service.aprovarLote(body.ids, request.user!.sub, request.ip) }));
+    return run(reply, async () => ({
+      resultados: await service.aprovarLote(body.ids, request.user!.sub, request.ip),
+    }));
   },
 
   // ----- lote de importação (planilha inteira, uma aba por chamada) -----------
   async criarLote(request: FastifyRequest, reply: FastifyReply) {
     const body = parseOrProblem(CriarLoteInputSchema, request.body, reply);
     if (!body) return;
-    return run(reply, () => service.criarLote(body.nome, body.origem, request.user!.sub, request.ip), 201);
+    return run(
+      reply,
+      () => service.criarLote(body.nome, body.origem, request.user!.sub, request.ip),
+      201,
+    );
   },
 
   async analisarAba(request: FastifyRequest, reply: FastifyReply) {

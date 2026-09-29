@@ -25,7 +25,11 @@ export const AuthController = {
     try {
       const session = await service.register(body.email, body.password, body.nome_completo);
       setRefreshCookie(reply, session.refreshToken);
-      return reply.status(201).send({ accessToken: session.accessToken, profile: session.profile });
+      return reply.status(201).send({
+        accessToken: session.accessToken,
+        profile: session.profile,
+        permissoes: session.permissoes,
+      });
     } catch (error) {
       if (error instanceof DomainError) {
         if (error.status === 409) return Problems.conflict(reply, error.detail ?? error.message);
@@ -42,7 +46,11 @@ export const AuthController = {
     try {
       const session = await service.login(body.email, body.password);
       setRefreshCookie(reply, session.refreshToken);
-      return reply.send({ accessToken: session.accessToken, profile: session.profile });
+      return reply.send({
+        accessToken: session.accessToken,
+        profile: session.profile,
+        permissoes: session.permissoes,
+      });
     } catch (error) {
       if (error instanceof DomainError) {
         if (error.status === 403) return Problems.forbidden(reply, error.detail ?? error.message);
@@ -61,7 +69,11 @@ export const AuthController = {
     try {
       const session = await service.refresh(token);
       setRefreshCookie(reply, session.refreshToken);
-      return reply.send({ accessToken: session.accessToken, profile: session.profile });
+      return reply.send({
+        accessToken: session.accessToken,
+        profile: session.profile,
+        permissoes: session.permissoes,
+      });
     } catch (error) {
       if (error instanceof DomainError) {
         if (error.status === 403) return Problems.forbidden(reply, error.detail ?? error.message);

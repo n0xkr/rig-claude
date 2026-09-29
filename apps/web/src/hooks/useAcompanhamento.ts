@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { AcompanhamentoVeiculo, EscopoInsight, InsightsResult, ResumoAcompanhamento } from '@rigabras/shared';
+import type {
+  AcompanhamentoVeiculo,
+  EscopoInsight,
+  InsightsResult,
+  ResumoAcompanhamento,
+} from '@rigabras/shared';
 import { api, ApiError } from '../lib/apiClient.js';
 import type { LoadState } from './useViagens.js';
 

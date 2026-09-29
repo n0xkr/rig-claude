@@ -25,8 +25,16 @@ function diasAte(data: string | null | undefined, hoje: Date): number | null {
   return Math.round((alvo - base) / DIA_MS);
 }
 
-export function calcularResumo(veiculos: AcompanhamentoVeiculo[], hoje = new Date()): ResumoAcompanhamento {
-  const por_status: Record<string, number> = { DISPONIVEL: 0, EM_TRANSITO: 0, MANUTENCAO: 0, GARAGEM: 0 };
+export function calcularResumo(
+  veiculos: AcompanhamentoVeiculo[],
+  hoje = new Date(),
+): ResumoAcompanhamento {
+  const por_status: Record<string, number> = {
+    DISPONIVEL: 0,
+    EM_TRANSITO: 0,
+    MANUTENCAO: 0,
+    GARAGEM: 0,
+  };
   const niveis: number[] = [];
   const combustivel_baixo: ResumoAcompanhamento['combustivel_baixo'] = [];
   const km_por_veiculo: ResumoAcompanhamento['km_por_veiculo'] = [];
@@ -37,7 +45,8 @@ export function calcularResumo(veiculos: AcompanhamentoVeiculo[], hoje = new Dat
 
   for (const v of veiculos) {
     por_status[v.status_operacional] = (por_status[v.status_operacional] ?? 0) + 1;
-    if (v.km_atual == null && v.nivel_combustivel == null && !v.proxima_manutencao_data) sem_dados++;
+    if (v.km_atual == null && v.nivel_combustivel == null && !v.proxima_manutencao_data)
+      sem_dados++;
     if (v.nivel_combustivel != null) {
       niveis.push(v.nivel_combustivel);
       if (v.nivel_combustivel <= LIMITE_COMBUSTIVEL_BAIXO) {
@@ -63,7 +72,9 @@ export function calcularResumo(veiculos: AcompanhamentoVeiculo[], hoje = new Dat
   return {
     total: veiculos.length,
     por_status,
-    combustivel_medio: niveis.length ? Math.round(niveis.reduce((a, b) => a + b, 0) / niveis.length) : null,
+    combustivel_medio: niveis.length
+      ? Math.round(niveis.reduce((a, b) => a + b, 0) / niveis.length)
+      : null,
     combustivel_baixo,
     km_total: Math.round(km_total),
     km_por_veiculo: km_por_veiculo.slice(0, 15),
@@ -89,7 +100,10 @@ export function insightsPorRegras(resumo: ResumoAcompanhamento, escopo: EscopoIn
     ];
   }
   if (quer('manutencao') && resumo.manutencao_vencida.length > 0) {
-    const lista = resumo.manutencao_vencida.slice(0, 5).map((m) => `${m.placa} (${-m.dias}d)`).join(', ');
+    const lista = resumo.manutencao_vencida
+      .slice(0, 5)
+      .map((m) => `${m.placa} (${-m.dias}d)`)
+      .join(', ');
     out.push({
       titulo: `${resumo.manutencao_vencida.length} veículo(s) com manutenção vencida`,
       detalhe: `Vencidas: ${lista}.`,
@@ -98,7 +112,10 @@ export function insightsPorRegras(resumo: ResumoAcompanhamento, escopo: EscopoIn
     });
   }
   if (quer('manutencao') && resumo.manutencao_proxima.length > 0) {
-    const lista = resumo.manutencao_proxima.slice(0, 5).map((m) => `${m.placa} (em ${m.dias}d)`).join(', ');
+    const lista = resumo.manutencao_proxima
+      .slice(0, 5)
+      .map((m) => `${m.placa} (em ${m.dias}d)`)
+      .join(', ');
     out.push({
       titulo: `${resumo.manutencao_proxima.length} manutenção(ões) nos próximos ${JANELA_MANUTENCAO_DIAS} dias`,
       detalhe: lista,
@@ -107,7 +124,10 @@ export function insightsPorRegras(resumo: ResumoAcompanhamento, escopo: EscopoIn
     });
   }
   if (quer('combustivel') && resumo.combustivel_baixo.length > 0) {
-    const lista = resumo.combustivel_baixo.slice(0, 5).map((c) => `${c.placa} (${c.nivel}%)`).join(', ');
+    const lista = resumo.combustivel_baixo
+      .slice(0, 5)
+      .map((c) => `${c.placa} (${c.nivel}%)`)
+      .join(', ');
     out.push({
       titulo: `${resumo.combustivel_baixo.length} veículo(s) com combustível baixo (≤${LIMITE_COMBUSTIVEL_BAIXO}%)`,
       detalhe: lista,
@@ -142,7 +162,11 @@ export function insightsPorRegras(resumo: ResumoAcompanhamento, escopo: EscopoIn
     });
   }
   if (out.length === 0) {
-    out.push({ titulo: 'Sem alertas para este indicador', detalhe: 'Nenhuma anomalia detectada nos dados atuais.', severidade: 'info' });
+    out.push({
+      titulo: 'Sem alertas para este indicador',
+      detalhe: 'Nenhuma anomalia detectada nos dados atuais.',
+      severidade: 'info',
+    });
   }
   return out;
 }

@@ -172,7 +172,11 @@ export class PortariaService {
     const entrada = await this.repo.findEntradaById(entradaId);
     if (!entrada) throw new NotFoundError('portaria_entrada', entradaId);
     const extBruta = nomeArquivo.includes('.') ? (nomeArquivo.split('.').pop() ?? '') : '';
-    const ext = extBruta.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || 'bin';
+    const ext =
+      extBruta
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .slice(0, 10) || 'bin';
     const path = `${entradaId}/${randomUUID()}.${ext}`;
     return this.repo.criarUrlUploadDocumento(path);
   }
@@ -293,7 +297,11 @@ export class PortariaService {
       const ordens = await this.repo.listOrdensServicoByEntrada(entradaId);
       for (const os of ordens) {
         if (os.status !== 'FINALIZADA' && os.status !== 'CANCELADA') {
-          await this.repo.updateOrdemServicoStatus(os.id, 'FINALIZADA', 'Encerrada na saída da portaria.');
+          await this.repo.updateOrdemServicoStatus(
+            os.id,
+            'FINALIZADA',
+            'Encerrada na saída da portaria.',
+          );
         }
       }
     }

@@ -22,6 +22,10 @@ export async function importacaoLotesRoutes(app: FastifyInstance): Promise<void>
   app.addHook('onRequest', authenticate);
   app.post('/', { preHandler: ENVIA_PLANILHA }, IaSolicitacoesController.criarLote);
   // Uma aba pode ter milhares de linhas: limite maior que o padrão de 1 MB.
-  app.post('/:id/abas', { preHandler: ENVIA_PLANILHA, bodyLimit: 30 * 1024 * 1024 }, IaSolicitacoesController.analisarAba);
+  app.post(
+    '/:id/abas',
+    { preHandler: ENVIA_PLANILHA, bodyLimit: 30 * 1024 * 1024 },
+    IaSolicitacoesController.analisarAba,
+  );
   app.post('/:id/concluir', { preHandler: ENVIA_PLANILHA }, IaSolicitacoesController.concluirLote);
 }

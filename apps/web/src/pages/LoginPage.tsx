@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { ApiError, apiFetch } from '../lib/apiClient.js';
 import logo from '../assets/logo-rigabras.jpg';
+import { rotaInicial } from '../lib/permissoes.js';
 
 interface LoginResponse {
   accessToken: string;
@@ -38,7 +39,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       localStorage.setItem('rigabras_access_token', result.accessToken);
-      navigate('/viagens');
+      navigate(rotaInicial());
     } catch (err) {
       const message =
         err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Falha ao entrar';

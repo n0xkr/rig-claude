@@ -110,9 +110,14 @@ function valorDaCelula(cell: CellObject | undefined, date1904: boolean): unknown
   }
   if (cell.t === 'n' && typeof cell.v === 'number') {
     if (cell.z !== undefined && SSF.is_date(cell.z)) {
-      const p = SSF.parse_date_code(cell.v, { date1904 }) as
-        | { y: number; m: number; d: number; H: number; M: number; S: number }
-        | null;
+      const p = SSF.parse_date_code(cell.v, { date1904 }) as {
+        y: number;
+        m: number;
+        d: number;
+        H: number;
+        M: number;
+        S: number;
+      } | null;
       if (p) return formatarIso(p.y, p.m, p.d, p.H, p.M, Math.floor(p.S));
     }
     return cell.v;
@@ -122,10 +127,14 @@ function valorDaCelula(cell: CellObject | undefined, date1904: boolean): unknown
 
 /** Lê a planilha inteira no navegador (datas formatadas como data viram texto ISO sem fuso). */
 export async function lerPlanilha(file: File): Promise<AbaLida[]> {
-  const buffer = await file.arrayBuffer();
+  // CSV/TXT como texto UTF-8 (como bytes o SheetJS decodifica em Latin-1 e os acentos quebram).
+  const ehTexto = /\.(csv|txt)$/i.test(file.name) || file.type.startsWith('text/');
+  const conteudo = ehTexto ? await file.text() : await file.arrayBuffer();
   // Libera a thread para a UI mostrar o "lendo" antes do parse pesado.
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const workbook = read(buffer, { cellFormula: true, cellNF: true });
+  const workbook = ehTexto
+    ? read(conteudo, { type: 'string', raw: true })
+    : read(conteudo, { cellFormula: true, cellNF: true });
   const date1904 = Boolean(workbook.Workbook?.WBProps?.date1904);
 
   const abas: AbaLida[] = [];
@@ -134,12 +143,20 @@ export async function lerPlanilha(file: File): Promise<AbaLida[]> {
     const nome = nomeOriginal.trim().slice(0, 200) || 'Aba';
     const avisos: string[] = [];
     if (!ws || !ws['!ref']) {
-      abas.push({ nome, cabecalhos: [], colunasCalculadas: [], linhas: [], totalLinhas: 0, avisos });
+      abas.push({
+        nome,
+        cabecalhos: [],
+        colunasCalculadas: [],
+        linhas: [],
+        totalLinhas: 0,
+        avisos,
+      });
       continue;
     }
 
     const range = utils.decode_range(ws['!ref']);
-    const celula = (r: number, c: number) => ws[utils.encode_cell({ r, c })] as CellObject | undefined;
+    const celula = (r: number, c: number) =>
+      ws[utils.encode_cell({ r, c })] as CellObject | undefined;
 
     // Cabeçalho = 1ª linha do intervalo; colunas sem cabeçalho são puladas; duplicados ganham _1, _2 (como o xlsx).
     const contagem = new Map<string, number>();
@@ -154,7 +171,9 @@ export async function lerPlanilha(file: File): Promise<AbaLida[]> {
       colunas.push({ c, cabecalho: vistas === 0 ? base : `${base}_${vistas}` });
     }
     if (colunas.length > MAX_COLUNAS) {
-      avisos.push(`A aba tem ${colunas.length} colunas; só as primeiras ${MAX_COLUNAS} foram enviadas.`);
+      avisos.push(
+        `A aba tem ${colunas.length} colunas; só as primeiras ${MAX_COLUNAS} foram enviadas.`,
+      );
       colunas.length = MAX_COLUNAS;
     }
 

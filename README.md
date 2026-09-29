@@ -703,6 +703,32 @@ nenhuma mudança em rota/controller/service.
 | `OPERADOR`   | Leitura/escrita em viagens, veículos, motoristas, eventos de risco, cabeçalho de fretes (inclusive conferência operacional: `ABERTO→EM_CONFERENCIA`, `REJEITADO→EM_CONFERENCIA`), manutenções de veículo, quilometragem/consumo por viagem, **registro (insert-only) de eventos de jornada** e o trabalho de piso do WMS (recebimento/conferência, separação/expedição, avarias, abertura/contagem de inventário) — **sem** acesso de escrita a apólices/seguro, lançamentos financeiros (adiantamento/desconto/multa) ou pagamentos, **sem** poder aprovar financeiramente (`→APROVADO`)/confirmar pagamento (`→PAGO`) de um frete, **sem** poder editar/excluir um evento de jornada já lançado, e **sem** poder reconciliar um inventário do WMS |
 | `VISITANTE`  | Somente leitura em tudo (inclusive KPIs de frota, alertas/histórico de jornada, KPIs/mapa de ocupação do WMS e o status cruzado TMS+WMS do Módulo 6), exceto escrita em apólices, em qualquer dado dos Módulos 3, 4 e 5, e sem acesso à exportação ERP do Módulo 7 (restrita a ADMIN/SUPERADMIN)                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
+## Categorias de usuário e permissões por módulo
+
+Tela **Usuários** (só `SUPERADMIN`), com duas abas:
+
+- **Usuários** — criar, editar (nome, papel, categoria, status, senha, permissões), excluir.
+  Excluir remove a conta de vez; se ela tiver histórico vinculado (viagens, fretes...), a
+  exclusão é lógica: some da lista, o profile fica inativo e a conta é bloqueada no Supabase
+  Auth. Recriar o mesmo e-mail depois reativa essa conta.
+- **Categorias** — grupos (ex.: "Financeiro", "Portaria noturna") com os módulos que liberam
+  (catálogo em `packages/shared/src/permissoes.ts`).
+
+Regra de acesso: o **papel** define o que a pessoa pode fazer (ler/registrar/aprovar); os
+**módulos** definem onde ela entra. Permissões próprias do usuário (quando definidas) vencem as
+da categoria; sem categoria nem permissões próprias, vale tudo o que o papel permite (o
+comportamento de antes). `SUPERADMIN` sempre acessa tudo. A API aplica a regra
+(`requireModulo` em `routes/index.ts`, com leitura cruzada para telas que exibem dados de
+outro módulo, como o Painel lendo `/frota/kpis`); o front esconde o menu e bloqueia a rota.
+Os módulos vão no access token (`mods`), então uma mudança vale no próximo login ou na próxima
+renovação do token (até 15 min).
+
+**Banco:** requer a migration `supabase/migrations/0013_categorias_permissoes.sql` (tabela
+`categorias_usuario`, colunas `profiles.categoria_id`/`profiles.permissoes` e o trigger que
+impede um usuário comum de alterar o próprio `role`/`ativo`/categoria via Supabase direto).
+Enquanto ela não for aplicada, login, usuários e o resto do sistema funcionam normalmente e a
+aba Categorias mostra o aviso para aplicá-la.
+
 ## Status do `pnpm install` e `git init`
 
 Ver relatório final da sessão de scaffolding para o resultado exato do

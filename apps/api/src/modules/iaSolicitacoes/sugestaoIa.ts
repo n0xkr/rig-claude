@@ -57,7 +57,11 @@ Responda ESTRITAMENTE em JSON: {"sugestoes": {"<nome exato da coluna>": {"destin
     for (const c of colunas) {
       const s = parsed.data.sugestoes[c.coluna];
       if (s && validos.has(s.destino)) {
-        resultado.set(c.coluna, { valor: s.destino, confianca: s.confianca, ...(s.motivo ? { motivo: s.motivo } : {}) });
+        resultado.set(c.coluna, {
+          valor: s.destino,
+          confianca: s.confianca,
+          ...(s.motivo ? { motivo: s.motivo } : {}),
+        });
       }
     }
   } catch (err) {
@@ -81,11 +85,17 @@ export async function sugerirEntidadeDeAba(
   const norm = new Set(cabecalhos.map(normTexto).filter(Boolean));
   let melhor: { e: EntidadeCadastro; acertos: number; cobertura: number } | null = null;
   for (const def of Object.values(ENTIDADES)) {
-    const conhecidas = new Set(Object.keys(def.colunas).filter((k) => !('ignorar' in def.colunas[k]!)));
+    const conhecidas = new Set(
+      Object.keys(def.colunas).filter((k) => !('ignorar' in def.colunas[k]!)),
+    );
     const acertos = [...norm].filter((k) => conhecidas.has(k)).length;
     // Fração dos cabeçalhos DA ABA que esta entidade explica.
     const cobertura = acertos / Math.max(norm.size, 1);
-    if (!melhor || acertos > melhor.acertos || (acertos === melhor.acertos && cobertura > melhor.cobertura)) {
+    if (
+      !melhor ||
+      acertos > melhor.acertos ||
+      (acertos === melhor.acertos && cobertura > melhor.cobertura)
+    ) {
       melhor = { e: def.entidade, acertos, cobertura };
     }
   }
@@ -98,17 +108,27 @@ export async function sugerirEntidadeDeAba(
   }
   if (!isGroqConfigured) return null;
   try {
-    const system = `Você classifica abas de planilhas de uma transportadora. Entidades possíveis: ${Object.values(ENTIDADES)
+    const system = `Você classifica abas de planilhas de uma transportadora. Entidades possíveis: ${Object.values(
+      ENTIDADES,
+    )
       .map((d) => `${d.entidade} (${d.rotulo})`)
       .join(', ')}, ou "${RESPOSTA_IGNORAR}" se não corresponder a nenhuma.
 Sua resposta é só uma DICA ao administrador. Se não tiver certeza, responda "${RESPOSTA_IGNORAR}" com confiança baixa.
 Responda ESTRITAMENTE em JSON: {"entidade": "...", "confianca": 0..1, "motivo": "curto, em português"}`;
-    const user = JSON.stringify({ aba, cabecalhos: cabecalhos.slice(0, 60), amostra: amostra.slice(0, 3) }).slice(0, 8000);
+    const user = JSON.stringify({
+      aba,
+      cabecalhos: cabecalhos.slice(0, 60),
+      amostra: amostra.slice(0, 3),
+    }).slice(0, 8000);
     const parsed = RespostaAbaSchema.safeParse(await completeJson(system, user, 400));
     if (!parsed.success) return null;
     const validos = new Set<string>([...Object.keys(ENTIDADES), RESPOSTA_IGNORAR]);
     if (!validos.has(parsed.data.entidade)) return null;
-    return { valor: parsed.data.entidade, confianca: parsed.data.confianca, ...(parsed.data.motivo ? { motivo: parsed.data.motivo } : {}) };
+    return {
+      valor: parsed.data.entidade,
+      confianca: parsed.data.confianca,
+      ...(parsed.data.motivo ? { motivo: parsed.data.motivo } : {}),
+    };
   } catch (err) {
     logger.warn({ err }, 'IA indisponível para classificar a aba; perguntando sem sugestão');
     return null;

@@ -10,7 +10,12 @@ export async function auditoriaRoutes(app: FastifyInstance): Promise<void> {
   // então só o e-mail não bastaria caso alguém se registrasse antes do dono com o mesmo endereço.
   app.get(
     '/',
-    { preHandler: [requireRole('SUPERADMIN', 'ADMIN'), requireEmails(env.AUDITORIA_EMAILS.split(','))] },
+    {
+      preHandler: [
+        requireRole('SUPERADMIN', 'ADMIN'),
+        requireEmails(env.AUDITORIA_EMAILS.split(',')),
+      ],
+    },
     AuditoriaController.list,
   );
 }

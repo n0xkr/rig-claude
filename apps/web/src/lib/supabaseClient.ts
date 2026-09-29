@@ -26,7 +26,9 @@ function getSupabaseStorage(): SupabaseClient {
     const url = import.meta.env.VITE_SUPABASE_URL;
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
     if (!url || !anonKey) {
-      throw new Error('Upload indisponível: VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY não configuradas');
+      throw new Error(
+        'Upload indisponível: VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY não configuradas',
+      );
     }
     client = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },

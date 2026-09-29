@@ -5,7 +5,9 @@ import { loginAs } from './helpers.js';
 const PLANILHA = path.resolve(__dirname, '../../RIGABRAS_Controle_GR.xlsx');
 
 test.describe('Importação: varredura de todas as abas', () => {
-  test('lê as 25 abas, acha cabeçalho/linhas reais e só oferece importar as abas com destino', async ({ page }) => {
+  test('lê as 25 abas, acha cabeçalho/linhas reais e só oferece importar as abas com destino', async ({
+    page,
+  }) => {
     await loginAs(page, 'OPERADOR');
     await page.goto('/importar-dados');
 
@@ -17,8 +19,11 @@ test.describe('Importação: varredura de todas as abas', () => {
     // FOLLOWUP (viagens) e VEICULOS (veículos) — as demais são cadastros de referência.
     const abas = page.getByTestId('ai-import-aba');
     await expect(abas.filter({ hasText: 'FOLLOWUP' })).toContainText('5 linhas · 94 colunas');
-    await expect(abas.filter({ hasText: /^VEICULOS/ })).toContainText('10 linhas');
-    await expect(abas.filter({ hasText: 'MOTORISTAS' }).getByTestId('ai-import-target-manual')).toBeVisible();
+    // Título "VEICULOS N linhas" (o `\b` evita abas como "CHECKLIST_VEICULOS").
+    await expect(abas.filter({ hasText: /\bVEICULOS\s*\d+ linhas/ })).toContainText('10 linhas');
+    await expect(
+      abas.filter({ hasText: 'MOTORISTAS' }).getByTestId('ai-import-target-manual'),
+    ).toBeVisible();
 
     // Busca em todas as abas.
     await page.getByTestId('ai-import-busca').fill('Uruguaiana');
@@ -28,7 +33,7 @@ test.describe('Importação: varredura de todas as abas', () => {
     await page.locator('input[type=file]').nth(1).setInputFiles(PLANILHA);
     await expect(page.getByTestId('manual-aba')).toContainText('25 abas lidas');
     await expect(page.getByTestId('manual-aba').locator('select')).toHaveValue('FOLLOWUP');
-    await expect(page.getByText('Mapeamento de colunas')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Mapeamento de colunas/ })).toBeVisible();
     const selects = page.locator('section', { hasText: 'Mapeamento de colunas' }).locator('select');
     await expect(selects.first()).not.toHaveValue('');
   });

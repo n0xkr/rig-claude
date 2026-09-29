@@ -49,7 +49,12 @@ export class IaSolicitacoesRepository {
   /** Todas as linhas não excluídas de uma tabela de cadastro (tabelas pequenas: frota, motoristas, clientes...). */
   async carregarCadastro(tabela: string): Promise<Row[]> {
     return fetchAllPages<Row>((from, to) =>
-      supabaseAdmin.from(tabela).select('*').is('deleted_at', null).order('id', { ascending: true }).range(from, to),
+      supabaseAdmin
+        .from(tabela)
+        .select('*')
+        .is('deleted_at', null)
+        .order('id', { ascending: true })
+        .range(from, to),
     );
   }
 
@@ -80,7 +85,11 @@ export class IaSolicitacoesRepository {
   async dedupExistentes(chaves: string[]): Promise<Set<string>> {
     const achadas = new Set<string>();
     for (const parte of pedacos(chaves, CHUNK_IN)) {
-      const { data, error } = await supabaseAdmin.from(T).select('chave_dedup').in('chave_dedup', parte).neq('status', 'ERRO');
+      const { data, error } = await supabaseAdmin
+        .from(T)
+        .select('chave_dedup')
+        .in('chave_dedup', parte)
+        .neq('status', 'ERRO');
       if (error) throw error;
       for (const r of (data ?? []) as Array<{ chave_dedup: string }>) achadas.add(r.chave_dedup);
     }
@@ -98,7 +107,8 @@ export class IaSolicitacoesRepository {
         .in('chave_natural', parte)
         .neq('status', 'ERRO');
       if (error) throw error;
-      for (const r of (data ?? []) as Array<{ chave_natural: string | null }>) if (r.chave_natural) achadas.add(r.chave_natural);
+      for (const r of (data ?? []) as Array<{ chave_natural: string | null }>)
+        if (r.chave_natural) achadas.add(r.chave_natural);
     }
     return achadas;
   }
@@ -132,12 +142,19 @@ export class IaSolicitacoesRepository {
   }
 
   async atualizar(id: string, patch: Row): Promise<IaSolicitacao> {
-    const { data, error } = await supabaseAdmin.from(T).update(patch).eq('id', id).select('*').single();
+    const { data, error } = await supabaseAdmin
+      .from(T)
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error) throw error;
     return data as IaSolicitacao;
   }
 
-  async listar(f: ListarSolicitacoesQuery): Promise<{ data: IaSolicitacao[]; nextCursor: string | null }> {
+  async listar(
+    f: ListarSolicitacoesQuery,
+  ): Promise<{ data: IaSolicitacao[]; nextCursor: string | null }> {
     let q = supabaseAdmin
       .from(T)
       .select('*')
@@ -159,16 +176,32 @@ export class IaSolicitacoesRepository {
 
   async contarPorDataset(datasetId: string): Promise<number> {
     const rows = await fetchAllPages<{ id: string }>((from, to) =>
-      supabaseAdmin.from(T).select('id').eq('dataset_id', datasetId).order('id', { ascending: true }).range(from, to),
+      supabaseAdmin
+        .from(T)
+        .select('id')
+        .eq('dataset_id', datasetId)
+        .order('id', { ascending: true })
+        .range(from, to),
     );
     return rows.length;
   }
 
   async resumo(): Promise<ResumoSolicitacoes> {
     const rows = await fetchAllPages<{ tipo: string; status: string }>((from, to) =>
-      supabaseAdmin.from(T).select('tipo, status').in('status', ['PENDENTE', 'ERRO']).order('id', { ascending: true }).range(from, to),
+      supabaseAdmin
+        .from(T)
+        .select('tipo, status')
+        .in('status', ['PENDENTE', 'ERRO'])
+        .order('id', { ascending: true })
+        .range(from, to),
     );
-    const r: ResumoSolicitacoes = { pendentes: 0, perguntas: 0, cadastros: 0, atualizacoes: 0, erros: 0 };
+    const r: ResumoSolicitacoes = {
+      pendentes: 0,
+      perguntas: 0,
+      cadastros: 0,
+      atualizacoes: 0,
+      erros: 0,
+    };
     for (const x of rows) {
       if (x.status === 'ERRO') {
         r.erros++;
@@ -184,7 +217,9 @@ export class IaSolicitacoesRepository {
 
   // ----- conhecimento aprendido ---------------------------------------------
   async conhecimento(): Promise<ConhecimentoRow[]> {
-    const { data, error } = await supabaseAdmin.from('ia_conhecimento').select('aba_norm, coluna_norm, entidade, destino');
+    const { data, error } = await supabaseAdmin
+      .from('ia_conhecimento')
+      .select('aba_norm, coluna_norm, entidade, destino');
     if (error) throw error;
     return (data ?? []) as ConhecimentoRow[];
   }
@@ -205,7 +240,9 @@ export class IaSolicitacoesRepository {
       if (up.error) throw up.error;
       return;
     }
-    const ins = await supabaseAdmin.from('ia_conhecimento').insert({ ...k, respondido_por: userId });
+    const ins = await supabaseAdmin
+      .from('ia_conhecimento')
+      .insert({ ...k, respondido_por: userId });
     if (ins.error) throw ins.error;
   }
 }

@@ -30,9 +30,7 @@ export function useImportacaoActions() {
 
   const validar = useCallback(
     (target: ImportTarget, linhas: Array<Record<string, unknown>>) =>
-      run(() =>
-        api.post<ValidarImportacaoResult>('/importacoes/validar', { target, linhas }),
-      ),
+      run(() => api.post<ValidarImportacaoResult>('/importacoes/validar', { target, linhas })),
     [run],
   );
 
@@ -43,13 +41,14 @@ export function useImportacaoActions() {
       origem: OrigemImportacao,
       linhas: Array<Record<string, unknown>>,
     ) =>
-      run(() =>
-        api.post<CommitImportacaoResult>('/importacoes', { target, nome, origem, linhas }),
-      ),
+      run(() => api.post<CommitImportacaoResult>('/importacoes', { target, nome, origem, linhas })),
     [run],
   );
 
-  const listarHistorico = useCallback(() => run(() => api.get<ImportDataset[]>('/importacoes')), [run]);
+  const listarHistorico = useCallback(
+    () => run(() => api.get<ImportDataset[]>('/importacoes')),
+    [run],
+  );
 
   return { validar, importar, listarHistorico, submitting, error };
 }

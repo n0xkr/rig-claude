@@ -54,7 +54,9 @@ export class PerfilService {
       // A foto (data URL) é grande demais para a trilha: registra só que mudou.
       changes: {
         campos: Object.keys(patch),
-        ...(patch.avatar_url !== undefined ? { avatar: patch.avatar_url === null ? 'removida' : 'alterada' } : {}),
+        ...(patch.avatar_url !== undefined
+          ? { avatar: patch.avatar_url === null ? 'removida' : 'alterada' }
+          : {}),
       },
       ip,
     });

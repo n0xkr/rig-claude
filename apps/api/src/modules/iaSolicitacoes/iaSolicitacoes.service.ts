@@ -37,7 +37,12 @@ export class IaSolicitacoesService {
   constructor(private readonly repo: IaSolicitacoesRepository = new IaSolicitacoesRepository()) {}
 
   // ----- lote de importação ----------------------------------------------------
-  async criarLote(nome: string, origem: 'EXCEL' | 'CSV', userId: string, ip: string | null): Promise<ImportDataset> {
+  async criarLote(
+    nome: string,
+    origem: 'EXCEL' | 'CSV',
+    userId: string,
+    ip: string | null,
+  ): Promise<ImportDataset> {
     const { data, error } = await supabaseAdmin
       .from('import_datasets')
       .insert({ nome, target: 'planilha_ia', origem, created_by: userId, status: 'VALIDADO' })
@@ -45,12 +50,23 @@ export class IaSolicitacoesService {
       .single();
     if (error) throw error;
     const dataset = data as ImportDataset;
-    await writeAuditLog({ userId, action: 'CREATE', entity: 'import_datasets', entityId: dataset.id, changes: { nome, origem, modo: 'planilha_ia' }, ip });
+    await writeAuditLog({
+      userId,
+      action: 'CREATE',
+      entity: 'import_datasets',
+      entityId: dataset.id,
+      changes: { nome, origem, modo: 'planilha_ia' },
+      ip,
+    });
     return dataset;
   }
 
   private async obterLote(id: string): Promise<ImportDataset> {
-    const { data, error } = await supabaseAdmin.from('import_datasets').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await supabaseAdmin
+      .from('import_datasets')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
     if (error) throw error;
     const d = data as unknown as (Omit<ImportDataset, 'target'> & { target: string }) | null;
     if (!d || d.target !== 'planilha_ia') throw new NotFoundError('Lote de importação', id);
@@ -102,7 +118,11 @@ export class IaSolicitacoesService {
 
   private exigirAberta(s: IaSolicitacao): void {
     if (s.status !== 'PENDENTE' && s.status !== 'ERRO') {
-      throw new DomainError('Solicitação já decidida', 409, `Esta solicitação já está ${s.status.toLowerCase()}`);
+      throw new DomainError(
+        'Solicitação já decidida',
+        409,
+        `Esta solicitação já está ${s.status.toLowerCase()}`,
+      );
     }
   }
 
@@ -114,7 +134,10 @@ export class IaSolicitacoesService {
     ctx: Contexto,
   ): Promise<{ id: string; acao: 'criado' | 'atualizado'; campos: Row }> {
     const { dados_extras: extras, ...campos } = dados;
-    const extrasObj = extras && typeof extras === 'object' && Object.keys(extras as Row).length > 0 ? (extras as Row) : null;
+    const extrasObj =
+      extras && typeof extras === 'object' && Object.keys(extras as Row).length > 0
+        ? (extras as Row)
+        : null;
 
     if (s.tipo === 'ATUALIZACAO') {
       const id = String((s.evidencia as Row | null)?.registro_id ?? '');
@@ -151,14 +174,25 @@ export class IaSolicitacoesService {
   }
 
   private definicao(s: IaSolicitacao): EntidadeDef {
-    if (!ENTIDADES_COM_TABELA.has(s.entidade)) throw new DomainError('Solicitação sem cadastro associado', 422);
+    if (!ENTIDADES_COM_TABELA.has(s.entidade))
+      throw new DomainError('Solicitação sem cadastro associado', 422);
     return ENTIDADES[s.entidade as keyof typeof ENTIDADES];
   }
 
   // ----- decisões ------------------------------------------------------------------
-  async aprovar(id: string, userId: string, ip: string | null, ctx: Contexto = new Contexto(this.repo)): Promise<IaSolicitacao> {
+  async aprovar(
+    id: string,
+    userId: string,
+    ip: string | null,
+    ctx: Contexto = new Contexto(this.repo),
+  ): Promise<IaSolicitacao> {
     const s = await this.obterOuFalhar(id);
-    if (s.tipo === 'PERGUNTA') throw new DomainError('Esta solicitação é uma pergunta', 422, 'Perguntas são respondidas, não aprovadas');
+    if (s.tipo === 'PERGUNTA')
+      throw new DomainError(
+        'Esta solicitação é uma pergunta',
+        422,
+        'Perguntas são respondidas, não aprovadas',
+      );
     this.exigirAberta(s);
     const def = this.definicao(s);
     try {
@@ -168,7 +202,12 @@ export class IaSolicitacoesService {
         action: r.acao === 'criado' ? 'CREATE' : 'UPDATE',
         entity: def.tabela,
         entityId: r.id,
-        changes: { via: 'solicitacao_ia', solicitacao_id: s.id, aprovada_por: userId, dados: r.campos },
+        changes: {
+          via: 'solicitacao_ia',
+          solicitacao_id: s.id,
+          aprovada_por: userId,
+          dados: r.campos,
+        },
         ip,
       });
       return await this.repo.atualizar(id, {
@@ -189,7 +228,12 @@ export class IaSolicitacoesService {
     for (const id of ids) {
       try {
         const s = await this.aprovar(id, userId, ip, ctx);
-        resultados.push({ id, ok: s.status === 'APROVADA', status: s.status, ...(s.erro ? { erro: s.erro } : {}) });
+        resultados.push({
+          id,
+          ok: s.status === 'APROVADA',
+          status: s.status,
+          ...(s.erro ? { erro: s.erro } : {}),
+        });
       } catch (err) {
         resultados.push({ id, ok: false, status: 'PENDENTE', erro: mensagemDeErro(err) });
       }
@@ -197,7 +241,12 @@ export class IaSolicitacoesService {
     return resultados;
   }
 
-  async recusar(id: string, motivo: string | undefined, userId: string, ip: string | null): Promise<IaSolicitacao> {
+  async recusar(
+    id: string,
+    motivo: string | undefined,
+    userId: string,
+    ip: string | null,
+  ): Promise<IaSolicitacao> {
     const s = await this.obterOuFalhar(id);
     this.exigirAberta(s);
     const r = await this.repo.atualizar(id, {
@@ -207,13 +256,26 @@ export class IaSolicitacoesService {
       decidido_por: userId,
       decidido_em: new Date().toISOString(),
     });
-    await writeAuditLog({ userId, action: 'UPDATE', entity: 'ia_solicitacoes', entityId: id, changes: { decisao: 'RECUSADA', motivo: motivo ?? null }, ip });
+    await writeAuditLog({
+      userId,
+      action: 'UPDATE',
+      entity: 'ia_solicitacoes',
+      entityId: id,
+      changes: { decisao: 'RECUSADA', motivo: motivo ?? null },
+      ip,
+    });
     return r;
   }
 
-  async responder(id: string, input: ResponderSolicitacaoInput, userId: string, ip: string | null): Promise<IaSolicitacao> {
+  async responder(
+    id: string,
+    input: ResponderSolicitacaoInput,
+    userId: string,
+    ip: string | null,
+  ): Promise<IaSolicitacao> {
     const s = await this.obterOuFalhar(id);
-    if (s.tipo !== 'PERGUNTA') throw new DomainError('Esta solicitação não é uma pergunta', 422, 'Use aprovar/recusar');
+    if (s.tipo !== 'PERGUNTA')
+      throw new DomainError('Esta solicitação não é uma pergunta', 422, 'Use aprovar/recusar');
     this.exigirAberta(s);
     const quando = new Date().toISOString();
     const decisao = { decidido_por: userId, decidido_em: quando };
@@ -229,42 +291,86 @@ export class IaSolicitacoesService {
 
     // Perguntas sobre a estrutura da planilha: viram conhecimento reaproveitado nas próximas importações.
     if (s.entidade === 'planilha') {
-      await this.repo.salvarConhecimento({ aba_norm: normTexto(s.aba), coluna_norm: '', entidade: input.opcao!, destino: input.opcao! }, userId);
-      await writeAuditLog({ userId, action: 'CREATE', entity: 'ia_conhecimento', entityId: null, changes: { aba: s.aba, resposta: input.opcao }, ip });
+      await this.repo.salvarConhecimento(
+        {
+          aba_norm: normTexto(s.aba),
+          coluna_norm: '',
+          entidade: input.opcao!,
+          destino: input.opcao!,
+        },
+        userId,
+      );
+      await writeAuditLog({
+        userId,
+        action: 'CREATE',
+        entity: 'ia_conhecimento',
+        entityId: null,
+        changes: { aba: s.aba, resposta: input.opcao },
+        ip,
+      });
       return this.repo.atualizar(id, {
         status: 'RESPONDIDA',
         erro: null,
-        resposta: { opcao: input.opcao, nota: 'Resposta salva. Reenvie a planilha para aplicá-la.' },
+        resposta: {
+          opcao: input.opcao,
+          nota: 'Resposta salva. Reenvie a planilha para aplicá-la.',
+        },
         ...decisao,
       });
     }
     if (s.entidade === 'coluna') {
       const alvo = String((s.evidencia as Row | null)?.entidade_alvo ?? '');
       await this.repo.salvarConhecimento(
-        { aba_norm: normTexto(s.aba), coluna_norm: normTexto(s.coluna), entidade: alvo, destino: input.opcao! },
+        {
+          aba_norm: normTexto(s.aba),
+          coluna_norm: normTexto(s.coluna),
+          entidade: alvo,
+          destino: input.opcao!,
+        },
         userId,
       );
-      await writeAuditLog({ userId, action: 'CREATE', entity: 'ia_conhecimento', entityId: null, changes: { aba: s.aba, coluna: s.coluna, resposta: input.opcao }, ip });
+      await writeAuditLog({
+        userId,
+        action: 'CREATE',
+        entity: 'ia_conhecimento',
+        entityId: null,
+        changes: { aba: s.aba, coluna: s.coluna, resposta: input.opcao },
+        ip,
+      });
       return this.repo.atualizar(id, {
         status: 'RESPONDIDA',
         erro: null,
-        resposta: { opcao: input.opcao, nota: 'Resposta salva. Reenvie a planilha para aplicá-la.' },
+        resposta: {
+          opcao: input.opcao,
+          nota: 'Resposta salva. Reenvie a planilha para aplicá-la.',
+        },
         ...decisao,
       });
     }
 
     // Pergunta sobre um registro que ainda vai ser criado.
     if (input.opcao === RESPOSTA_IGNORAR) {
-      return this.repo.atualizar(id, { status: 'RESPONDIDA', erro: null, resposta: { opcao: RESPOSTA_IGNORAR }, ...decisao });
+      return this.repo.atualizar(id, {
+        status: 'RESPONDIDA',
+        erro: null,
+        resposta: { opcao: RESPOSTA_IGNORAR },
+        ...decisao,
+      });
     }
     const def = this.definicao(s);
     const campo = s.campo_pergunta;
     if (!campo || !def.campos[campo]) throw new DomainError('Pergunta sem campo associado', 422);
     const dados: Row = { ...((s.dados_propostos ?? {}) as Row) };
-    if (input.opcao !== RESPOSTA_EXTRA) dados[campo] = s.entrada === 'TEXTO' ? input.texto : input.opcao;
-    const resposta = { [s.entrada === 'TEXTO' ? 'texto' : 'opcao']: s.entrada === 'TEXTO' ? input.texto : input.opcao };
+    if (input.opcao !== RESPOSTA_EXTRA)
+      dados[campo] = s.entrada === 'TEXTO' ? input.texto : input.opcao;
+    const resposta = {
+      [s.entrada === 'TEXTO' ? 'texto' : 'opcao']:
+        s.entrada === 'TEXTO' ? input.texto : input.opcao,
+    };
 
-    const restantes = (((s.evidencia as Row | null)?.perguntas_restantes ?? []) as PerguntaCampo[]).filter(Boolean);
+    const restantes = (
+      ((s.evidencia as Row | null)?.perguntas_restantes ?? []) as PerguntaCampo[]
+    ).filter(Boolean);
     if (restantes.length > 0) {
       // Ainda há outra dúvida sobre o mesmo registro: guarda a resposta e abre a próxima pergunta.
       const [prox, ...resto] = restantes;
@@ -287,7 +393,12 @@ export class IaSolicitacoesService {
           chave_dedup: `p:${s.entidade}:${s.chave_natural}:${prox!.campo}`,
         },
       ]);
-      return this.repo.atualizar(id, { status: 'RESPONDIDA', erro: null, resposta: { ...resposta, proxima_pergunta: true }, ...decisao });
+      return this.repo.atualizar(id, {
+        status: 'RESPONDIDA',
+        erro: null,
+        resposta: { ...resposta, proxima_pergunta: true },
+        ...decisao,
+      });
     }
 
     try {
@@ -298,7 +409,12 @@ export class IaSolicitacoesService {
         action: 'CREATE',
         entity: def.tabela,
         entityId: r.id,
-        changes: { via: 'solicitacao_ia', solicitacao_id: s.id, respondida_por: userId, dados: r.campos },
+        changes: {
+          via: 'solicitacao_ia',
+          solicitacao_id: s.id,
+          respondida_por: userId,
+          dados: r.campos,
+        },
         ip,
       });
       return await this.repo.atualizar(id, {

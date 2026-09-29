@@ -1,4 +1,8 @@
-import { CreateManutencaoVeiculoSchema, CreateVeiculoSchema, CreateViagemSchema } from '@rigabras/shared';
+import {
+  CreateManutencaoVeiculoSchema,
+  CreateVeiculoSchema,
+  CreateViagemSchema,
+} from '@rigabras/shared';
 import type {
   CommitImportacaoResult,
   ImportDataset,
@@ -142,7 +146,10 @@ export class ImportacaoService {
     target: ImportTarget,
     linhas: Array<Record<string, unknown>>,
     opts: { criarVeiculosAusentes?: boolean; gravar?: boolean } = {},
-  ): Promise<{ validas: Array<{ linha: number; dados: Record<string, unknown> }>; erros: ImportLinhaErro[] }> {
+  ): Promise<{
+    validas: Array<{ linha: number; dados: Record<string, unknown> }>;
+    erros: ImportLinhaErro[];
+  }> {
     const campos = IMPORT_TARGET_FIELDS[target];
     const schema = TARGET_SCHEMA[target];
     const validas: Array<{ linha: number; dados: Record<string, unknown> }> = [];
@@ -150,7 +157,8 @@ export class ImportacaoService {
     // Uma placa costuma se repetir em várias linhas: evita 1 query por linha.
     const cachePlacas = new Map<string, string | null>();
     const resolverVeiculo = async (placa: string): Promise<string | null> => {
-      if (!cachePlacas.has(placa)) cachePlacas.set(placa, await this.repo.findVeiculoIdByPlaca(placa));
+      if (!cachePlacas.has(placa))
+        cachePlacas.set(placa, await this.repo.findVeiculoIdByPlaca(placa));
       return cachePlacas.get(placa) ?? null;
     };
 
@@ -242,7 +250,9 @@ export class ImportacaoService {
     linhas: Array<Record<string, unknown>>,
     criarVeiculosAusentes = false,
   ): Promise<ValidarImportacaoResult> {
-    const { validas, erros } = await this.coagirEValidarLinhas(target, linhas, { criarVeiculosAusentes });
+    const { validas, erros } = await this.coagirEValidarLinhas(target, linhas, {
+      criarVeiculosAusentes,
+    });
     return {
       totalLinhas: linhas.length,
       linhasValidas: validas.length,

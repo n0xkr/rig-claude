@@ -43,7 +43,10 @@ export interface EntidadeDef {
   chavePrincipal(dados: Record<string, unknown>): string | null;
   titulo(dados: Record<string, unknown>): string;
   /** Regras que dependem de vários campos; devolve o que NÃO conseguiu decidir (vira pergunta). */
-  derivar(dados: Record<string, unknown>, extras: Record<string, unknown>): { perguntas: PerguntaCampo[]; avisos: string[] };
+  derivar(
+    dados: Record<string, unknown>,
+    extras: Record<string, unknown>,
+  ): { perguntas: PerguntaCampo[]; avisos: string[] };
   /** Colunas extras que a tabela exige ao gravar (ex.: nome_normalizado). */
   completarParaGravar?(dados: Record<string, unknown>): Record<string, unknown>;
   validar(dados: Record<string, unknown>): string | null;
@@ -53,7 +56,12 @@ const c = (campo: string): ColDef => ({ campo });
 const EXTRA: ColDef = { extra: true };
 const IGN: ColDef = { ignorar: true };
 
-export const TIPOS_VEICULO = ['CAVALO', 'CARRETA_ABERTA', 'CARRETA_SIDER', 'CARRETA_OUTRO'] as const;
+export const TIPOS_VEICULO = [
+  'CAVALO',
+  'CARRETA_ABERTA',
+  'CARRETA_SIDER',
+  'CARRETA_OUTRO',
+] as const;
 export const STATUS_OPERACIONAL = ['DISPONIVEL', 'EM_TRANSITO', 'MANUTENCAO', 'GARAGEM'] as const;
 
 export const OPCOES_TIPO_VEICULO: OpcaoPergunta[] = [
@@ -138,7 +146,8 @@ const veiculos: EntidadeDef = {
   chavesDoNovo: (d) => (d.placa ? [`placa:${d.placa}`] : []),
   chavesDoExistente: (r) => (r.placa ? [`placa:${String(r.placa).toUpperCase()}`] : []),
   chavePrincipal: (d) => (typeof d.placa === 'string' ? d.placa : null),
-  titulo: (d) => `${d.tipo === 'CAVALO' ? 'Cavalo' : d.tipo ? 'Reboque' : 'Veículo'} ${d.placa}${d.marca ? ` — ${d.marca}${d.modelo ? ` ${d.modelo}` : ''}` : ''}`,
+  titulo: (d) =>
+    `${d.tipo === 'CAVALO' ? 'Cavalo' : d.tipo ? 'Reboque' : 'Veículo'} ${d.placa}${d.marca ? ` — ${d.marca}${d.modelo ? ` ${d.modelo}` : ''}` : ''}`,
   derivar(d, extras) {
     const perguntas: PerguntaCampo[] = [];
     const avisos: string[] = [];
@@ -151,7 +160,8 @@ const veiculos: EntidadeDef = {
       else if (ref.startsWith('carreta')) {
         if (desc.includes('sider')) d.tipo = 'CARRETA_SIDER';
         else if (desc.includes('aberta')) d.tipo = 'CARRETA_ABERTA';
-        else if (/(bau|bitrem|rodotrem|graneleir|prancha|tanque|cacamba)/.test(desc)) d.tipo = 'CARRETA_OUTRO';
+        else if (/(bau|bitrem|rodotrem|graneleir|prancha|tanque|cacamba)/.test(desc))
+          d.tipo = 'CARRETA_OUTRO';
       }
       if (d.tipo === undefined) {
         const original = [d.tipo_unidade, d.tipo_veiculo_desc].filter(Boolean).join(' / ');
@@ -207,10 +217,18 @@ const veiculos: EntidadeDef = {
   },
   validar(d) {
     if (typeof d.placa !== 'string' || !comoPlaca(d.placa)) return 'Placa inválida';
-    if (d.tipo === undefined || !(TIPOS_VEICULO as readonly string[]).includes(String(d.tipo))) return 'Tipo do veículo não definido';
-    if (d.status_operacional !== undefined && !(STATUS_OPERACIONAL as readonly string[]).includes(String(d.status_operacional)))
+    if (d.tipo === undefined || !(TIPOS_VEICULO as readonly string[]).includes(String(d.tipo)))
+      return 'Tipo do veículo não definido';
+    if (
+      d.status_operacional !== undefined &&
+      !(STATUS_OPERACIONAL as readonly string[]).includes(String(d.status_operacional))
+    )
       return 'Situação operacional inválida';
-    if (typeof d.ano_fabricacao === 'number' && (d.ano_fabricacao < 1980 || d.ano_fabricacao > 2100)) return 'Ano de fabricação fora do intervalo 1980–2100';
+    if (
+      typeof d.ano_fabricacao === 'number' &&
+      (d.ano_fabricacao < 1980 || d.ano_fabricacao > 2100)
+    )
+      return 'Ano de fabricação fora do intervalo 1980–2100';
     return null;
   },
 };
@@ -288,15 +306,21 @@ const motoristas: EntidadeDef = {
     ...(r.nome_completo ? [`nome:${normTexto(r.nome_completo)}`] : []),
   ],
   chavePrincipal: (d) =>
-    d.codigo_externo ? String(d.codigo_externo) : d.nome_completo ? normTexto(d.nome_completo) : null,
-  titulo: (d) => `Motorista ${d.nome_completo ?? d.codigo_externo}${d.codigo_externo && d.nome_completo ? ` (${d.codigo_externo})` : ''}`,
+    d.codigo_externo
+      ? String(d.codigo_externo)
+      : d.nome_completo
+        ? normTexto(d.nome_completo)
+        : null,
+  titulo: (d) =>
+    `Motorista ${d.nome_completo ?? d.codigo_externo}${d.codigo_externo && d.nome_completo ? ` (${d.codigo_externo})` : ''}`,
   derivar(d) {
     const fp = frotaPropria(d.vinculo);
     if (fp !== undefined && d.frota_propria === undefined) d.frota_propria = fp;
     return { perguntas: [], avisos: [] };
   },
   validar(d) {
-    if (typeof d.nome_completo !== 'string' || d.nome_completo.trim().length < 3) return 'Nome do motorista ausente ou curto demais';
+    if (typeof d.nome_completo !== 'string' || d.nome_completo.trim().length < 3)
+      return 'Nome do motorista ausente ou curto demais';
     return null;
   },
 };
@@ -363,16 +387,26 @@ const rastreadores: EntidadeDef = {
   ],
   chavesDoExistente: (r) => [
     ...(r.codigo_externo ? [`cod:${r.codigo_externo}`] : []),
-    ...(r.placa && r.funcao ? [`placa:${String(r.placa).toUpperCase()}#${normTexto(r.funcao)}`] : []),
+    ...(r.placa && r.funcao
+      ? [`placa:${String(r.placa).toUpperCase()}#${normTexto(r.funcao)}`]
+      : []),
   ],
   chavePrincipal: (d) =>
-    d.codigo_externo ? String(d.codigo_externo) : d.placa && d.funcao ? `${d.placa}#${normTexto(d.funcao)}` : null,
+    d.codigo_externo
+      ? String(d.codigo_externo)
+      : d.placa && d.funcao
+        ? `${d.placa}#${normTexto(d.funcao)}`
+        : null,
   titulo: (d) =>
-    `Rastreador ${d.codigo_externo ?? d.id_terminal ?? ''}${d.funcao ? ` (${d.funcao})` : ''}${d.placa ? ` — placa ${d.placa}` : ''}`.replace(/\s+/g, ' ').trim(),
+    `Rastreador ${d.codigo_externo ?? d.id_terminal ?? ''}${d.funcao ? ` (${d.funcao})` : ''}${d.placa ? ` — placa ${d.placa}` : ''}`
+      .replace(/\s+/g, ' ')
+      .trim(),
   derivar: () => ({ perguntas: [], avisos: [] }),
   validar(d) {
-    if (!d.codigo_externo && !(d.placa && d.funcao)) return 'Rastreador sem ID do equipamento nem par placa+função';
-    if (typeof d.bateria_isca === 'number' && (d.bateria_isca < 0 || d.bateria_isca > 100)) return 'Bateria fora de 0–100%';
+    if (!d.codigo_externo && !(d.placa && d.funcao))
+      return 'Rastreador sem ID do equipamento nem par placa+função';
+    if (typeof d.bateria_isca === 'number' && (d.bateria_isca < 0 || d.bateria_isca > 100))
+      return 'Bateria fora de 0–100%';
     return null;
   },
 };
@@ -473,13 +507,16 @@ const pontosApoio: EntidadeDef = {
   chavesDoNovo: (d) => (d.nome ? [`nome:${normTexto(d.nome)}`] : []),
   chavesDoExistente: (r) => (r.nome ? [`nome:${normTexto(r.nome)}`] : []),
   chavePrincipal: (d) => (d.nome ? normTexto(d.nome) : null),
-  titulo: (d) => `Ponto de apoio: ${d.nome}${d.frequencia ? ` (${d.frequencia}× nas planilhas)` : ''}`,
+  titulo: (d) =>
+    `Ponto de apoio: ${d.nome}${d.frequencia ? ` (${d.frequencia}× nas planilhas)` : ''}`,
   derivar: () => ({ perguntas: [], avisos: [] }),
   completarParaGravar: (d) => ({ ...d, nome_normalizado: normTexto(d.nome) }),
   validar(d) {
     if (typeof d.nome !== 'string' || d.nome.trim().length < 2) return 'Nome do ponto ausente';
-    if (typeof d.latitude === 'number' && (d.latitude < -90 || d.latitude > 90)) return 'Latitude inválida';
-    if (typeof d.longitude === 'number' && (d.longitude < -180 || d.longitude > 180)) return 'Longitude inválida';
+    if (typeof d.latitude === 'number' && (d.latitude < -90 || d.latitude > 90))
+      return 'Latitude inválida';
+    if (typeof d.longitude === 'number' && (d.longitude < -180 || d.longitude > 180))
+      return 'Longitude inválida';
     return null;
   },
 };
@@ -497,7 +534,15 @@ export function entidadePorAba(abaNorm: string): EntidadeDef | null {
 }
 
 /** Abas de documentação/derivadas do modelo de planilha da Rigabras: nada a cadastrar. */
-export const ABAS_INFORMATIVAS = new Set(['leia me', 'painel', 'perfil empresa', 'dicionario bot', 'faq bot', 'parametros', 'listas']);
+export const ABAS_INFORMATIVAS = new Set([
+  'leia me',
+  'painel',
+  'perfil empresa',
+  'dicionario bot',
+  'faq bot',
+  'parametros',
+  'listas',
+]);
 
 /** Abas conhecidas da planilha de controle GR cujo cadastro ainda não existe no sistema (só placas/motoristas/clientes/pontos são extraídos delas). */
 export const ABAS_SEM_CADASTRO = new Set([
@@ -562,10 +607,13 @@ export function lerRegistro(
     if (!lido.ok) {
       // Nunca "corrige" o dado: guarda o texto original como informação extra e avisa.
       extras[header] = bruto;
-      avisos.push(`Linha ${linha}, coluna "${header}": ${lido.motivo} — guardado como informação extra.`);
+      avisos.push(
+        `Linha ${linha}, coluna "${header}": ${lido.motivo} — guardado como informação extra.`,
+      );
       continue;
     }
-    if (lido.valor !== undefined && dados[destino.campo] === undefined) dados[destino.campo] = lido.valor;
+    if (lido.valor !== undefined && dados[destino.campo] === undefined)
+      dados[destino.campo] = lido.valor;
   }
 
   const { perguntas, avisos: avisosDeriv } = def.derivar(dados, extras);

@@ -28,7 +28,13 @@ export interface ResumoAcompanhamento {
   sem_dados: number;
 }
 
-export const EscopoInsightSchema = z.enum(['geral', 'status', 'combustivel', 'quilometragem', 'manutencao']);
+export const EscopoInsightSchema = z.enum([
+  'geral',
+  'status',
+  'combustivel',
+  'quilometragem',
+  'manutencao',
+]);
 export type EscopoInsight = z.infer<typeof EscopoInsightSchema>;
 
 export const InsightSchema = z.object({

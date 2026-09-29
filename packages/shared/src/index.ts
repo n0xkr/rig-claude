@@ -39,3 +39,4 @@ export * from './entities/acompanhamento.js';
 export * from './entities/perfil.js';
 export * from './entities/iaSolicitacao.js';
 export * from './planilhaScan.js';
+export * from './permissoes.js';

@@ -138,18 +138,21 @@ export function useDecisoesSolicitacoesIa() {
   const [processandoId, setProcessandoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
-  const executar = useCallback(async <T>(id: string, chamada: () => Promise<T>): Promise<T | null> => {
-    setProcessandoId(id);
-    setErro(null);
-    try {
-      return await chamada();
-    } catch (err) {
-      setErro(mensagemErro(err));
-      return null;
-    } finally {
-      setProcessandoId(null);
-    }
-  }, []);
+  const executar = useCallback(
+    async <T>(id: string, chamada: () => Promise<T>): Promise<T | null> => {
+      setProcessandoId(id);
+      setErro(null);
+      try {
+        return await chamada();
+      } catch (err) {
+        setErro(mensagemErro(err));
+        return null;
+      } finally {
+        setProcessandoId(null);
+      }
+    },
+    [],
+  );
 
   const aprovar = useCallback(
     (id: string) => executar(id, () => api.post<IaSolicitacao>(`/ia-solicitacoes/${id}/aprovar`)),

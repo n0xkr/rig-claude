@@ -63,7 +63,13 @@ const TABLE_COLUMN_DEFAULTS: Record<string, Row> = {
   portaria_entradas: { tipo_operacao: 'DESCARGA', status: 'AGUARDANDO_CONFERENCIA' },
   ordens_servico: { status: 'ABERTA' },
   ia_solicitacoes: { status: 'PENDENTE' },
-  import_datasets: { origem: 'EXCEL', status: 'VALIDADO', total_linhas: 0, linhas_importadas: 0, linhas_com_erro: 0 },
+  import_datasets: {
+    origem: 'EXCEL',
+    status: 'VALIDADO',
+    total_linhas: 0,
+    linhas_importadas: 0,
+    linhas_com_erro: 0,
+  },
 };
 
 function genId(): string {
@@ -143,7 +149,8 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown; error: unknown }>
   private limitN: number | null = null;
   private rangeFrom: number | null = null;
   private rangeTo: number | null = null;
-  private mode: 'select' | 'insert' | 'update' | 'delete' = 'select';
+  private mode: 'select' | 'insert' | 'upsert' | 'update' | 'delete' = 'select';
+  private upsertConflictCol = 'id';
   private writePayload: Row | Row[] | null = null;
   private selectExpr = '*';
   private singleMode: 'single' | 'maybeSingle' | null = null;
@@ -167,6 +174,14 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown; error: unknown }>
   insert(payload: Row | Row[]): this {
     this.mode = 'insert';
     this.writePayload = payload;
+    return this;
+  }
+
+  /** `upsert(..., { onConflict })`: atualiza a linha com a mesma chave ou insere uma nova. */
+  upsert(payload: Row | Row[], opts?: { onConflict?: string }): this {
+    this.mode = 'upsert';
+    this.writePayload = payload;
+    this.upsertConflictCol = opts?.onConflict ?? 'id';
     return this;
   }
 
@@ -301,6 +316,27 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown; error: unknown }>
       return { data, error: null };
     }
 
+    if (this.mode === 'upsert') {
+      const inputRows = Array.isArray(this.writePayload) ? this.writePayload : [this.writePayload!];
+      const col = this.upsertConflictCol;
+      const defaults = TABLE_COLUMN_DEFAULTS[this.table];
+      const saved = inputRows.map((r) => {
+        const existing = r[col] != null ? all.find((row) => row[col] === r[col]) : undefined;
+        if (existing) return Object.assign(existing, r, { updated_at: nowIso() });
+        const created = {
+          id: genId(),
+          created_at: nowIso(),
+          updated_at: nowIso(),
+          ...defaults,
+          ...r,
+        };
+        all.push(created);
+        return created;
+      });
+      const data = this.singleMode ? (saved[0] ?? null) : saved;
+      return { data, error: null };
+    }
+
     if (this.mode === 'update') {
       const matched = all.filter((row) => this.filters.every((f) => matchesFilter(row, f)));
       matched.forEach((row) => Object.assign(row, this.writePayload, { updated_at: nowIso() }));
@@ -363,15 +399,15 @@ export interface FakeSupabaseClient {
       password: string;
     }): Promise<{ data: { user: { id: string } | null }; error: { message: string } | null }>;
     admin: {
-      createUser(input: {
-        email: string;
-        password: string;
-        email_confirm?: boolean;
-      }): Promise<{
+      createUser(input: { email: string; password: string; email_confirm?: boolean }): Promise<{
         data: { user: { id: string } | null };
         error: { message: string; status?: number } | null;
       }>;
       deleteUser(id: string): Promise<{ error: { message: string } | null }>;
+      updateUserById(
+        id: string,
+        attrs: { password?: string },
+      ): Promise<{ data: { user: { id: string } | null }; error: { message: string } | null }>;
     };
   };
 }
@@ -394,7 +430,10 @@ export function createFakeSupabaseClient(store: FakeSupabaseStore): FakeSupabase
           if (store.authUsers.has(email)) {
             return {
               data: { user: null },
-              error: { message: 'A user with this email address has already been registered', status: 422 },
+              error: {
+                message: 'A user with this email address has already been registered',
+                status: 422,
+              },
             };
           }
           const id = randomUUID();
@@ -405,7 +444,23 @@ export function createFakeSupabaseClient(store: FakeSupabaseStore): FakeSupabase
           for (const [email, user] of store.authUsers) {
             if (user.id === id) store.authUsers.delete(email);
           }
+          // Emula o FK `profiles.id -> auth.users(id) on delete cascade` do banco real.
+          const profiles = store.tables.get('profiles');
+          if (profiles)
+            store.tables.set(
+              'profiles',
+              profiles.filter((p) => p.id !== id),
+            );
           return { error: null };
+        },
+        async updateUserById(id: string, attrs: { password?: string }) {
+          for (const user of store.authUsers.values()) {
+            if (user.id === id) {
+              if (attrs.password) user.password = attrs.password;
+              return { data: { user: { id } }, error: null };
+            }
+          }
+          return { data: { user: null }, error: { message: 'User not found' } };
         },
       },
     },

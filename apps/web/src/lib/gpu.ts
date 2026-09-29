@@ -34,7 +34,9 @@ export function getGpuProfile(): GpuProfile {
     /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || window.matchMedia('(pointer: coarse)').matches;
   const renderer = detectWebglRenderer();
   const softwareRenderer = /swiftshader|llvmpipe|software|basic render/i.test(renderer);
-  const weakMobileGpu = /Mali-[GT]?[0-9]{1,3}\b|Adreno \(TM\) [1-5][0-9]{2}\b|PowerVR/i.test(renderer);
+  const weakMobileGpu = /Mali-[GT]?[0-9]{1,3}\b|Adreno \(TM\) [1-5][0-9]{2}\b|PowerVR/i.test(
+    renderer,
+  );
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
   const lowPower = softwareRenderer || weakMobileGpu || memory <= 2 || (isMobile && memory <= 4);
 

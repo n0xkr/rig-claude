@@ -42,7 +42,9 @@ export class AcompanhamentoRepository {
       const v = porPlaca.get(veiculo.placa);
       return {
         ...veiculo,
-        viagem_ativa: v ? { id: v.id, origem: v.origem, destino: v.destino, status: v.status } : null,
+        viagem_ativa: v
+          ? { id: v.id, origem: v.origem, destino: v.destino, status: v.status }
+          : null,
       } as AcompanhamentoVeiculo;
     });
   }

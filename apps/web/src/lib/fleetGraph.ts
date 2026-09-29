@@ -45,7 +45,13 @@ function hash(s: string): number {
 const norm = (s: string) => s.trim().toLowerCase();
 
 /** Ponto sobre a curva quadrática de Bézier (mesma usada para linhas, partículas e caminhões). */
-export function bezierAt(out: THREE.Vector3, a: THREE.Vector3, c: THREE.Vector3, b: THREE.Vector3, t: number) {
+export function bezierAt(
+  out: THREE.Vector3,
+  a: THREE.Vector3,
+  c: THREE.Vector3,
+  b: THREE.Vector3,
+  t: number,
+) {
   const u = 1 - t;
   return out.set(
     u * u * a.x + 2 * u * t * c.x + t * t * b.x,
@@ -69,7 +75,13 @@ export function buildFleetGraph(viagens: Viagem[]): FleetGraph {
     const key = norm(label);
     let n = byKey.get(key);
     if (!n) {
-      n = { id: key, label: label.trim(), kind: 'ORIGEM', position: new THREE.Vector3(), viagens: [] };
+      n = {
+        id: key,
+        label: label.trim(),
+        kind: 'ORIGEM',
+        position: new THREE.Vector3(),
+        viagens: [],
+      };
       byKey.set(key, n);
     }
     return n;

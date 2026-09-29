@@ -143,15 +143,15 @@ export function usePortariaActions() {
 
   const atualizarStatus = useCallback(
     (id: string, status: StatusPortariaEntrada, observacoes?: string) =>
-      run(() => api.patch<PortariaEntrada>(`/portaria/entradas/${id}/status`, { status, observacoes })),
+      run(() =>
+        api.patch<PortariaEntrada>(`/portaria/entradas/${id}/status`, { status, observacoes }),
+      ),
     [run],
   );
 
   const anexarDocumento = useCallback(
     (entradaId: string, input: CreatePortariaDocumentoInput) =>
-      run(() =>
-        api.post<PortariaDocumento>(`/portaria/entradas/${entradaId}/documentos`, input),
-      ),
+      run(() => api.post<PortariaDocumento>(`/portaria/entradas/${entradaId}/documentos`, input)),
     [run],
   );
 

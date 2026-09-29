@@ -1,14 +1,17 @@
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
-import type { UserRole } from '@rigabras/shared';
+import type { ModuloKey, UserRole } from '@rigabras/shared';
 import { supabaseAdmin, createPasswordAuthClient } from '../../config/supabase.js';
 import { env } from '../../config/env.js';
 import { DomainError } from '../../lib/errors.js';
+import { carregarPermissoesEfetivas } from '../../lib/permissoes.js';
 
 export interface Session {
   accessToken: string;
   refreshToken: string;
   profile: { id: string; email: string; role: UserRole; nome_completo: string };
+  /** Módulos liberados (`null` = todos); também vai no access token como `mods`. */
+  permissoes: ModuloKey[] | null;
 }
 
 /**
@@ -32,11 +35,14 @@ export class AuthService {
       email_confirm: true,
     });
     if (error || !data.user) {
-      const isConflict = error?.status === 422 || /already been registered/i.test(error?.message ?? '');
+      const isConflict =
+        error?.status === 422 || /already been registered/i.test(error?.message ?? '');
       throw new DomainError(
         'Falha no cadastro',
         isConflict ? 409 : 400,
-        isConflict ? 'Este e-mail já está cadastrado' : (error?.message ?? 'Não foi possível criar a conta'),
+        isConflict
+          ? 'Este e-mail já está cadastrado'
+          : (error?.message ?? 'Não foi possível criar a conta'),
       );
     }
 
@@ -86,14 +92,7 @@ export class AuthService {
       throw new DomainError('Falha na autenticação', 401, 'E-mail ou senha inválidos');
     }
 
-    const profile = await this.findProfileAtivo(data.user.id);
-
-    return this.issueSession({
-      id: profile.id,
-      email: profile.email,
-      role: profile.role as UserRole,
-      nome_completo: profile.nome_completo,
-    });
+    return this.sessionFromProfile(await this.findProfileAtivo(data.user.id));
   }
 
   /**
@@ -101,9 +100,11 @@ export class AuthService {
    * real do banco vira 500 em vez de ser confundido com "perfil inexistente".
    */
   private async findProfileAtivo(id: string) {
+    // `*` em vez de lista fixa: inclui `categoria_id`/`permissoes` quando a
+    // migration 0013 já foi aplicada, sem quebrar o login enquanto não foi.
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, role, nome_completo, ativo')
+      .select('*')
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
@@ -116,9 +117,29 @@ export class AuthService {
     return profile;
   }
 
-  issueSession(profile: Session['profile']): Session {
+  private async sessionFromProfile(row: {
+    id: string;
+    email: string;
+    role: string;
+    nome_completo: string;
+    permissoes?: string[] | null;
+    categoria_id?: string | null;
+  }): Promise<Session> {
+    const permissoes = await carregarPermissoesEfetivas(row);
+    return this.issueSession(
+      {
+        id: row.id,
+        email: row.email,
+        role: row.role as UserRole,
+        nome_completo: row.nome_completo,
+      },
+      permissoes,
+    );
+  }
+
+  issueSession(profile: Session['profile'], permissoes: ModuloKey[] | null = null): Session {
     const accessToken = jwt.sign(
-      { sub: profile.id, email: profile.email, role: profile.role },
+      { sub: profile.id, email: profile.email, role: profile.role, mods: permissoes },
       env.JWT_ACCESS_SECRET,
       { expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
     );
@@ -127,7 +148,7 @@ export class AuthService {
       env.JWT_REFRESH_SECRET,
       { expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
     );
-    return { accessToken, refreshToken, profile };
+    return { accessToken, refreshToken, profile, permissoes };
   }
 
   async refresh(refreshToken: string): Promise<Session> {
@@ -138,14 +159,9 @@ export class AuthService {
       throw new DomainError('Refresh token inválido', 401, 'Faça login novamente');
     }
 
-    const profile = await this.findProfileAtivo(payload.sub);
-
-    // Rotação: um novo refresh token é emitido a cada uso (critério #4).
-    return this.issueSession({
-      id: profile.id,
-      email: profile.email,
-      role: profile.role as UserRole,
-      nome_completo: profile.nome_completo,
-    });
+    // Rotação: um novo refresh token é emitido a cada uso (critério #4). Papel e
+    // permissões são relidos do banco, então mudanças feitas por um admin valem
+    // a partir da próxima renovação (≤ JWT_ACCESS_EXPIRES_IN).
+    return this.sessionFromProfile(await this.findProfileAtivo(payload.sub));
   }
 }

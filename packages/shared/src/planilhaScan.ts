@@ -96,7 +96,8 @@ export function normalizarCelula(v: unknown): unknown {
   return v ?? null;
 }
 
-const REGEX_DATA = /^(\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?|\d{1,2}\/\d{1,2}\/\d{2,4}([ ]\d{1,2}:\d{2})?)$/;
+const REGEX_DATA =
+  /^(\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2})?)?|\d{1,2}\/\d{1,2}\/\d{2,4}([ ]\d{1,2}:\d{2})?)$/;
 const REGEX_NUMERO = /^-?\d{1,3}([.,]\d{3})*([.,]\d+)?$|^-?\d+([.,]\d+)?$/;
 const BOOLEANOS = new Set(['sim', 'nao', 'não', 'yes', 'no', 'true', 'false', 's', 'n', 'x']);
 
@@ -180,7 +181,12 @@ function acharCabecalho(matriz: unknown[][]): CandidatoCabecalho | null {
 // Perfil de coluna
 // ---------------------------------------------------------------------------
 
-function perfilarColuna(nome: string, indice: number, valores: unknown[], totalLinhas: number): PerfilColuna {
+function perfilarColuna(
+  nome: string,
+  indice: number,
+  valores: unknown[],
+  totalLinhas: number,
+): PerfilColuna {
   const preenchidos = valores.filter((v) => v !== null && v !== undefined);
   if (preenchidos.length === 0) {
     return { nome, indice, tipo: 'vazio', preenchimento: 0, distintos: 0, exemplos: [] };
@@ -188,7 +194,9 @@ function perfilarColuna(nome: string, indice: number, valores: unknown[], totalL
   const tipos = new Set(preenchidos.map(tipoDoValor));
   const tipo: TipoColuna = tipos.size === 1 ? [...tipos][0]! : 'misto';
   const distintosSet = new Set(preenchidos.map((v) => String(v)));
-  const exemplos = [...distintosSet].slice(0, 4).map((s) => (s.length > 60 ? `${s.slice(0, 57)}...` : s));
+  const exemplos = [...distintosSet]
+    .slice(0, 4)
+    .map((s) => (s.length > 60 ? `${s.slice(0, 57)}...` : s));
   const perfil: PerfilColuna = {
     nome,
     indice,
@@ -197,7 +205,11 @@ function perfilarColuna(nome: string, indice: number, valores: unknown[], totalL
     distintos: distintosSet.size,
     exemplos,
   };
-  if (tipo === 'texto' && distintosSet.size <= LIMITE_CATEGORICA && preenchidos.length >= distintosSet.size * 2) {
+  if (
+    tipo === 'texto' &&
+    distintosSet.size <= LIMITE_CATEGORICA &&
+    preenchidos.length >= distintosSet.size * 2
+  ) {
     perfil.valoresDistintos = [...distintosSet].sort();
   }
   return perfil;
@@ -236,7 +248,10 @@ export function escanearAba(bruta: AbaBruta): AbaEscaneada {
 
   // Colunas: só as que têm título ou dados; o índice de cada uma vem da linha do cabeçalho.
   const linhaCab = matriz[cab.indice] ?? [];
-  const larguraMax = Math.max(linhaCab.length, ...matriz.slice(cab.indice + 1).map((l) => (l ?? []).length));
+  const larguraMax = Math.max(
+    linhaCab.length,
+    ...matriz.slice(cab.indice + 1).map((l) => (l ?? []).length),
+  );
   const indices: number[] = [];
   for (let c = 0; c < larguraMax; c++) {
     const temTitulo = !vazia(linhaCab[c]);
@@ -266,7 +281,10 @@ export function escanearAba(bruta: AbaBruta): AbaEscaneada {
   // em pelo menos uma coluna que costuma ser de digitação (preenchida em < 100% das linhas
   // candidatas OU com valores variados).
   const reais = filtrarLinhasFantasma(candidatas, indices.length);
-  const descartadas = candidatas.length - reais.length + Math.max(0, matriz.length - cab.indice - 1 - candidatas.length);
+  const descartadas =
+    candidatas.length -
+    reais.length +
+    Math.max(0, matriz.length - cab.indice - 1 - candidatas.length);
 
   const linhas: LinhaPlanilha[] = reais.map(({ linha, valores }) => {
     const obj: LinhaPlanilha = {};
@@ -287,10 +305,14 @@ export function escanearAba(bruta: AbaBruta): AbaEscaneada {
   );
 
   const obs = [...base.observacoes];
-  if (cab.indice > 0) obs.push(`Cabeçalho encontrado na linha ${cab.indice + 1} (linhas acima foram ignoradas).`);
-  if (descartadas > 0) obs.push(`${descartadas} linha(s) vazia(s) ou só com resíduo de fórmula foram ignoradas.`);
+  if (cab.indice > 0)
+    obs.push(`Cabeçalho encontrado na linha ${cab.indice + 1} (linhas acima foram ignoradas).`);
+  if (descartadas > 0)
+    obs.push(`${descartadas} linha(s) vazia(s) ou só com resíduo de fórmula foram ignoradas.`);
   if (reais.length > LIMITE_LINHAS_IMPORTACAO) {
-    obs.push(`A aba tem ${reais.length} linhas; a importação aceita até ${LIMITE_LINHAS_IMPORTACAO} por lote.`);
+    obs.push(
+      `A aba tem ${reais.length} linhas; a importação aceita até ${LIMITE_LINHAS_IMPORTACAO} por lote.`,
+    );
   }
   const vazias = colunas.filter((c) => c.tipo === 'vazio').length;
   if (vazias > 0) obs.push(`${vazias} coluna(s) sem nenhum valor.`);
@@ -303,12 +325,26 @@ export function escanearAba(bruta: AbaBruta): AbaEscaneada {
     linhas,
     colunas,
     linhasDescartadas: descartadas,
-    observacoes: reais.length === 0 ? [...obs, 'Tabela com cabeçalho, mas sem linhas de dados.'] : obs,
+    observacoes:
+      reais.length === 0 ? [...obs, 'Tabela com cabeçalho, mas sem linhas de dados.'] : obs,
   };
 }
 
 /** Valores que planilhas-modelo produzem em colunas de fórmula sem dados de origem. */
-const RESIDUOS = new Set(['', '-', '—', '0', 'n/a', 'false', 'sem dados', 'sem viagem', '#n/a', '#ref!', '#value!', '#div/0!']);
+const RESIDUOS = new Set([
+  '',
+  '-',
+  '—',
+  '0',
+  'n/a',
+  'false',
+  'sem dados',
+  'sem viagem',
+  '#n/a',
+  '#ref!',
+  '#value!',
+  '#div/0!',
+]);
 
 function filtrarLinhasFantasma(
   candidatas: Array<{ linha: number; valores: unknown[] }>,
@@ -333,7 +369,8 @@ function filtrarLinhasFantasma(
       contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
     }
     const topo = Math.max(0, ...contagem.values());
-    colunaConstante[c] = candidatas.length >= 20 && preenchidos > 0 && topo / candidatas.length >= 0.9;
+    colunaConstante[c] =
+      candidatas.length >= 20 && preenchidos > 0 && topo / candidatas.length >= 0.9;
   }
 
   return candidatas.filter(({ valores }) =>
@@ -341,11 +378,17 @@ function filtrarLinhasFantasma(
   );
 }
 
-function classificarSemCabecalho(base: AbaEscaneada, matriz: unknown[][], preenchidas: number[]): AbaEscaneada {
+function classificarSemCabecalho(
+  base: AbaEscaneada,
+  matriz: unknown[][],
+  preenchidas: number[],
+): AbaEscaneada {
   const linhasUteis = matriz
     .map((l, i) => ({ i, celulas: (l ?? []).map(normalizarCelula) }))
     .filter((x) => x.celulas.some((c) => c !== null));
-  const larguraMax = Math.max(...linhasUteis.map((x) => x.celulas.filter((c) => c !== null).length));
+  const larguraMax = Math.max(
+    ...linhasUteis.map((x) => x.celulas.filter((c) => c !== null).length),
+  );
 
   // Chave/valor: até 3 colunas, rótulo à esquerda + valor à direita (ex.: PAINEL de indicadores).
   const comPar = linhasUteis.filter((x) => x.celulas.filter((c) => c !== null).length >= 2);
@@ -358,13 +401,14 @@ function classificarSemCabecalho(base: AbaEscaneada, matriz: unknown[][], preenc
       ...base,
       tipo: 'CHAVE_VALOR',
       pares,
-      observacoes: [...base.observacoes, `${pares.length} pares rótulo → valor (indicadores/parâmetros, não uma tabela de registros).`],
+      observacoes: [
+        ...base.observacoes,
+        `${pares.length} pares rótulo → valor (indicadores/parâmetros, não uma tabela de registros).`,
+      ],
     };
   }
 
-  const texto = linhasUteis
-    .map((x) => x.celulas.filter((c) => c !== null).join(' | '))
-    .join('\n');
+  const texto = linhasUteis.map((x) => x.celulas.filter((c) => c !== null).join(' | ')).join('\n');
   void preenchidas;
   return {
     ...base,
@@ -392,24 +436,39 @@ export function buscarNaPlanilha(
   planilha: PlanilhaEscaneada,
   termo: string,
   limite = 50,
-): Array<{ aba: string; onde: 'aba' | 'coluna' | 'celula' | 'chave'; linha?: number; coluna?: string; valor: string }> {
+): Array<{
+  aba: string;
+  onde: 'aba' | 'coluna' | 'celula' | 'chave';
+  linha?: number;
+  coluna?: string;
+  valor: string;
+}> {
   const alvo = semAcento(termo);
   const achados: ReturnType<typeof buscarNaPlanilha> = [];
   if (!alvo) return achados;
   for (const aba of planilha.abas) {
-    if (semAcento(aba.nome).includes(alvo)) achados.push({ aba: aba.nome, onde: 'aba', valor: aba.nome });
+    if (semAcento(aba.nome).includes(alvo))
+      achados.push({ aba: aba.nome, onde: 'aba', valor: aba.nome });
     for (const h of aba.cabecalhos) {
-      if (semAcento(h).includes(alvo)) achados.push({ aba: aba.nome, onde: 'coluna', coluna: h, valor: h });
+      if (semAcento(h).includes(alvo))
+        achados.push({ aba: aba.nome, onde: 'coluna', coluna: h, valor: h });
     }
     for (const p of aba.pares ?? []) {
       const texto = `${p.chave} ${String(p.valor)}`;
-      if (semAcento(texto).includes(alvo)) achados.push({ aba: aba.nome, onde: 'chave', coluna: p.chave, valor: String(p.valor) });
+      if (semAcento(texto).includes(alvo))
+        achados.push({ aba: aba.nome, onde: 'chave', coluna: p.chave, valor: String(p.valor) });
     }
     for (const linha of aba.linhas) {
       for (const h of aba.cabecalhos) {
         const v = linha[h];
         if (v !== null && v !== undefined && semAcento(String(v)).includes(alvo)) {
-          achados.push({ aba: aba.nome, onde: 'celula', linha: linha.__linha as number, coluna: h, valor: String(v) });
+          achados.push({
+            aba: aba.nome,
+            onde: 'celula',
+            linha: linha.__linha as number,
+            coluna: h,
+            valor: String(v),
+          });
         }
       }
       if (achados.length >= limite) return achados.slice(0, limite);
@@ -486,7 +545,9 @@ export function mapearPorNomeDetalhado(
 
   for (const col of cabecalhos) {
     const c = semAcento(col);
-    const campo = campos.find((f) => !usados.has(f.key) && nomesDoCampo(f.key, f.label).includes(c));
+    const campo = campos.find(
+      (f) => !usados.has(f.key) && nomesDoCampo(f.key, f.label).includes(c),
+    );
     if (campo) {
       usados.add(campo.key);
       fortes.add(campo.key);
@@ -502,7 +563,11 @@ export function mapearPorNomeDetalhado(
     for (const campo of campos) {
       if (usados.has(campo.key)) continue;
       for (const n of SINONIMOS[campo.key] ?? []) {
-        if (n.length >= 4 && (c.includes(n) || n.includes(c)) && (!melhor || n.length > melhor.tam)) {
+        if (
+          n.length >= 4 &&
+          (c.includes(n) || n.includes(c)) &&
+          (!melhor || n.length > melhor.tam)
+        ) {
           melhor = { key: campo.key, tam: n.length };
         }
       }
@@ -515,11 +580,17 @@ export function mapearPorNomeDetalhado(
   return { mapa, fortes };
 }
 
-export function mapearPorNome(target: ImportTarget, cabecalhos: string[]): Record<string, string | null> {
+export function mapearPorNome(
+  target: ImportTarget,
+  cabecalhos: string[],
+): Record<string, string | null> {
   return mapearPorNomeDetalhado(target, cabecalhos).mapa;
 }
 
-export function pontuarAlvo(target: ImportTarget, cabecalhos: string[]): { pontos: number; obrigatoriosOk: boolean } {
+export function pontuarAlvo(
+  target: ImportTarget,
+  cabecalhos: string[],
+): { pontos: number; obrigatoriosOk: boolean } {
   const mapa = mapearPorNome(target, cabecalhos);
   const obrigatorios = IMPORT_TARGET_FIELDS[target].filter((c) => c.required).map((c) => c.key);
   const mapeados = new Set(Object.values(mapa).filter(Boolean) as string[]);
@@ -547,7 +618,10 @@ const MINIMO_CAMPOS_FORTES = 6;
  * casados POR NOME EXATO e (pelo menos 6 campos exatos OU nome da aba indica o destino).
  * O usuário sempre pode escolher o destino manualmente.
  */
-export function sugerirAlvo(cabecalhos: string[], nomeAba = ''): { target: ImportTarget; pontos: number } | null {
+export function sugerirAlvo(
+  cabecalhos: string[],
+  nomeAba = '',
+): { target: ImportTarget; pontos: number } | null {
   const alvos = ImportTargetSchema.options as ImportTarget[];
   const nome = semAcento(nomeAba);
   const candidatos = alvos
@@ -570,7 +644,9 @@ export function sugerirAlvo(cabecalhos: string[], nomeAba = ''): { target: Impor
  * referência" para confundir, então basta o melhor destino cujos campos obrigatórios estejam
  * cobertos (por nome exato ou parcial) — mesmo com poucas colunas.
  */
-export function sugerirAlvoTolerante(cabecalhos: string[]): { target: ImportTarget; pontos: number } | null {
+export function sugerirAlvoTolerante(
+  cabecalhos: string[],
+): { target: ImportTarget; pontos: number } | null {
   const alvos = ImportTargetSchema.options as ImportTarget[];
   const melhor = alvos
     .map((t) => ({ t, ...pontuarAlvo(t, cabecalhos) }))

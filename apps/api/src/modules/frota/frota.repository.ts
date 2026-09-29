@@ -184,7 +184,8 @@ export class FrotaRepository {
         .is('deleted_at', null)
         .order('id', { ascending: true });
       // `data_programacao` é timestamptz: as datas do filtro viram limites de dia inteiro.
-      if (filter.periodStart) query = query.gte('data_programacao', periodoInicioTs(filter.periodStart));
+      if (filter.periodStart)
+        query = query.gte('data_programacao', periodoInicioTs(filter.periodStart));
       if (filter.periodEnd) query = query.lte('data_programacao', periodoFimTs(filter.periodEnd));
       return query.range(from, to);
     });

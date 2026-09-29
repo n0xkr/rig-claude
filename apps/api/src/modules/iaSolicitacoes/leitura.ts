@@ -78,7 +78,9 @@ export function lerValor(raw: unknown, tipo: TipoCampo): Leitura {
       return { ok: true, valor: String(raw).trim() };
     case 'plate': {
       const p = comoPlaca(raw);
-      return p ? { ok: true, valor: p } : { ok: false, motivo: `"${String(raw)}" não tem formato de placa` };
+      return p
+        ? { ok: true, valor: p }
+        : { ok: false, motivo: `"${String(raw)}" não tem formato de placa` };
     }
     case 'int':
     case 'number': {
@@ -88,7 +90,9 @@ export function lerValor(raw: unknown, tipo: TipoCampo): Leitura {
     }
     case 'date': {
       const d = lerData(raw);
-      return d ? { ok: true, valor: d } : { ok: false, motivo: `"${String(raw)}" não é uma data reconhecida` };
+      return d
+        ? { ok: true, valor: d }
+        : { ok: false, motivo: `"${String(raw)}" não é uma data reconhecida` };
     }
     case 'sn': {
       const t = normTexto(raw);

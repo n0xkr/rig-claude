@@ -42,7 +42,13 @@ export interface ImportFieldSpec {
  */
 export const IMPORT_TARGET_FIELDS: Record<ImportTarget, ImportFieldSpec[]> = {
   veiculos: [
-    { key: 'placa', label: 'Placa', required: true, type: 'text', hint: 'Se já existir, o veículo é ATUALIZADO (acompanhamento)' },
+    {
+      key: 'placa',
+      label: 'Placa',
+      required: true,
+      type: 'text',
+      hint: 'Se já existir, o veículo é ATUALIZADO (acompanhamento)',
+    },
     {
       key: 'tipo',
       label: 'Tipo do veículo',
@@ -65,7 +71,12 @@ export const IMPORT_TARGET_FIELDS: Record<ImportTarget, ImportFieldSpec[]> = {
     },
     { key: 'motorista_atual', label: 'Motorista atual', required: false, type: 'text' },
     { key: 'km_atual', label: 'Quilometragem atual', required: false, type: 'number' },
-    { key: 'nivel_combustivel', label: 'Nível de combustível (%)', required: false, type: 'number' },
+    {
+      key: 'nivel_combustivel',
+      label: 'Nível de combustível (%)',
+      required: false,
+      type: 'number',
+    },
     { key: 'localizacao_atual', label: 'Localização atual', required: false, type: 'text' },
     { key: 'ultima_manutencao_data', label: 'Última manutenção', required: false, type: 'date' },
     { key: 'proxima_manutencao_data', label: 'Próxima manutenção', required: false, type: 'date' },
@@ -107,8 +118,18 @@ export const IMPORT_TARGET_FIELDS: Record<ImportTarget, ImportFieldSpec[]> = {
     { key: 'km_veiculo', label: 'KM do veículo', required: false, type: 'number' },
     { key: 'custo', label: 'Custo', required: true, type: 'number' },
     { key: 'descricao', label: 'Descrição', required: false, type: 'text' },
-    { key: 'proxima_manutencao_data', label: 'Próxima manutenção (data)', required: false, type: 'date' },
-    { key: 'proxima_manutencao_km', label: 'Próxima manutenção (km)', required: false, type: 'number' },
+    {
+      key: 'proxima_manutencao_data',
+      label: 'Próxima manutenção (data)',
+      required: false,
+      type: 'date',
+    },
+    {
+      key: 'proxima_manutencao_km',
+      label: 'Próxima manutenção (km)',
+      required: false,
+      type: 'number',
+    },
     { key: 'observacoes', label: 'Observações', required: false, type: 'text' },
   ],
 };

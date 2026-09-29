@@ -6,7 +6,7 @@ export default function FreteDetailPage() {
   const { id } = useParams<{ id: string }>();
   if (!id) return null;
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       <FreteWorkflowView freteId={id} />
     </div>
   );
