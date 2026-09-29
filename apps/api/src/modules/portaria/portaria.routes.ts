@@ -29,6 +29,19 @@ export async function portariaRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: ESCRITA_PORTARIA },
     PortariaController.anexarDocumento,
   );
+  // Upload em 2 passos (o browser não tem sessão do Supabase Auth): 1) esta rota
+  // devolve caminho + token assinado; 2) o browser envia o binário ao Storage;
+  // 3) POST /documentos registra o metadado em portaria_documentos.
+  app.post(
+    '/entradas/:id/documentos/upload-url',
+    { preHandler: ESCRITA_PORTARIA },
+    PortariaController.solicitarUploadDocumento,
+  );
+  app.get(
+    '/entradas/:id/documentos/:documentoId/url',
+    { preHandler: LEITURA_TODOS },
+    PortariaController.urlDocumento,
+  );
   app.post(
     '/entradas/:id/saida',
     { preHandler: ESCRITA_PORTARIA },

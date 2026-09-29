@@ -1,5 +1,6 @@
 import type { CreateEventoFronteiraInput, EventoFronteira, Viagem } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'eventos_fronteira';
 
@@ -17,7 +18,7 @@ export class FronteiraRepository {
       .eq('viagem_id', viagemId)
       .is('deleted_at', null)
       .order('timestamp_etapa', { ascending: true });
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data ?? []) as EventoFronteira[];
   }
 
@@ -30,7 +31,7 @@ export class FronteiraRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as EventoFronteira;
   }
 
@@ -57,7 +58,10 @@ export class FronteiraRepository {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []) as unknown as Array<EventoFronteira & { viagem: Viagem | null }>;
+    if (error) throw fromPgError(error);
+    // Eventos de viagens removidas (soft delete) não entram nos KPIs.
+    return ((data ?? []) as unknown as Array<EventoFronteira & { viagem: Viagem | null }>).filter(
+      (e) => !e.viagem?.deleted_at,
+    );
   }
 }

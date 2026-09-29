@@ -40,7 +40,7 @@ export default function RecebimentoDetailPage() {
           </h1>
           <p className="text-sm text-slate-400">
             {recebimento.data_prevista &&
-              `previsto para ${new Date(recebimento.data_prevista).toLocaleDateString('pt-BR')}`}
+              `previsto para ${new Date(`${recebimento.data_prevista}T00:00:00`).toLocaleDateString('pt-BR')}`}
           </p>
         </div>
         <RecebimentoStatusBadge status={recebimento.status ?? 'AGUARDANDO'} />

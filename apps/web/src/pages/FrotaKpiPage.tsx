@@ -177,8 +177,12 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFeedback(null);
+    if (!kmRodado && !kmVazio && !consumo) {
+      setFeedback('Informe ao menos km rodado, km vazio ou consumo.');
+      return;
+    }
     try {
-      const { queued } = await atualizar(viagemId, {
+      const { queued } = await atualizar(viagemId.trim(), {
         km_rodado: kmRodado ? Number(kmRodado) : undefined,
         km_vazio: kmVazio ? Number(kmVazio) : undefined,
         consumo_combustivel_litros: consumo ? Number(consumo) : undefined,
@@ -210,7 +214,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
         <input
           type="number"
           min={0}
-          step="0.1"
+          step="0.01"
           placeholder="Km rodado"
           value={kmRodado}
           onChange={(e) => setKmRodado(e.target.value)}
@@ -219,7 +223,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
         <input
           type="number"
           min={0}
-          step="0.1"
+          step="0.01"
           placeholder="Km vazio"
           value={kmVazio}
           onChange={(e) => setKmVazio(e.target.value)}
@@ -228,7 +232,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
         <input
           type="number"
           min={0}
-          step="0.1"
+          step="0.01"
           placeholder="Consumo (litros)"
           value={consumo}
           onChange={(e) => setConsumo(e.target.value)}

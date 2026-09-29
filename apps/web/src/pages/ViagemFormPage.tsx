@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { WifiOff } from 'lucide-react';
 import type { CreateViagemInput } from '@rigabras/shared';
 import { useCreateViagem } from '../hooks/useViagens.js';
+import { useVeiculosList } from '../hooks/useVeiculos.js';
+import { useMotoristasList } from '../hooks/useMotoristas.js';
 
 const PAISES = ['AR', 'BO', 'CL', 'PY', 'UY', 'PE'] as const;
 
@@ -10,9 +12,13 @@ export default function ViagemFormPage() {
   const navigate = useNavigate();
   const { create, submitting, error } = useCreateViagem();
   const [feedback, setFeedback] = useState<string | null>(null);
+  // `viagens.placa_cavalo` é FK para `veiculos.placa`: só aceita placas já cadastradas.
+  const { veiculos, state: veiculosState } = useVeiculosList();
+  const { motoristas } = useMotoristasList();
   const [form, setForm] = useState({
     numero_crt: '',
     placa_cavalo: '',
+    motorista_id: '',
     origem: 'Uruguaiana/RS',
     destino: '',
     pais_destino: 'AR' as (typeof PAISES)[number],
@@ -24,9 +30,12 @@ export default function ViagemFormPage() {
     e.preventDefault();
     setFeedback(null);
 
+    const veiculo = veiculos.find((v) => v.placa === form.placa_cavalo);
     const payload: CreateViagemInput = {
       numero_crt: form.numero_crt || undefined,
       placa_cavalo: form.placa_cavalo,
+      veiculo_id: veiculo?.id,
+      motorista_id: form.motorista_id || undefined,
       origem: form.origem,
       destino: form.destino,
       pais_destino: form.pais_destino,
@@ -61,13 +70,44 @@ export default function ViagemFormPage() {
           />
         </Field>
         <Field label="Placa do cavalo *">
-          <input
+          <select
             required
             className="input"
             value={form.placa_cavalo}
-            onChange={(e) => setForm((f) => ({ ...f, placa_cavalo: e.target.value.toUpperCase() }))}
-            placeholder="IRZ1A23"
-          />
+            onChange={(e) => setForm((f) => ({ ...f, placa_cavalo: e.target.value }))}
+          >
+            <option value="">Selecione um veículo cadastrado...</option>
+            {veiculos
+              .filter((v) => v.ativo)
+              .map((v) => (
+                <option key={v.id} value={v.placa}>
+                  {v.placa} — {v.tipo.replaceAll('_', ' ')}
+                  {v.marca ? ` · ${v.marca}` : ''}
+                </option>
+              ))}
+          </select>
+          {veiculosState === 'success' && veiculos.filter((v) => v.ativo).length === 0 && (
+            <span className="mt-1 block text-xs text-amber-300">
+              Nenhum veículo ativo cadastrado. Cadastre/importe o veículo (Importar dados) antes de
+              criar a viagem.
+            </span>
+          )}
+        </Field>
+        <Field label="Motorista (opcional)">
+          <select
+            className="input"
+            value={form.motorista_id}
+            onChange={(e) => setForm((f) => ({ ...f, motorista_id: e.target.value }))}
+          >
+            <option value="">Definir depois...</option>
+            {motoristas
+              .filter((m) => m.ativo)
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nome_completo}
+                </option>
+              ))}
+          </select>
         </Field>
         <Field label="Origem *">
           <input
@@ -105,6 +145,7 @@ export default function ViagemFormPage() {
           <Field label="Peso (kg)">
             <input
               type="number"
+              min={0}
               className="input"
               value={form.peso_kg}
               onChange={(e) => setForm((f) => ({ ...f, peso_kg: e.target.value }))}
@@ -113,6 +154,8 @@ export default function ViagemFormPage() {
           <Field label="Valor do frete (R$)">
             <input
               type="number"
+              min={0}
+              step="0.01"
               className="input"
               value={form.valor_frete}
               onChange={(e) => setForm((f) => ({ ...f, valor_frete: e.target.value }))}

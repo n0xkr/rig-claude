@@ -80,6 +80,32 @@ export const CreatePortariaDocumentoSchema = z.object({
 });
 export type CreatePortariaDocumentoInput = z.infer<typeof CreatePortariaDocumentoSchema>;
 
+/**
+ * Passo 1 do upload: o browser NÃO tem sessão do Supabase Auth (o login é feito
+ * pela API), então as policies de `storage.objects` (baseadas em auth.uid())
+ * rejeitariam um upload direto. A API gera, com a service role, um caminho +
+ * token de upload assinado; o browser envia o binário com esse token.
+ */
+export const SolicitarUploadDocumentoPortariaSchema = z.object({
+  nome_arquivo: z.string().min(1).max(255),
+});
+export type SolicitarUploadDocumentoPortariaInput = z.infer<
+  typeof SolicitarUploadDocumentoPortariaSchema
+>;
+
+export interface PortariaDocumentoUploadUrl {
+  /** Caminho do objeto no bucket (`<entrada_id>/<uuid>.<ext>`), enviar depois em `storage_path`. */
+  path: string;
+  /** Token de upload assinado (uso único, curta duração). */
+  token: string;
+}
+
+/** URL temporária (signed URL) para visualizar/baixar um documento do bucket privado. */
+export interface PortariaDocumentoDownloadUrl {
+  url: string;
+  expires_in: number;
+}
+
 /** Registro de saída da portaria — 1:1 com a entrada. */
 export const PortariaSaidaSchema = z.object({
   id: z.string().uuid(),

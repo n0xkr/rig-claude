@@ -155,7 +155,7 @@ export function DashboardLayout({
             <Menu className="h-5 w-5" />
           </button>
           <Link to="/dashboard" className="flex items-center gap-2 font-semibold text-white lg:hidden">
-            <img src={logo} alt="Rigabras" className="h-7 w-7 rounded-lg" />
+            <img src={logo} alt="Rigabras" className="h-7 w-7 shrink-0 rounded-lg object-cover" />
             Rig<span className="text-tms-cyan">abras</span>
           </Link>
           <p className="hidden text-sm font-medium tracking-wide text-slate-300 lg:block">
@@ -183,21 +183,21 @@ export function DashboardLayout({
           boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,242,254,0.08), 0 0 40px rgba(0,242,254,0.06)',
         }}
       >
-        <Link to="/dashboard" className="mb-4 flex items-center gap-2 px-1 font-semibold text-white">
-          <img src={logo} alt="Rigabras" className="h-9 w-9 shrink-0 rounded-xl" />
+        <Link to="/dashboard" className="mb-4 flex shrink-0 items-center gap-2 px-1 font-semibold text-white">
+          <img src={logo} alt="Rigabras" className="aspect-square h-9 w-9 shrink-0 rounded-xl object-cover" />
           {!collapsed && (
             <span>
               Rig<span className="text-tms-cyan">abras</span>
             </span>
           )}
         </Link>
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <NavList items={items} collapsed={collapsed} />
         </div>
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="mt-2 flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-500 hover:text-white"
+          className="mt-2 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-500 hover:text-white"
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
         >
           {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
@@ -223,7 +223,7 @@ export function DashboardLayout({
               exit={{ x: -280 }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             >
-              <div className="mb-3 flex items-center justify-between px-1">
+              <div className="mb-3 flex shrink-0 items-center justify-between px-1">
                 <span className="font-semibold text-white">
                   Rig<span className="text-tms-cyan">abras</span>
                 </span>
@@ -231,7 +231,7 @@ export function DashboardLayout({
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 <NavList items={items} collapsed={false} onNavigate={() => setDrawer(false)} />
               </div>
             </motion.aside>

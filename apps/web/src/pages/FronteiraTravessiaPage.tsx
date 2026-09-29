@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, MapPinned } from 'lucide-react';
 import type { EtapaFronteira } from '@rigabras/shared';
+import { ApiError } from '../lib/apiClient.js';
 import { useFronteiraTravessia } from '../hooks/useFronteiraTravessia.js';
 import { useFronteiraKpis } from '../hooks/useFronteiraKpis.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
@@ -27,6 +28,7 @@ export default function FronteiraTravessiaPage() {
   const [custoEspera, setCustoEspera] = useState('');
   const [retrabalho, setRetrabalho] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [erroEnvio, setErroEnvio] = useState<string | null>(null);
 
   const kpiViagem = useMemo(
     () => kpis?.porViagem.find((k) => k.viagem_id === id) ?? null,
@@ -36,14 +38,24 @@ export default function FronteiraTravessiaPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFeedback(null);
-    const result = await registrarEtapa({
-      etapa,
-      tempo_parado_minutos: tempoParado ? Number(tempoParado) : null,
-      motivo_retencao: motivoRetencao || null,
-      custo_estimado_espera: custoEspera ? Number(custoEspera) : null,
-      retrabalho_documental: retrabalho,
-      observacoes: null,
-    });
+    setErroEnvio(null);
+    let result: { queued: boolean };
+    try {
+      result = await registrarEtapa({
+        etapa,
+        // `eventos_fronteira.tempo_parado_minutos` é integer no banco.
+        tempo_parado_minutos: tempoParado ? Math.round(Number(tempoParado)) : null,
+        motivo_retencao: motivoRetencao || null,
+        custo_estimado_espera: custoEspera ? Number(custoEspera) : null,
+        retrabalho_documental: retrabalho,
+        observacoes: null,
+      });
+    } catch (err) {
+      setErroEnvio(
+        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+      );
+      return;
+    }
     setFeedback(
       result.queued
         ? 'Sem conexão: etapa salva localmente e será sincronizada automaticamente.'
@@ -152,6 +164,7 @@ export default function FronteiraTravessiaPage() {
           {submitting ? 'Registrando...' : 'Registrar etapa'}
         </button>
         {feedback && <p className="text-sm text-emerald-400">{feedback}</p>}
+        {erroEnvio && <p className="text-sm text-red-400">{erroEnvio}</p>}
       </form>
 
       {state === 'loading' && <LoadingSkeleton rows={3} />}

@@ -36,10 +36,12 @@ export class ViagensService {
   }
 
   async create(
-    input: CreateViagemInput,
+    rawInput: CreateViagemInput,
     userId: string | null,
     ip: string | null,
   ): Promise<Viagem> {
+    // `placa_cavalo` é FK case-sensitive para `veiculos.placa` (sempre maiúscula).
+    const input = { ...rawInput, placa_cavalo: rawInput.placa_cavalo.trim().toUpperCase() };
     if (input.numero_crt) {
       const existing = await this.repo.findByCrt(input.numero_crt);
       if (existing) {
@@ -60,10 +62,13 @@ export class ViagensService {
 
   async update(
     id: string,
-    input: UpdateViagemInput,
+    rawInput: UpdateViagemInput,
     userId: string | null,
     ip: string | null,
   ): Promise<Viagem> {
+    const input = rawInput.placa_cavalo
+      ? { ...rawInput, placa_cavalo: rawInput.placa_cavalo.trim().toUpperCase() }
+      : rawInput;
     const before = await this.getById(id);
     const updated = await this.repo.update(id, input);
     await writeAuditLog({
@@ -98,9 +103,12 @@ export class ViagensService {
       throw new InvalidStateTransitionError(current.status, nextStatus);
     }
 
+    // Só preenche a coluna de data se ainda estiver vazia: transições de volta
+    // (ex: NA_FRONTEIRA -> EM_TRANSITO, EM_MONITORAMENTO -> NA_FRONTEIRA)
+    // reentram num status já visitado e não devem sobrescrever a data original.
     const timestampField = STATUS_TIMESTAMP_FIELD[nextStatus];
     const patch: UpdateViagemInput = { status: nextStatus };
-    if (timestampField) {
+    if (timestampField && !(current as Record<string, unknown>)[timestampField]) {
       (patch as Record<string, unknown>)[timestampField] = new Date().toISOString();
     }
 

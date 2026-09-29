@@ -4,7 +4,7 @@ import { ArrowLeft, Camera, FileText, LogOut } from 'lucide-react';
 import type { StatusPortariaEntrada, TipoDocumentoPortaria } from '@rigabras/shared';
 import { TRANSICOES_STATUS_PORTARIA_ENTRADA } from '@rigabras/shared';
 import { usePortariaEntradaDetail, usePortariaActions } from '../hooks/usePortaria.js';
-import { uploadPortariaDocumento } from '../lib/supabaseClient.js';
+import { getCurrentUserRole } from '../lib/apiClient.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 import { PortariaEntradaStatusBadge } from '../components/StatusBadge.js';
 
@@ -26,8 +26,14 @@ const TIPOS_DOCUMENTO: TipoDocumentoPortaria[] = [
 export default function PortariaEntradaDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, entrada, error, reload } = usePortariaEntradaDetail(id);
-  const { atualizarStatus, anexarDocumento, registrarSaida, submitting, error: actionError } =
+  const { atualizarStatus, anexarArquivo, obterUrlDocumento, registrarSaida, submitting, error: actionError } =
     usePortariaActions();
+  // Só gating de UX — a autorização real é da API (RBAC): porteiro registra
+  // (documentos/saída), OPERADOR+ confere e avança o status; VISITANTE só lê.
+  const role = getCurrentUserRole();
+  const podeRegistrar =
+    role === 'SUPERADMIN' || role === 'ADMIN' || role === 'OPERADOR' || role === 'PORTARIA';
+  const podeAvancarStatus = role === 'SUPERADMIN' || role === 'ADMIN' || role === 'OPERADOR';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoPortaria>('CRT');
   const [uploading, setUploading] = useState(false);
@@ -45,15 +51,26 @@ export default function PortariaEntradaDetailPage() {
     if (!id) return;
     setUploading(true);
     try {
-      const storagePath = await uploadPortariaDocumento(id, file);
-      await anexarDocumento(id, {
-        tipo_documento: tipoDocumento,
-        storage_path: storagePath,
-        nome_arquivo: file.name,
-      });
+      await anexarArquivo(id, tipoDocumento, file);
       reload();
+    } catch {
+      // o hook já expõe a mensagem em `actionError`
     } finally {
       setUploading(false);
+    }
+  }
+
+  /** Abre o documento via signed URL temporária gerada pela API (bucket privado). */
+  async function handleAbrirDocumento(documentoId: string) {
+    if (!id) return;
+    // Abre a aba antes do await para não ser bloqueada como popup.
+    const janela = window.open('', '_blank');
+    try {
+      const resultado = await obterUrlDocumento(id, documentoId);
+      if (resultado?.url && janela) janela.location.href = resultado.url;
+      else janela?.close();
+    } catch {
+      janela?.close();
     }
   }
 
@@ -103,15 +120,20 @@ export default function PortariaEntradaDetailPage() {
               key={doc.id}
               className="flex items-center justify-between rounded-md bg-slate-900/60 px-3 py-2 text-sm"
             >
-              <span className="text-slate-300">
+              <button
+                type="button"
+                onClick={() => void handleAbrirDocumento(doc.id)}
+                className="text-left text-slate-300 underline-offset-2 hover:underline"
+              >
                 {doc.tipo_documento} — {doc.nome_arquivo ?? doc.storage_path}
-              </span>
+              </button>
               <span className="text-xs text-slate-500">
                 {doc.conferido_em ? 'conferido' : 'aguardando conferência'}
               </span>
             </div>
           ))}
         </div>
+        {podeRegistrar && (
         <div className="flex flex-wrap items-center gap-2">
           <select
             className="input w-auto"
@@ -145,10 +167,11 @@ export default function PortariaEntradaDetailPage() {
             }}
           />
         </div>
+        )}
       </section>
 
       {/* Avanço de status */}
-      {proximosStatus.length > 0 && status !== 'AGUARDANDO_SAIDA' && (
+      {podeAvancarStatus && proximosStatus.length > 0 && status !== 'AGUARDANDO_SAIDA' && (
         <div className="mb-6 flex flex-wrap gap-2">
           {proximosStatus.map((proximo) => (
             <button
@@ -167,7 +190,7 @@ export default function PortariaEntradaDetailPage() {
       )}
 
       {/* Saída */}
-      {status === 'AGUARDANDO_SAIDA' && !entrada.saida && (
+      {podeRegistrar && status === 'AGUARDANDO_SAIDA' && !entrada.saida && (
         <section className="mb-6 rounded-lg border border-slate-800 p-4">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
             <LogOut className="h-4 w-4" /> Registrar saída

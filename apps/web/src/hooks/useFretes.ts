@@ -19,7 +19,8 @@ export function useFretesList(status?: string) {
     setState('loading');
     setError(null);
     try {
-      const query = status ? `?status=${status}` : '';
+      // A API pagina (padrão 20): pede o máximo para a lista não esconder fretes além da primeira página.
+      const query = status ? `?limit=200&status=${status}` : '?limit=200';
       const result = await api.get<ListResponse>(`/fretes${query}`);
       setFretes(result.data);
       setState('success');

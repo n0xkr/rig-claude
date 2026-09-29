@@ -104,6 +104,16 @@ export class FretesService {
         `Frete no status "${before.status_fechamento}" não pode mais ser editado`,
       );
     }
+    // Mesma regra da criação (frete de retorno com backhaul exige valor), aplicada ao resultado do merge.
+    const merged = { ...before, ...input };
+    if (!merged.retorno_vazio && !merged.valor_frete_retorno) {
+      throw new DomainError(
+        'Frete de retorno incompleto',
+        422,
+        'valor_frete_retorno é obrigatório quando retorno_vazio = false (há carga de backhaul)',
+      );
+    }
+    if (Object.keys(input).length === 0) return before; // PATCH vazio: nada a atualizar (o PostgREST rejeita UPDATE sem colunas)
     const updated = await this.repo.update(id, input);
     await writeAuditLog({
       userId,

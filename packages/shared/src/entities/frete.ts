@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { StatusFechamentoFreteSchema } from '../enums.js';
 
+/** Limite das colunas `numeric(12,2)` de `fretes` no banco — acima disso o Postgres responde 22003 (overflow). */
+const VALOR_MAX = 9_999_999_999.99;
+
 /**
  * Frete contratado de uma viagem (Módulo 3, critério #1 — "Frete
  * contratado"). Relação 1:1 com `viagens` (índice único parcial em
@@ -51,10 +54,10 @@ const RETORNO_VAZIO_ISSUE = {
 export const CreateFreteBaseSchema = z.object({
   viagem_id: z.string().uuid(),
   numero_fatura: z.string().nullable().optional(),
-  valor_contratado: z.number().nonnegative(),
+  valor_contratado: z.number().nonnegative().max(VALOR_MAX),
   retorno_vazio: z.boolean().default(true),
-  valor_custo_retorno_vazio: z.number().nonnegative().nullable().optional(),
-  valor_frete_retorno: z.number().nonnegative().nullable().optional(),
+  valor_custo_retorno_vazio: z.number().nonnegative().max(VALOR_MAX).nullable().optional(),
+  valor_frete_retorno: z.number().nonnegative().max(VALOR_MAX).nullable().optional(),
   observacoes: z.string().nullable().optional(),
 });
 
@@ -79,10 +82,10 @@ export type CreateFreteNestedInput = z.infer<typeof CreateFreteNestedSchema>;
  */
 export const UpdateFreteSchema = z.object({
   numero_fatura: z.string().nullable().optional(),
-  valor_contratado: z.number().nonnegative().optional(),
+  valor_contratado: z.number().nonnegative().max(VALOR_MAX).optional(),
   retorno_vazio: z.boolean().optional(),
-  valor_custo_retorno_vazio: z.number().nonnegative().nullable().optional(),
-  valor_frete_retorno: z.number().nonnegative().nullable().optional(),
+  valor_custo_retorno_vazio: z.number().nonnegative().max(VALOR_MAX).nullable().optional(),
+  valor_frete_retorno: z.number().nonnegative().max(VALOR_MAX).nullable().optional(),
   observacoes: z.string().nullable().optional(),
 });
 export type UpdateFreteInput = z.infer<typeof UpdateFreteSchema>;

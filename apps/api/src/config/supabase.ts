@@ -29,3 +29,18 @@ export const supabaseAdmin: SupabaseClient = env.USE_FAKE_DB
         persistSession: false,
       },
     });
+
+/**
+ * Client descartável só para validar senha (`signInWithPassword`). NUNCA chamar
+ * `signInWithPassword` em `supabaseAdmin`: o supabase-js guarda a sessão do
+ * usuário no client e passa a enviar o JWT dele no lugar da service-role, e todas
+ * as queries seguintes da API rodariam como esse usuário, sob RLS (ex.: a lista de
+ * usuários voltava só com o perfil de quem acabou de logar). Um client novo por
+ * chamada, com a anon key, isola a sessão.
+ */
+export function createPasswordAuthClient(): SupabaseClient {
+  if (env.USE_FAKE_DB) return supabaseAdmin;
+  return createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
+}

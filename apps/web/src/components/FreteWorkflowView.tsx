@@ -22,6 +22,7 @@ import {
 import { useFreteDetail } from '../hooks/useFreteDetail.js';
 import { useFreteStatusHistory } from '../hooks/useFreteStatusHistory.js';
 import { getCurrentUserRole } from '../lib/apiClient.js';
+import { formatDateOnly } from '../lib/dateOnly.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from './StateViews.js';
 import { FreteStatusBadge } from './StatusBadge.js';
 
@@ -377,7 +378,7 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
                 <p className="text-xs text-slate-500">
                   {p.forma_pagamento ?? 'Forma não informada'}
                   {p.data_pagamento
-                    ? ` · ${new Date(p.data_pagamento).toLocaleDateString('pt-BR')}`
+                    ? ` · ${formatDateOnly(p.data_pagamento)}`
                     : ''}
                 </p>
               </li>

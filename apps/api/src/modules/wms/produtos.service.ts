@@ -5,13 +5,15 @@ import type {
 } from '@rigabras/shared';
 import { ProdutosRepository, type ListProdutosFilter } from './produtos.repository.js';
 import { DepositantesRepository } from './depositantes.repository.js';
-import { NotFoundError } from '../../lib/errors.js';
+import { EstoqueRepository } from './estoque.repository.js';
+import { ConflictError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 export class ProdutosService {
   constructor(
     private readonly repo: ProdutosRepository = new ProdutosRepository(),
     private readonly depositantesRepo: DepositantesRepository = new DepositantesRepository(),
+    private readonly estoqueRepo: EstoqueRepository = new EstoqueRepository(),
   ) {}
 
   list(filter: ListProdutosFilter) {
@@ -65,6 +67,10 @@ export class ProdutosService {
 
   async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
     await this.getById(id);
+    // Excluir um produto com saldo deixaria estoque "órfão" (e fora do rastreio).
+    if ((await this.estoqueRepo.listSaldoTotalPorProduto(id)) > 0) {
+      throw new ConflictError('Não é possível excluir um produto que ainda possui estoque');
+    }
     await this.repo.softDelete(id);
     await writeAuditLog({
       userId,

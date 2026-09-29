@@ -19,7 +19,8 @@ export function useManutencoesList(veiculoId?: string) {
     setState('loading');
     setError(null);
     try {
-      const query = veiculoId ? `?veiculoId=${veiculoId}` : '';
+      // A API pagina (padrão 20): pede o máximo para a lista não esconder manutenções além da primeira página.
+      const query = veiculoId ? `?limit=200&veiculoId=${veiculoId}` : '?limit=200';
       const result = await api.get<ListResponse>(`/frota/manutencoes${query}`);
       setManutencoes(result.data);
       setState('success');

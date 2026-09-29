@@ -22,7 +22,7 @@ export const PagamentoFreteSchema = z.object({
 export type PagamentoFrete = z.infer<typeof PagamentoFreteSchema>;
 
 export const CreatePagamentoFreteSchema = z.object({
-  valor_pago: z.number().positive(),
+  valor_pago: z.number().positive().max(9_999_999_999.99), // numeric(12,2)
   data_pagamento: z.string().date().nullable().optional(),
   forma_pagamento: z.string().nullable().optional(),
   status: StatusPagamentoFreteSchema.default('CONFIRMADO'),

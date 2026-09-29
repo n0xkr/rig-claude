@@ -4,11 +4,15 @@ import type {
   UpdateEnderecoArmazemInput,
 } from '@rigabras/shared';
 import { EnderecosRepository, type ListEnderecosFilter } from './enderecos.repository.js';
-import { NotFoundError } from '../../lib/errors.js';
+import { EstoqueRepository } from './estoque.repository.js';
+import { ConflictError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 export class EnderecosService {
-  constructor(private readonly repo: EnderecosRepository = new EnderecosRepository()) {}
+  constructor(
+    private readonly repo: EnderecosRepository = new EnderecosRepository(),
+    private readonly estoqueRepo: EstoqueRepository = new EstoqueRepository(),
+  ) {}
 
   list(filter: ListEnderecosFilter) {
     return this.repo.list(filter);
@@ -65,6 +69,11 @@ export class EnderecosService {
 
   async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
     await this.getById(id);
+    // Excluir um endereço com saldo deixaria estoque "órfão" fora do mapa.
+    const saldos = await this.estoqueRepo.listSaldosPorEnderecos([id]);
+    if (saldos.length > 0) {
+      throw new ConflictError('Não é possível excluir um endereço que ainda possui estoque');
+    }
     await this.repo.softDelete(id);
     await writeAuditLog({
       userId,

@@ -141,7 +141,7 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
       <input
         required
         type="number"
-        min={0}
+        min={0.001}
         step="0.001"
         placeholder="Quantidade"
         className="input"

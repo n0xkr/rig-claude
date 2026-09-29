@@ -1,5 +1,6 @@
 import type { Inventario, InventarioItem } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 
 const TABLE = 'inventarios';
 const ITENS_TABLE = 'inventario_itens';
@@ -25,7 +26,7 @@ export class InventariosRepository {
     if (filter.cursor) query = query.lt('id', filter.cursor);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const rows = (data ?? []) as Inventario[];
     const hasMore = rows.length > filter.limit;
     const page = hasMore ? rows.slice(0, filter.limit) : rows;
@@ -39,7 +40,7 @@ export class InventariosRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as Inventario | null) ?? null;
   }
 
@@ -52,7 +53,7 @@ export class InventariosRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Inventario;
   }
 
@@ -63,7 +64,7 @@ export class InventariosRepository {
       .eq('id', id)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Inventario;
   }
 
@@ -79,7 +80,7 @@ export class InventariosRepository {
       .from(ITENS_TABLE)
       .insert(itens.map((item) => ({ ...item, inventario_id: inventarioId })))
       .select('*');
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as InventarioItem[];
   }
 
@@ -89,7 +90,7 @@ export class InventariosRepository {
       .select('*')
       .eq('inventario_id', inventarioId)
       .order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as InventarioItem[];
   }
 
@@ -100,7 +101,7 @@ export class InventariosRepository {
       .eq('id', itemId)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as InventarioItem;
   }
 }

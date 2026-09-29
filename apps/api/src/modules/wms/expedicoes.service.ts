@@ -193,14 +193,16 @@ export class ExpedicoesService {
     if (!item || item.expedicao_id !== expedicaoId) {
       throw new NotFoundError('expedicao_item', itemId);
     }
+    // Um item só é separado uma vez: separar de novo baixaria o saldo em dobro.
+    if (item.quantidade_separada != null) {
+      throw new ConflictError('Este item da expedição já foi separado');
+    }
     const endereco = await this.enderecosRepo.findById(input.endereco_id);
     if (!endereco) throw new NotFoundError('endereco_armazem', input.endereco_id);
 
-    const updatedItem = await this.repo.updateItem(itemId, {
-      quantidade_separada: input.quantidade_separada,
-      endereco_id: input.endereco_id,
-    });
-
+    // Baixa o saldo ANTES de marcar o item como separado: se o endereço não
+    // tiver saldo suficiente a movimentação é rejeitada (422) e o item não
+    // fica marcado como separado sem ter saído do estoque.
     if (input.quantidade_separada > 0) {
       await this.estoqueRepo.registrarMovimentacao(
         {
@@ -214,6 +216,11 @@ export class ExpedicoesService {
         userId,
       );
     }
+
+    const updatedItem = await this.repo.updateItem(itemId, {
+      quantidade_separada: input.quantidade_separada,
+      endereco_id: input.endereco_id,
+    });
 
     await writeAuditLog({
       userId,
@@ -240,7 +247,7 @@ export class ExpedicoesService {
     }
     const updatedItem = await this.repo.updateItem(itemId, flags);
 
-    if (flags.reembalado && item.quantidade_separada) {
+    if (flags.reembalado && !item.reembalado && item.quantidade_separada) {
       await this.estoqueRepo.registrarMovimentacao(
         {
           produto_id: item.produto_id,
@@ -251,7 +258,7 @@ export class ExpedicoesService {
         userId,
       );
     }
-    if (flags.etiquetado && item.quantidade_separada) {
+    if (flags.etiquetado && !item.etiquetado && item.quantidade_separada) {
       await this.estoqueRepo.registrarMovimentacao(
         {
           produto_id: item.produto_id,
@@ -335,7 +342,34 @@ export class ExpedicoesService {
     return { ...updated, itens };
   }
 
+  /**
+   * Cancela a expedição. Itens já separados tiveram o saldo baixado do
+   * endereço (SEPARACAO/CROSS_DOCKING): a mercadoria volta ao endereço de
+   * origem via movimentação ENDERECAMENTO (entrada pura), para não perder
+   * estoque em silêncio.
+   */
   async cancelar(id: string, userId: string | null, ip: string | null) {
+    const expedicao = await this.repo.findById(id);
+    if (!expedicao) throw new NotFoundError('expedicao', id);
+    this.assertTransicao(expedicao.status, 'CANCELADA');
+
+    const itens = await this.repo.listItens(id);
+    for (const item of itens) {
+      if (item.quantidade_separada && item.endereco_id) {
+        await this.estoqueRepo.registrarMovimentacao(
+          {
+            produto_id: item.produto_id,
+            tipo_movimentacao: 'ENDERECAMENTO',
+            quantidade: item.quantidade_separada,
+            endereco_destino_id: item.endereco_id,
+            expedicao_id: id,
+            referencia_documento: expedicao.referencia_documento ?? undefined,
+            observacoes: 'Estorno da separação por cancelamento da expedição',
+          },
+          userId,
+        );
+      }
+    }
     return this.transicionar(id, 'CANCELADA', userId, ip);
   }
 }

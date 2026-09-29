@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Plus, Truck } from 'lucide-react';
+import { getCurrentUserRole } from '../lib/apiClient.js';
 import { usePortariaEntradasList, usePortariaKpis } from '../hooks/usePortaria.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
 import { PortariaEntradaStatusBadge } from '../components/StatusBadge.js';
@@ -8,17 +9,23 @@ import { PortariaEntradaStatusBadge } from '../components/StatusBadge.js';
 export default function PortariaEntradasListPage() {
   const { state, entradas, error, reload } = usePortariaEntradasList();
   const { kpis } = usePortariaKpis();
+  // Gating de UX (a API já barra VISITANTE no POST /portaria/entradas).
+  const role = getCurrentUserRole();
+  const podeRegistrar =
+    role === 'SUPERADMIN' || role === 'ADMIN' || role === 'OPERADOR' || role === 'PORTARIA';
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-white">Portaria</h1>
-        <Link
-          to="/portaria/nova"
-          className="flex items-center gap-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
-        >
-          <Plus className="h-4 w-4" /> Nova entrada
-        </Link>
+        {podeRegistrar && (
+          <Link
+            to="/portaria/nova"
+            className="flex items-center gap-2 rounded-md bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          >
+            <Plus className="h-4 w-4" /> Nova entrada
+          </Link>
+        )}
       </div>
 
       {kpis && (
@@ -38,10 +45,14 @@ export default function PortariaEntradasListPage() {
         <EmptyState
           title="Nenhuma entrada registrada"
           description="Registre a chegada de um veículo na portaria para começar."
-          actionLabel="Nova entrada"
-          onAction={() => {
-            window.location.href = '/portaria/nova';
-          }}
+          actionLabel={podeRegistrar ? 'Nova entrada' : undefined}
+          onAction={
+            podeRegistrar
+              ? () => {
+                  window.location.href = '/portaria/nova';
+                }
+              : undefined
+          }
         />
       ) : (
         <div className="space-y-3">

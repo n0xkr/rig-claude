@@ -1,5 +1,6 @@
 import type { CreateDepositanteInput, Depositante, UpdateDepositanteInput } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 
 const TABLE = 'depositantes';
 
@@ -24,7 +25,7 @@ export class DepositantesRepository {
     if (filter.cursor) query = query.lt('id', filter.cursor);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const rows = (data ?? []) as Depositante[];
     const hasMore = rows.length > filter.limit;
     const page = hasMore ? rows.slice(0, filter.limit) : rows;
@@ -38,7 +39,7 @@ export class DepositantesRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as Depositante | null) ?? null;
   }
 
@@ -48,7 +49,7 @@ export class DepositantesRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Depositante;
   }
 
@@ -60,7 +61,7 @@ export class DepositantesRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Depositante;
   }
 
@@ -69,6 +70,6 @@ export class DepositantesRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
   }
 }

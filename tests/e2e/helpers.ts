@@ -99,3 +99,19 @@ export function randomPlaca(): string {
     .padStart(4, '0');
   return `PW${n}A1`;
 }
+
+/**
+ * Cadastra (via API) um veículo com placa aleatória e devolve a placa: o
+ * formulário de viagem só aceita placas já cadastradas (FK para `veiculos`),
+ * então o veículo precisa existir ANTES de abrir `/viagens/nova`.
+ */
+export async function novaPlaca(page: Page): Promise<string> {
+  const token = await apiLogin(page.request, 'OPERADOR');
+  const placa = randomPlaca();
+  const response = await page.request.post(`${API_BASE_URL}/veiculos`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { placa, tipo: 'CAVALO', frota_propria: true, ativo: true },
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return placa;
+}

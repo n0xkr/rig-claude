@@ -53,7 +53,7 @@ export default function ViagemDetailPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">{viagem.numero_crt ?? 'CRT pendente'}</h1>
           <p className="text-sm text-slate-400">
-            {viagem.origem} → {viagem.destino} ({viagem.pais_destino})
+            {viagem.origem} → {viagem.destino} {viagem.pais_destino ? `(${viagem.pais_destino})` : ''}
           </p>
         </div>
         <StatusBadge status={viagem.status} />

@@ -69,6 +69,24 @@ function coagirValor(raw: unknown, type: 'text' | 'number' | 'boolean' | 'date' 
   }
 }
 
+/**
+ * Erros do PostgREST são objetos simples (não `Error`) com `code`/`message`:
+ * traduz as violações de constraint mais comuns em mensagens úteis.
+ */
+function mensagemErroBanco(err: unknown): string {
+  const e = err as { code?: string; message?: string; details?: string } | null;
+  switch (e?.code) {
+    case '23505':
+      return `Registro duplicado (já existe): ${e.details ?? e.message ?? 'valor único repetido'}`;
+    case '23503':
+      return `Referência inválida (registro relacionado não existe): ${e.details ?? e.message ?? ''}`.trim();
+    case '23514':
+      return `Valor fora das regras do banco: ${e.message ?? 'violação de check constraint'}`;
+    default:
+      return e?.message ?? 'Falha ao gravar registro';
+  }
+}
+
 export class ImportacaoService {
   constructor(private readonly repo: ImportacaoRepository = new ImportacaoRepository()) {}
 
@@ -81,11 +99,17 @@ export class ImportacaoService {
   private async coagirEValidarLinhas(
     target: ImportTarget,
     linhas: Array<Record<string, unknown>>,
-  ): Promise<{ validas: Array<Record<string, unknown>>; erros: ImportLinhaErro[] }> {
+  ): Promise<{ validas: Array<{ linha: number; dados: Record<string, unknown> }>; erros: ImportLinhaErro[] }> {
     const campos = IMPORT_TARGET_FIELDS[target];
     const schema = TARGET_SCHEMA[target];
-    const validas: Array<Record<string, unknown>> = [];
+    const validas: Array<{ linha: number; dados: Record<string, unknown> }> = [];
     const erros: ImportLinhaErro[] = [];
+    // Uma placa costuma se repetir em várias linhas: evita 1 query por linha.
+    const cachePlacas = new Map<string, string | null>();
+    const resolverVeiculo = async (placa: string): Promise<string | null> => {
+      if (!cachePlacas.has(placa)) cachePlacas.set(placa, await this.repo.findVeiculoIdByPlaca(placa));
+      return cachePlacas.get(placa) ?? null;
+    };
 
     for (let i = 0; i < linhas.length; i++) {
       const linhaNum = i + 1;
@@ -103,7 +127,7 @@ export class ImportacaoService {
           continue;
         }
         const placaNormalizada = String(placa).trim().toUpperCase();
-        const veiculoId = await this.repo.findVeiculoIdByPlaca(placaNormalizada);
+        const veiculoId = await resolverVeiculo(placaNormalizada);
         if (!veiculoId) {
           erros.push({
             linha: linhaNum,
@@ -112,6 +136,23 @@ export class ImportacaoService {
           });
           continue;
         }
+        coagida.veiculo_id = veiculoId;
+      }
+
+      if (target === 'viagens' && typeof coagida.placa_cavalo === 'string') {
+        // viagens.placa_cavalo é FK para veiculos.placa (exata, maiúscula): sem veículo
+        // cadastrado o insert falharia no banco (23503), então valida aqui com msg clara.
+        const placa = coagida.placa_cavalo.toUpperCase();
+        const veiculoId = await resolverVeiculo(placa);
+        if (!veiculoId) {
+          erros.push({
+            linha: linhaNum,
+            campo: 'placa_cavalo',
+            mensagem: `Nenhum veículo cadastrado com a placa "${placa}"`,
+          });
+          continue;
+        }
+        coagida.placa_cavalo = placa;
         coagida.veiculo_id = veiculoId;
       }
 
@@ -126,7 +167,7 @@ export class ImportacaoService {
         }
         continue;
       }
-      validas.push(result.data as Record<string, unknown>);
+      validas.push({ linha: linhaNum, dados: result.data as Record<string, unknown> });
     }
 
     return { validas, erros };
@@ -166,16 +207,12 @@ export class ImportacaoService {
 
     let importadas = 0;
     const errosCommit: ImportLinhaErro[] = [...erros];
-    for (let i = 0; i < validas.length; i++) {
+    for (const { linha, dados } of validas) {
       try {
-        await this.repo.bulkInsert(target, [{ ...validas[i], created_by: userId }]);
+        await this.repo.bulkInsert(target, [{ ...dados, created_by: userId }]);
         importadas++;
       } catch (err) {
-        errosCommit.push({
-          linha: -1,
-          campo: null,
-          mensagem: err instanceof Error ? err.message : 'Falha ao gravar registro',
-        });
+        errosCommit.push({ linha, campo: null, mensagem: mensagemErroBanco(err) });
       }
     }
 

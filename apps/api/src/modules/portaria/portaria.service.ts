@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import type {
   CreatePortariaDocumentoInput,
   CreatePortariaEntradaInput,
   CreatePortariaSaidaInput,
   OrdemServico,
   PortariaDocumento,
+  PortariaDocumentoDownloadUrl,
+  PortariaDocumentoUploadUrl,
   PortariaEntrada,
   PortariaEntradaDetalhe,
   PortariaSaida,
@@ -14,7 +17,16 @@ import type {
 import { TRANSICOES_STATUS_PORTARIA_ENTRADA } from '@rigabras/shared';
 import { PortariaRepository, type ListEntradasFilter } from './portaria.repository.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
-import { ConflictError, InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
+import { logger } from '../../config/logger.js';
+import {
+  ConflictError,
+  DomainError,
+  InvalidStateTransitionError,
+  NotFoundError,
+} from '../../lib/errors.js';
+
+/** Validade da signed URL de download de documentos (segundos). */
+const DOWNLOAD_URL_EXPIRES_IN = 300;
 
 /**
  * Serviço do Módulo 8 (Portaria) — o principal gatilho da automação
@@ -85,20 +97,41 @@ export class PortariaService {
     }
 
     if (entrada.viagem_id) {
-      const viagem = await this.repo.findViagemById(entrada.viagem_id);
-      if (viagem) {
-        await this.repo.registrarNotaTimelineViagem(
-          viagem.id,
-          viagem.status as Viagem['status'],
-          `Veículo ${entrada.placa_cavalo} chegou na portaria${
-            ordemServico ? ' — OS de descarga aberta automaticamente' : ''
-          }.`,
-          userId,
-        );
-      }
+      await this.notaTimelineViagem(
+        entrada.viagem_id,
+        `Veículo ${entrada.placa_cavalo} chegou na portaria${
+          ordemServico ? ' — OS de descarga aberta automaticamente' : ''
+        }.`,
+        userId,
+      );
     }
 
     return { entrada, ordemServico };
+  }
+
+  /**
+   * Nota na timeline da viagem vinculada. É acessória: a entrada/saída já foi
+   * gravada, então uma falha aqui (ex.: viagem sem status) só é logada — não
+   * pode devolver 500 e induzir o porteiro a registrar a entrada duas vezes.
+   */
+  private async notaTimelineViagem(
+    viagemId: string,
+    observacoes: string,
+    userId: string | null,
+  ): Promise<void> {
+    try {
+      const viagem = await this.repo.findViagemById(viagemId);
+      if (viagem?.status) {
+        await this.repo.registrarNotaTimelineViagem(
+          viagem.id,
+          viagem.status as Viagem['status'],
+          observacoes,
+          userId,
+        );
+      }
+    } catch (err) {
+      logger.error({ err, viagemId }, 'Falha ao gravar nota na timeline da viagem (portaria)');
+    }
   }
 
   async atualizarStatusEntrada(
@@ -127,6 +160,44 @@ export class PortariaService {
     return atualizado;
   }
 
+  /**
+   * Passo 1 do upload de documento: gera caminho + token de upload assinado
+   * (service role). O browser envia o binário direto ao Storage com esse token
+   * e depois chama `anexarDocumento` com o `path` devolvido.
+   */
+  async gerarUrlUploadDocumento(
+    entradaId: string,
+    nomeArquivo: string,
+  ): Promise<PortariaDocumentoUploadUrl> {
+    const entrada = await this.repo.findEntradaById(entradaId);
+    if (!entrada) throw new NotFoundError('portaria_entrada', entradaId);
+    const extBruta = nomeArquivo.includes('.') ? (nomeArquivo.split('.').pop() ?? '') : '';
+    const ext = extBruta.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 10) || 'bin';
+    const path = `${entradaId}/${randomUUID()}.${ext}`;
+    return this.repo.criarUrlUploadDocumento(path);
+  }
+
+  /** Signed URL temporária para visualizar/baixar um documento do bucket privado. */
+  async obterUrlDocumento(
+    entradaId: string,
+    documentoId: string,
+  ): Promise<PortariaDocumentoDownloadUrl> {
+    const documento = await this.repo.findDocumentoById(entradaId, documentoId);
+    if (!documento) throw new NotFoundError('portaria_documento', documentoId);
+    const url = await this.repo.criarUrlDownloadDocumento(
+      documento.storage_path,
+      DOWNLOAD_URL_EXPIRES_IN,
+    );
+    if (!url) {
+      throw new DomainError(
+        'Arquivo não encontrado no armazenamento',
+        404,
+        'O arquivo deste documento não existe mais no bucket',
+      );
+    }
+    return { url, expires_in: DOWNLOAD_URL_EXPIRES_IN };
+  }
+
   async anexarDocumento(
     entradaId: string,
     input: CreatePortariaDocumentoInput,
@@ -135,6 +206,23 @@ export class PortariaService {
   ): Promise<PortariaDocumento> {
     const entrada = await this.repo.findEntradaById(entradaId);
     if (!entrada) throw new NotFoundError('portaria_entrada', entradaId);
+    // O caminho precisa ser um objeto enviado para ESTA entrada (via URL assinada
+    // gerada por `gerarUrlUploadDocumento`) e que realmente exista no bucket.
+    if (!input.storage_path.startsWith(`${entradaId}/`)) {
+      throw new DomainError(
+        'Caminho de arquivo inválido',
+        422,
+        'storage_path deve pertencer à pasta da entrada informada',
+      );
+    }
+    const url = await this.repo.criarUrlDownloadDocumento(input.storage_path, 60);
+    if (!url) {
+      throw new DomainError(
+        'Arquivo não encontrado no armazenamento',
+        422,
+        'Envie o arquivo antes de registrar o documento',
+      );
+    }
     const documento = await this.repo.createDocumento(entradaId, input, userId);
     await writeAuditLog({
       userId,
@@ -176,7 +264,16 @@ export class PortariaService {
       Math.round((dataSaida.getTime() - dataEntrada.getTime()) / 60000),
     );
 
-    const saida = await this.repo.createSaida(entradaId, input, tempoPatioMinutos, userId);
+    let saida: PortariaSaida;
+    try {
+      saida = await this.repo.createSaida(entradaId, input, tempoPatioMinutos, userId);
+    } catch (err) {
+      // UNIQUE(entrada_id): duas saídas simultâneas para a mesma entrada.
+      if ((err as { code?: string } | null)?.code === '23505') {
+        throw new ConflictError(`Entrada ${entradaId} já possui saída registrada`);
+      }
+      throw err;
+    }
     const entradaAtualizada = await this.repo.updateEntradaStatus(
       entradaId,
       'SAIDA_REGISTRADA',
@@ -202,15 +299,11 @@ export class PortariaService {
     }
 
     if (entrada.viagem_id) {
-      const viagem = await this.repo.findViagemById(entrada.viagem_id);
-      if (viagem) {
-        await this.repo.registrarNotaTimelineViagem(
-          viagem.id,
-          viagem.status as Viagem['status'],
-          `Veículo ${entrada.placa_cavalo} saiu da portaria (permanência: ${tempoPatioMinutos} min).`,
-          userId,
-        );
-      }
+      await this.notaTimelineViagem(
+        entrada.viagem_id,
+        `Veículo ${entrada.placa_cavalo} saiu da portaria (permanência: ${tempoPatioMinutos} min).`,
+        userId,
+      );
     }
 
     return { saida, entrada: entradaAtualizada };
@@ -232,12 +325,7 @@ export class PortariaService {
       this.repo.listEntradas({ status: 'LIBERADO_PATIO' }),
       this.repo.listEntradas({ status: 'AGUARDANDO_SAIDA' }),
     ]);
-    const saidas = await this.repo.listEntradas({ status: 'SAIDA_REGISTRADA' });
-    const tempos: number[] = [];
-    for (const entrada of saidas) {
-      const saida = await this.repo.findSaidaByEntrada(entrada.id);
-      if (saida) tempos.push(saida.tempo_patio_minutos);
-    }
+    const tempos = await this.repo.listTemposPatioMinutos();
     const tempoMedioPatioMinutos = tempos.length
       ? Math.round(tempos.reduce((acc, v) => acc + v, 0) / tempos.length)
       : 0;

@@ -182,6 +182,11 @@ export class RecebimentosService {
     if (!item || item.recebimento_id !== recebimentoId) {
       throw new NotFoundError('recebimento_item', itemId);
     }
+    // Um item só é conferido uma vez: reconferir geraria uma 2ª movimentação
+    // RECEBIMENTO e dobraria o saldo em `estoque`.
+    if (item.quantidade_conferida != null) {
+      throw new ConflictError('Este item do recebimento já foi conferido');
+    }
     const endereco = await this.enderecosRepo.findById(input.endereco_id);
     if (!endereco) throw new NotFoundError('endereco_armazem', input.endereco_id);
 
@@ -229,6 +234,12 @@ export class RecebimentosService {
   ): Promise<RecebimentoDetalhe> {
     const recebimento = await this.repo.findById(id);
     if (!recebimento) throw new NotFoundError('recebimento', id);
+    if (recebimento.status !== 'EM_CONFERENCIA') {
+      throw new InvalidStateTransitionError(
+        recebimento.status ?? 'AGUARDANDO',
+        'CONFERIDO/ENDERECADO/DIVERGENTE',
+      );
+    }
     const itens = await this.repo.listItens(id);
     if (itens.some((i) => i.quantidade_conferida == null)) {
       throw new InvalidStateTransitionError(

@@ -4,6 +4,7 @@ import { useManutencaoDetail, useDeleteManutencao } from '../hooks/useManutencoe
 import { useVeiculosList } from '../hooks/useVeiculos.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 import { ManutencaoTipoBadge } from '../components/StatusBadge.js';
+import { formatDateOnly } from '../lib/dateOnly.js';
 
 /** Detalhe de uma manutenção de veículo (Módulo 4, Controle de Frota). */
 export default function ManutencaoDetailPage() {
@@ -11,15 +12,19 @@ export default function ManutencaoDetailPage() {
   const navigate = useNavigate();
   const { state, manutencao, error, reload } = useManutencaoDetail(id);
   const { veiculos } = useVeiculosList();
-  const { remove, submitting } = useDeleteManutencao();
+  const { remove, submitting, error: deleteError } = useDeleteManutencao();
 
   const veiculo = veiculos.find((v) => v.id === manutencao?.veiculo_id);
 
   async function handleDelete() {
     if (!id) return;
     if (!window.confirm('Excluir esta manutenção? Esta ação não pode ser desfeita.')) return;
-    await remove(id);
-    navigate('/frota/manutencoes');
+    try {
+      await remove(id);
+      navigate('/frota/manutencoes');
+    } catch {
+      // erro já exposto via `deleteError`
+    }
   }
 
   return (
@@ -44,10 +49,7 @@ export default function ManutencaoDetailPage() {
           </div>
 
           <dl className="grid grid-cols-2 gap-4 rounded-lg border border-slate-800 p-4 text-sm">
-            <Info
-              label="Data"
-              value={new Date(manutencao.data_manutencao).toLocaleDateString('pt-BR')}
-            />
+            <Info label="Data" value={formatDateOnly(manutencao.data_manutencao)} />
             <Info label="Custo" value={`R$ ${manutencao.custo.toLocaleString('pt-BR')}`} />
             <Info
               label="Km do veículo"
@@ -57,7 +59,7 @@ export default function ManutencaoDetailPage() {
               label="Próxima manutenção (data)"
               value={
                 manutencao.proxima_manutencao_data
-                  ? new Date(manutencao.proxima_manutencao_data).toLocaleDateString('pt-BR')
+                  ? formatDateOnly(manutencao.proxima_manutencao_data)
                   : '-'
               }
             />
@@ -87,6 +89,7 @@ export default function ManutencaoDetailPage() {
           >
             <Trash2 className="h-4 w-4" /> {submitting ? 'Excluindo...' : 'Excluir manutenção'}
           </button>
+          {deleteError && <p className="text-sm text-red-400">{deleteError}</p>}
         </div>
       )}
     </div>

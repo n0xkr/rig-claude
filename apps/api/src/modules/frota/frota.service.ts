@@ -10,10 +10,11 @@ import {
   FrotaRepository,
   type FrotaKpiFilter,
   type ListManutencoesFilter,
+  type ViagemFrotaRow,
 } from './frota.repository.js';
 import { ViagensRepository } from '../viagens/viagens.repository.js';
 import { VeiculosRepository } from '../veiculos/veiculos.repository.js';
-import { NotFoundError } from '../../lib/errors.js';
+import { DomainError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 /**
@@ -69,6 +70,7 @@ export class FrotaService {
     ip: string | null,
   ): Promise<ManutencaoVeiculo> {
     const before = await this.getManutencaoById(id);
+    if (Object.keys(input).length === 0) return before; // PATCH vazio: nada a atualizar (o PostgREST rejeita UPDATE sem colunas)
     const updated = await this.repo.updateManutencao(id, input);
     await writeAuditLog({
       userId,
@@ -108,6 +110,14 @@ export class FrotaService {
   ) {
     const viagem = await this.viagensRepo.findById(viagemId);
     if (!viagem) throw new NotFoundError('viagem', viagemId);
+    // Um PATCH sem nenhuma coluna não tem o que atualizar (e o PostgREST rejeitaria o UPDATE vazio).
+    if (Object.values(input).every((valor) => valor === undefined)) {
+      throw new DomainError(
+        'Nenhum dado de quilometragem informado',
+        422,
+        'Informe ao menos km_rodado, km_vazio ou consumo_combustivel_litros',
+      );
+    }
 
     const updated = await this.repo.updateQuilometragem(viagemId, input);
     await writeAuditLog({
@@ -125,9 +135,9 @@ export class FrotaService {
   // KPIs de frota
   // ------------------------------------------------------------------
   async getKpis(filter: FrotaKpiFilter): Promise<FrotaKpiResponse> {
-    const [veiculosTodos, veiculoIdsEmViagem, viagens, manutencoes] = await Promise.all([
+    const [veiculosTodos, emViagem, viagens, manutencoes] = await Promise.all([
       this.repo.listVeiculos(),
-      this.repo.listVeiculoIdsEmViagem(),
+      this.repo.listVeiculosEmViagem(),
       this.repo.listViagensParaKpis(filter),
       this.repo.listManutencoesParaKpis(filter),
     ]);
@@ -142,8 +152,21 @@ export class FrotaService {
       ? veiculosTodos.filter((v) => v.id === filter.veiculoId)
       : veiculosTodos;
 
+    // `viagens.veiculo_id` é opcional (só `placa_cavalo` é NOT NULL): atribui a viagem ao veículo pelo id ou, na falta dele, pela placa.
+    const veiculoIdPorPlaca = new Map(veiculosTodos.map((v) => [v.placa, v.id]));
+    const viagensPorVeiculo = new Map<string, ViagemFrotaRow[]>();
+    for (const viagem of viagens) {
+      const veiculoId = viagem.veiculo_id ?? veiculoIdPorPlaca.get(viagem.placa_cavalo);
+      if (!veiculoId) continue;
+      const lista = viagensPorVeiculo.get(veiculoId) ?? [];
+      lista.push(viagem);
+      viagensPorVeiculo.set(veiculoId, lista);
+    }
+    const veiculoEmViagem = (v: { id: string; placa: string }) =>
+      emViagem.ids.has(v.id) || emViagem.placas.has(v.placa);
+
     const porVeiculo: FrotaKpiVeiculo[] = veiculos.map((veiculo) => {
-      const viagensVeiculo = viagens.filter((v) => v.veiculo_id === veiculo.id);
+      const viagensVeiculo = viagensPorVeiculo.get(veiculo.id) ?? [];
       const manutencoesVeiculo = manutencoes.filter((m) => m.veiculo_id === veiculo.id);
 
       const kmRodado = round2(sum(viagensVeiculo.map((v) => v.km_rodado ?? 0)));
@@ -160,7 +183,7 @@ export class FrotaService {
         tipo: veiculo.tipo,
         frota_propria: veiculo.frota_propria,
         ativo: veiculo.ativo,
-        status: veiculoIdsEmViagem.has(veiculo.id) ? 'EM_VIAGEM' : 'DISPONIVEL',
+        status: veiculoEmViagem(veiculo) ? 'EM_VIAGEM' : 'DISPONIVEL',
         qtd_viagens: viagensVeiculo.length,
         km_rodado_total: kmRodado,
         km_vazio_total: kmVazio,
@@ -174,14 +197,17 @@ export class FrotaService {
 
     const veiculosAtivos = veiculos.filter((v) => v.ativo);
     const frotaTotal = veiculosAtivos.length;
-    const emViagemCount = veiculosAtivos.filter((v) => veiculoIdsEmViagem.has(v.id)).length;
+    const emViagemCount = veiculosAtivos.filter(veiculoEmViagem).length;
     const disponiveisCount = frotaTotal - emViagemCount;
 
     const kmRodadoTotal = round2(sum(porVeiculo.map((v) => v.km_rodado_total)));
     const kmVazioTotal = round2(sum(porVeiculo.map((v) => v.km_vazio_total)));
     const consumoTotal = round2(sum(porVeiculo.map((v) => v.consumo_combustivel_total_litros)));
     const custoManutencaoTotal = round2(sum(porVeiculo.map((v) => v.custo_manutencao_total)));
-    const totalViagensNoPeriodo = viagens.length;
+    const totalViagensNoPeriodo = veiculos.reduce(
+      (acc, v) => acc + (viagensPorVeiculo.get(v.id)?.length ?? 0),
+      0,
+    );
     const qtdViagensRetornoVazioTotal = sum(porVeiculo.map((v) => v.qtd_viagens_retorno_vazio));
 
     return {

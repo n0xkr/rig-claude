@@ -4,7 +4,9 @@ import type {
   MovimentacaoEstoque,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 import { calcularDeltaSaldo } from './estoqueLedger.js';
+import { DomainError } from '../../lib/errors.js';
 
 const MOVIMENTACOES_TABLE = 'movimentacoes_estoque';
 const ESTOQUE_TABLE = 'estoque';
@@ -21,12 +23,33 @@ export class EstoqueRepository {
     input: CreateMovimentacaoEstoqueInput,
     createdBy: string | null,
   ): Promise<MovimentacaoEstoque> {
+    // Valida o saldo ANTES de gravar no ledger: uma saída maior que o saldo do
+    // endereço violaria o CHECK `chk_estoque_quantidade` (quantidade >= 0) ou,
+    // pior, seria "absorvida" em silêncio (saldo truncado em 0) deixando o
+    // ledger inconsistente com `estoque`.
+    const deltaPrevio = calcularDeltaSaldo(
+      input.tipo_movimentacao,
+      input.quantidade,
+      Boolean(input.endereco_origem_id),
+      Boolean(input.endereco_destino_id),
+    );
+    if (input.endereco_origem_id && deltaPrevio.origemDelta < 0) {
+      const saldo = await this.getSaldo(input.produto_id, input.endereco_origem_id);
+      if (saldo + deltaPrevio.origemDelta < 0) {
+        throw new DomainError(
+          'Saldo insuficiente',
+          422,
+          `O endereço de origem possui saldo ${saldo} deste produto, insuficiente para a saída de ${input.quantidade}`,
+        );
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from(MOVIMENTACOES_TABLE)
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const movimentacao = data as MovimentacaoEstoque;
 
     const delta = calcularDeltaSaldo(
@@ -66,7 +89,7 @@ export class EstoqueRepository {
       .eq('produto_id', produtoId)
       .eq('endereco_id', enderecoId)
       .maybeSingle();
-    if (findError) throw findError;
+    if (findError) throw mapPgError(findError);
 
     const saldoAtual = (existente as Estoque | null)?.quantidade ?? 0;
     const novoSaldo = Math.max(0, saldoAtual + delta);
@@ -76,13 +99,39 @@ export class EstoqueRepository {
         .from(ESTOQUE_TABLE)
         .update({ quantidade: novoSaldo, updated_at: new Date().toISOString() })
         .eq('id', (existente as Estoque).id);
-      if (error) throw error;
+      if (error) throw mapPgError(error);
     } else {
       const { error } = await supabaseAdmin
         .from(ESTOQUE_TABLE)
         .insert({ produto_id: produtoId, endereco_id: enderecoId, quantidade: novoSaldo });
-      if (error) throw error;
+      if (error) throw mapPgError(error);
     }
+
+    await this.sincronizarStatusEndereco(enderecoId);
+  }
+
+  /**
+   * Mantém `enderecos_armazem.status` coerente com o saldo real de `estoque`
+   * (o mapa/KPI de ocupação lê esse status): endereço com saldo > 0 passa a
+   * OCUPADO e, ao zerar, volta a LIVRE. Endereços BLOQUEADOS nunca são alterados.
+   */
+  private async sincronizarStatusEndereco(enderecoId: string): Promise<void> {
+    const { data, error } = await supabaseAdmin
+      .from(ESTOQUE_TABLE)
+      .select('quantidade')
+      .eq('endereco_id', enderecoId)
+      .gt('quantidade', 0)
+      .limit(1);
+    if (error) throw mapPgError(error);
+    const temSaldo = (data ?? []).length > 0;
+
+    const { error: updError } = await supabaseAdmin
+      .from('enderecos_armazem')
+      .update({ status: temSaldo ? 'OCUPADO' : 'LIVRE' })
+      .eq('id', enderecoId)
+      .neq('status', 'BLOQUEADO')
+      .neq('status', temSaldo ? 'OCUPADO' : 'LIVRE');
+    if (updError) throw mapPgError(updError);
   }
 
   async getSaldo(produtoId: string, enderecoId: string): Promise<number> {
@@ -92,7 +141,7 @@ export class EstoqueRepository {
       .eq('produto_id', produtoId)
       .eq('endereco_id', enderecoId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as { quantidade: number } | null)?.quantidade ?? 0;
   }
 
@@ -102,7 +151,7 @@ export class EstoqueRepository {
       .select('*')
       .eq('produto_id', produtoId)
       .gt('quantidade', 0);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as Estoque[];
   }
 
@@ -111,16 +160,19 @@ export class EstoqueRepository {
     return saldos.reduce((acc, s) => acc + s.quantidade, 0);
   }
 
-  /** Saldos (>0) de todos os endereços informados — usado para snapshotar um inventário/contagem física por armazém. */
+  /** Saldos (>0) de todos os endereços informados — usado para snapshotar um inventário/contagem física por armazém. Consulta em lotes para não estourar o limite de tamanho da URL do PostgREST (`in.(...)` com centenas de UUIDs). */
   async listSaldosPorEnderecos(enderecoIds: string[]): Promise<Estoque[]> {
-    if (enderecoIds.length === 0) return [];
-    const { data, error } = await supabaseAdmin
-      .from(ESTOQUE_TABLE)
-      .select('*')
-      .in('endereco_id', enderecoIds)
-      .gt('quantidade', 0);
-    if (error) throw error;
-    return (data ?? []) as Estoque[];
+    const resultado: Estoque[] = [];
+    for (let i = 0; i < enderecoIds.length; i += 100) {
+      const { data, error } = await supabaseAdmin
+        .from(ESTOQUE_TABLE)
+        .select('*')
+        .in('endereco_id', enderecoIds.slice(i, i + 100))
+        .gt('quantidade', 0);
+      if (error) throw mapPgError(error);
+      resultado.push(...((data ?? []) as Estoque[]));
+    }
+    return resultado;
   }
 
   /** Saldo total (soma de todos os endereços de um armazém) — usado pelos KPIs (giro de estoque). */
@@ -135,7 +187,7 @@ export class EstoqueRepository {
       .select('*')
       .eq('id', id)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as MovimentacaoEstoque | null) ?? null;
   }
 
@@ -146,7 +198,7 @@ export class EstoqueRepository {
       .eq('produto_id', produtoId)
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as MovimentacaoEstoque[];
   }
 
@@ -154,6 +206,7 @@ export class EstoqueRepository {
     recebimentoId?: string;
     expedicaoId?: string;
     inventarioId?: string;
+    tipo?: MovimentacaoEstoque['tipo_movimentacao'];
     periodStart?: string;
     periodEnd?: string;
   }): Promise<MovimentacaoEstoque[]> {
@@ -161,10 +214,11 @@ export class EstoqueRepository {
     if (filter.recebimentoId) query = query.eq('recebimento_id', filter.recebimentoId);
     if (filter.expedicaoId) query = query.eq('expedicao_id', filter.expedicaoId);
     if (filter.inventarioId) query = query.eq('inventario_id', filter.inventarioId);
+    if (filter.tipo) query = query.eq('tipo_movimentacao', filter.tipo);
     if (filter.periodStart) query = query.gte('created_at', filter.periodStart);
     if (filter.periodEnd) query = query.lte('created_at', filter.periodEnd);
     const { data, error } = await query.order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as MovimentacaoEstoque[];
   }
 }

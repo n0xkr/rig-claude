@@ -46,20 +46,31 @@ export class UsuariosService {
         conflict ? 'Este e-mail já está cadastrado' : (error?.message ?? 'Não foi possível criar a conta'),
       );
     }
+    // O trigger `on_auth_user_created` (handle_new_user) do banco já cria um
+    // profile básico (VISITANTE) ao inserir em auth.users — por isso upsert
+    // por id, e não insert, para gravar nome/papel/ativo escolhidos.
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: data.user.id,
-        email: input.email,
-        nome_completo: input.nome_completo,
-        role: input.role,
-        ativo: input.ativo ?? true,
-      })
+      .upsert(
+        {
+          id: data.user.id,
+          email: input.email,
+          nome_completo: input.nome_completo,
+          role: input.role,
+          ativo: input.ativo ?? true,
+          deleted_at: null,
+        },
+        { onConflict: 'id' },
+      )
       .select(COLUMNS)
       .single();
     if (profileError || !profile) {
       await supabaseAdmin.auth.admin.deleteUser(data.user.id);
-      throw new DomainError('Falha ao criar usuário', 500, 'Não foi possível criar o perfil');
+      throw new DomainError(
+        'Falha ao criar usuário',
+        500,
+        `Não foi possível criar o perfil${profileError ? `: ${profileError.message}` : ''}`,
+      );
     }
     await writeAuditLog({
       userId: actorId,
@@ -85,18 +96,29 @@ export class UsuariosService {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { password });
       if (error) throw new DomainError('Falha ao alterar a senha', 400, error.message);
     }
+    let data;
     if (Object.keys(profileFields).length === 0) {
-      const { data } = await supabaseAdmin.from('profiles').select(COLUMNS).eq('id', id).single();
-      if (!data) throw new NotFoundError('Usuário', id);
-      return data;
+      // Só a senha mudou (Auth): apenas relê o profile para devolver ao cliente.
+      const res = await supabaseAdmin
+        .from('profiles')
+        .select(COLUMNS)
+        .eq('id', id)
+        .is('deleted_at', null)
+        .maybeSingle();
+      if (res.error) throw new DomainError('Falha ao carregar usuário', 500, res.error.message);
+      data = res.data;
+    } else {
+      const res = await supabaseAdmin
+        .from('profiles')
+        .update(profileFields)
+        .eq('id', id)
+        .is('deleted_at', null)
+        .select(COLUMNS)
+        .maybeSingle();
+      if (res.error) throw new DomainError('Falha ao atualizar usuário', 500, res.error.message);
+      data = res.data;
     }
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .update(profileFields)
-      .eq('id', id)
-      .select(COLUMNS)
-      .single();
-    if (error || !data) throw new NotFoundError('Usuário', id);
+    if (!data) throw new NotFoundError('Usuário', id);
     await writeAuditLog({
       userId: actorId,
       action: 'UPDATE',
@@ -113,7 +135,18 @@ export class UsuariosService {
       throw new DomainError('Ação não permitida', 422, 'Você não pode excluir a sua própria conta');
     }
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
-    if (error) throw new DomainError('Falha ao excluir usuário', 400, error.message);
+    if (error) {
+      // profiles.id -> auth.users é CASCADE, mas viagens/fretes/etc. (created_by) referenciam
+      // profiles sem ação: com histórico vinculado o banco recusa a exclusão.
+      const vinculado = /database error/i.test(error.message);
+      throw new DomainError(
+        'Falha ao excluir usuário',
+        vinculado ? 409 : 400,
+        vinculado
+          ? 'Este usuário possui registros vinculados (viagens, fretes, etc.) e não pode ser excluído; desative-o em vez disso'
+          : error.message,
+      );
+    }
     await writeAuditLog({
       userId: actorId,
       action: 'DELETE',

@@ -4,6 +4,7 @@ import type {
   UpdateApoliceSeguroInput,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'apolices_seguro';
 
@@ -20,7 +21,7 @@ export class ApolicesRepository {
       .limit(limit + 1);
     if (cursor) query = query.lt('id', cursor);
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     const rows = (data ?? []) as ApoliceSeguro[];
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
@@ -34,13 +35,13 @@ export class ApolicesRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as ApoliceSeguro | null) ?? null;
   }
 
   async create(input: CreateApoliceSeguroInput): Promise<ApoliceSeguro> {
     const { data, error } = await supabaseAdmin.from(TABLE).insert(input).select('*').single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as ApoliceSeguro;
   }
 
@@ -52,7 +53,7 @@ export class ApolicesRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as ApoliceSeguro;
   }
 
@@ -61,6 +62,6 @@ export class ApolicesRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw fromPgError(error);
   }
 }

@@ -25,8 +25,17 @@ export const ViagensController = {
   async list(request: FastifyRequest, reply: FastifyReply) {
     const query = request.query as { status?: string; cursor?: string; limit?: string };
     const limit = query.limit ? Number(query.limit) : 20;
-    const result = await service.list({ status: query.status, cursor: query.cursor, limit });
-    return reply.send(result);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      return sendProblem(reply, 422, 'Parâmetro inválido', 'limit deve ser um inteiro entre 1 e 200');
+    }
+    try {
+      // `status` inválido (fora do enum do banco) vira DomainError 422 no repository.
+      const result = await service.list({ status: query.status, cursor: query.cursor, limit });
+      return reply.send(result);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
   },
 
   async getById(request: FastifyRequest, reply: FastifyReply) {

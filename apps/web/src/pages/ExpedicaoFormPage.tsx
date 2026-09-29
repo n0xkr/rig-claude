@@ -59,7 +59,10 @@ export default function ExpedicaoFormPage() {
             required
             className="input"
             value={depositanteId}
-            onChange={(e) => setDepositanteId(e.target.value)}
+            onChange={(e) => {
+              setDepositanteId(e.target.value);
+              setItens([{ produto_id: '', quantidade_solicitada: '' }]);
+            }}
           >
             <option value="">Selecione...</option>
             {depositantes.map((d) => (

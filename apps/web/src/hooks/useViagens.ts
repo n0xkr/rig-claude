@@ -58,8 +58,17 @@ export function useCreateViagem() {
         await queueCreateViagem(input);
         return { queued: true };
       }
+      // Erros de validação (422) trazem os campos inválidos em `problem.errors`.
+      const campos =
+        err instanceof ApiError && err.problem.errors
+          ? Object.entries(err.problem.errors)
+              .map(([campo, msgs]) => `${campo}: ${msgs.join(', ')}`)
+              .join('; ')
+          : '';
       setError(
-        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+        err instanceof ApiError
+          ? `${err.problem.detail ?? err.problem.title}${campos ? ` (${campos})` : ''}`
+          : 'Erro inesperado',
       );
       throw err;
     } finally {

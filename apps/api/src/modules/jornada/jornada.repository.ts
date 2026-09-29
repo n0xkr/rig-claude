@@ -1,5 +1,6 @@
 import type { CreateRegistroJornadaInput, RegistroJornada } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fetchAllPages, periodoFimTs, periodoInicioTs } from '../../lib/fetchAllPages.js';
 
 const TABLE = 'registros_jornada';
 const MOTORISTAS_TABLE = 'motoristas';
@@ -52,17 +53,21 @@ export class JornadaRepository {
     motoristaId: string,
     filter: ListEventosFilter = {},
   ): Promise<RegistroJornada[]> {
-    let query = supabaseAdmin
-      .from(TABLE)
-      .select('*')
-      .eq('motorista_id', motoristaId)
-      .is('deleted_at', null)
-      .order('timestamp_evento', { ascending: true });
-    if (filter.periodStart) query = query.gte('timestamp_evento', filter.periodStart);
-    if (filter.periodEnd) query = query.lte('timestamp_evento', filter.periodEnd);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []) as RegistroJornada[];
+    // Paginado: um motorista acumula milhares de eventos e o PostgREST trunca em 1000 linhas.
+    return fetchAllPages<RegistroJornada>((from, to) => {
+      let query = supabaseAdmin
+        .from(TABLE)
+        .select('*')
+        .eq('motorista_id', motoristaId)
+        .is('deleted_at', null)
+        .order('timestamp_evento', { ascending: true })
+        .order('id', { ascending: true });
+      if (filter.periodStart) {
+        query = query.gte('timestamp_evento', periodoInicioTs(filter.periodStart));
+      }
+      if (filter.periodEnd) query = query.lte('timestamp_evento', periodoFimTs(filter.periodEnd));
+      return query.range(from, to);
+    });
   }
 
   /**
@@ -78,16 +83,19 @@ export class JornadaRepository {
     sinceIso: string,
   ): Promise<RegistroJornada[]> {
     if (motoristaIds.length === 0) return [];
-    const { data, error } = await supabaseAdmin
-      .from(TABLE)
-      .select('*')
-      .in('motorista_id', motoristaIds)
-      .is('deleted_at', null)
-      .gte('timestamp_evento', sinceIso)
-      .order('motorista_id', { ascending: true })
-      .order('timestamp_evento', { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as RegistroJornada[];
+    // Paginado: a janela de alertas cobre todos os motoristas ativos e passaria de 1000 linhas (truncadas pelo PostgREST).
+    return fetchAllPages<RegistroJornada>((from, to) =>
+      supabaseAdmin
+        .from(TABLE)
+        .select('*')
+        .in('motorista_id', motoristaIds)
+        .is('deleted_at', null)
+        .gte('timestamp_evento', sinceIso)
+        .order('motorista_id', { ascending: true })
+        .order('timestamp_evento', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+    );
   }
 
   /**

@@ -4,6 +4,7 @@ import { JornadaService } from './jornada.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
 import { sendProblem } from '../../lib/problemDetails.js';
 import { DomainError } from '../../lib/errors.js';
+import { pgErrorToProblem } from '../../lib/pgErrors.js';
 import { toCsv } from '../../lib/csv.js';
 
 const service = new JornadaService();
@@ -12,6 +13,12 @@ const service = new JornadaService();
 function handleDomainError(error: unknown, reply: FastifyReply): boolean {
   if (error instanceof DomainError) {
     sendProblem(reply, error.status, error.message, error.detail);
+    return true;
+  }
+  // Erros do Postgres (unique/FK/check/uuid inválido) viram 409/422/400 em vez de 500 genérico.
+  const pg = pgErrorToProblem(error);
+  if (pg) {
+    sendProblem(reply, pg.status, pg.title, pg.detail);
     return true;
   }
   return false;
@@ -106,9 +113,8 @@ export const JornadaController = {
   async getAlertas(request: FastifyRequest, reply: FastifyReply) {
     const query = request.query as { janelaDias?: string };
     try {
-      const alertas = await service.getAlertas(
-        query.janelaDias ? Number(query.janelaDias) : undefined,
-      );
+      const janelaDias = Number(query.janelaDias);
+      const alertas = await service.getAlertas(janelaDias > 0 ? janelaDias : undefined);
       return reply.send(alertas);
     } catch (error) {
       if (handleDomainError(error, reply)) return;

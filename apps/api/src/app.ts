@@ -7,7 +7,8 @@ import { logger } from './config/logger.js';
 import { supabaseAdmin } from './config/supabase.js';
 import { registerCorrelationId } from './middleware/correlationId.js';
 import { registerRoutes } from './routes/index.js';
-import { Problems } from './lib/problemDetails.js';
+import { Problems, sendProblem } from './lib/problemDetails.js';
+import { pgErrorToProblem } from './lib/pgErrors.js';
 import { isGroqConfigured } from './config/env.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -56,6 +57,26 @@ export async function buildApp(): Promise<FastifyInstance> {
     }
   });
 
+  // PostgrestError não é `instanceof Error`: quando um controller faz `throw error`
+  // com o objeto cru, o Fastify NÃO o entrega ao setErrorHandler — serializa o
+  // objeto como JSON com status 500. Este hook o converte em problem details
+  // (409/422/400) antes da serialização.
+  app.addHook('preSerialization', async (request, reply, payload) => {
+    if (reply.statusCode < 500) return payload;
+    const pgProblem = pgErrorToProblem(payload);
+    if (!pgProblem) return payload;
+    logger.warn({ err: payload, correlationId: request.id, url: request.url }, 'Erro de banco mapeado');
+    reply.status(pgProblem.status).type('application/problem+json');
+    return {
+      type: 'about:blank',
+      title: pgProblem.title,
+      status: pgProblem.status,
+      detail: pgProblem.detail,
+      instance: request.url,
+      correlationId: request.id,
+    };
+  });
+
   // --------------------------------------------------------------------
   // Health checks (critério #5): /healthz = liveness, /readyz = conectividade
   // --------------------------------------------------------------------
@@ -90,8 +111,16 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   app.setErrorHandler((error: Error, request, reply) => {
-    logger.error({ err: error, correlationId: request.id, url: request.url }, 'Erro não tratado');
     if (reply.sent) return;
+    // Violações de unique/FK/check e uuid inválido vindas do Postgres chegam aqui
+    // como PostgrestError (não é `Error`): devolve 409/422/400 em vez de 500.
+    const pgProblem = pgErrorToProblem(error);
+    if (pgProblem) {
+      logger.warn({ err: error, correlationId: request.id, url: request.url }, 'Erro de banco mapeado');
+      sendProblem(reply, pgProblem.status, pgProblem.title, pgProblem.detail);
+      return;
+    }
+    logger.error({ err: error, correlationId: request.id, url: request.url }, 'Erro não tratado');
     Problems.internal(reply, env.NODE_ENV === 'development' ? error.message : undefined);
   });
 

@@ -1,5 +1,6 @@
 import type { CreateVeiculoInput, UpdateVeiculoInput, Veiculo } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'veiculos';
 
@@ -16,7 +17,7 @@ export class VeiculosRepository {
       .limit(limit + 1);
     if (cursor) query = query.lt('id', cursor);
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     const rows = (data ?? []) as Veiculo[];
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
@@ -30,7 +31,7 @@ export class VeiculosRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as Veiculo | null) ?? null;
   }
 
@@ -41,13 +42,13 @@ export class VeiculosRepository {
       .eq('placa', placa)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as Veiculo | null) ?? null;
   }
 
   async create(input: CreateVeiculoInput): Promise<Veiculo> {
     const { data, error } = await supabaseAdmin.from(TABLE).insert(input).select('*').single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as Veiculo;
   }
 
@@ -59,8 +60,24 @@ export class VeiculosRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as Veiculo;
+  }
+
+  /**
+   * Viagens ainda em andamento (não ENCERRADA/CANCELADA) que usam o veículo,
+   * seja por `veiculo_id` ou pela FK `placa_cavalo` -> `veiculos.placa`.
+   * O soft delete é um UPDATE, então a FK do banco não protege sozinha.
+   */
+  async countViagensAtivas(id: string, placa: string): Promise<number> {
+    const { count, error } = await supabaseAdmin
+      .from('viagens')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .not('status', 'in', '(ENCERRADA,CANCELADA)')
+      .or(`veiculo_id.eq.${id},placa_cavalo.eq."${placa}"`);
+    if (error) throw fromPgError(error);
+    return count ?? 0;
   }
 
   async softDelete(id: string): Promise<void> {
@@ -68,6 +85,6 @@ export class VeiculosRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw fromPgError(error);
   }
 }

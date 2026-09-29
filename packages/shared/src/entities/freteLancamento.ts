@@ -20,7 +20,7 @@ export type FreteLancamento = z.infer<typeof FreteLancamentoSchema>;
 
 export const CreateFreteLancamentoSchema = z.object({
   tipo: TipoLancamentoFreteSchema,
-  valor: z.number().positive(),
+  valor: z.number().positive().max(9_999_999_999.99), // numeric(12,2)
   descricao: z.string().nullable().optional(),
   data_lancamento: z.string().date().optional(),
 });

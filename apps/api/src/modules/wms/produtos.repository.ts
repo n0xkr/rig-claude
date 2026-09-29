@@ -4,6 +4,7 @@ import type {
   UpdateProdutoArmazenadoInput,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 
 const TABLE = 'produtos_armazenados';
 
@@ -28,7 +29,7 @@ export class ProdutosRepository {
     if (filter.cursor) query = query.lt('id', filter.cursor);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const rows = (data ?? []) as ProdutoArmazenado[];
     const hasMore = rows.length > filter.limit;
     const page = hasMore ? rows.slice(0, filter.limit) : rows;
@@ -42,7 +43,7 @@ export class ProdutosRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as ProdutoArmazenado | null) ?? null;
   }
 
@@ -55,7 +56,7 @@ export class ProdutosRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as ProdutoArmazenado;
   }
 
@@ -67,7 +68,7 @@ export class ProdutosRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as ProdutoArmazenado;
   }
 
@@ -76,6 +77,6 @@ export class ProdutosRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
   }
 }

@@ -169,6 +169,15 @@ function ProdutoForm({
         value={form.peso_kg}
         onChange={(e) => setForm((f) => ({ ...f, peso_kg: e.target.value }))}
       />
+      <input
+        placeholder="Volume (m³)"
+        type="number"
+        min={0}
+        step="0.001"
+        className="input"
+        value={form.volume_m3}
+        onChange={(e) => setForm((f) => ({ ...f, volume_m3: e.target.value }))}
+      />
       <button
         type="submit"
         disabled={submitting}

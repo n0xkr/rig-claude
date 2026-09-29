@@ -13,6 +13,19 @@ export interface WmsKpiFilter {
   periodEnd?: string;
 }
 
+const SOMENTE_DATA = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * O front (`<input type="date">`) envia o período como `YYYY-MM-DD`; comparado
+ * direto com `created_at` (timestamptz) o fim do período viraria meia-noite e
+ * excluiria o dia inteiro. Expande para o início/fim do dia.
+ */
+function normalizarPeriodo(valor: string | undefined, fimDoDia: boolean): string | undefined {
+  if (!valor) return undefined;
+  if (!SOMENTE_DATA.test(valor)) return valor;
+  return fimDoDia ? `${valor}T23:59:59.999Z` : `${valor}T00:00:00.000Z`;
+}
+
 const STATUS_RECEBIMENTO_ABERTOS = ['AGUARDANDO', 'EM_CONFERENCIA', 'CONFERIDO', 'DIVERGENTE'];
 const STATUS_EXPEDICAO_ABERTAS = [
   'SOLICITADA',
@@ -37,19 +50,26 @@ export class KpisService {
     private readonly expedicoesRepo: ExpedicoesRepository = new ExpedicoesRepository(),
   ) {}
 
-  async getKpis(filter: WmsKpiFilter): Promise<WmsKpiResponse> {
+  async getKpis(rawFilter: WmsKpiFilter): Promise<WmsKpiResponse> {
+    const filter: WmsKpiFilter = {
+      armazemId: rawFilter.armazemId,
+      periodStart: normalizarPeriodo(rawFilter.periodStart, false),
+      periodEnd: normalizarPeriodo(rawFilter.periodEnd, true),
+    };
     const enderecos = await this.enderecosRepo.listAll(filter.armazemId);
     const ocupados = enderecos.filter((e) => e.status === 'OCUPADO').length;
     const livres = enderecos.filter((e) => e.status === 'LIVRE').length;
     const bloqueados = enderecos.filter((e) => e.status === 'BLOQUEADO').length;
 
+    // Só EXPEDICAO conta como saída: em expedições CROSS_DOCKING o item já gera
+    // uma movimentação CROSS_DOCKING na separação e outra EXPEDICAO ao expedir
+    // (somar as duas contaria a mesma mercadoria em dobro).
     const movimentacoes = await this.estoqueRepo.listMovimentacoesByFilter({
+      tipo: 'EXPEDICAO',
       periodStart: filter.periodStart,
       periodEnd: filter.periodEnd,
     });
-    const quantidadeExpedidaPeriodo = movimentacoes
-      .filter((m) => m.tipo_movimentacao === 'EXPEDICAO' || m.tipo_movimentacao === 'CROSS_DOCKING')
-      .reduce((acc, m) => acc + m.quantidade, 0);
+    const quantidadeExpedidaPeriodo = movimentacoes.reduce((acc, m) => acc + m.quantidade, 0);
 
     // Saldo médio do período: aproximado pelo saldo ATUAL total dos endereços
     // do armazém filtrado (não há snapshots históricos de saldo neste

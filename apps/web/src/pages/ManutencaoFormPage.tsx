@@ -6,6 +6,7 @@ import type { CreateManutencaoVeiculoInput, TipoManutencaoVeiculo } from '@rigab
 import { useCreateManutencao } from '../hooks/useManutencoes.js';
 import { useVeiculosList } from '../hooks/useVeiculos.js';
 import { LoadingSkeleton } from '../components/StateViews.js';
+import { todayLocalIso } from '../lib/dateOnly.js';
 
 const TIPOS: TipoManutencaoVeiculo[] = [
   'PREVENTIVA',
@@ -24,7 +25,7 @@ export default function ManutencaoFormPage() {
   const [form, setForm] = useState({
     veiculo_id: '',
     tipo: 'PREVENTIVA' as TipoManutencaoVeiculo,
-    data_manutencao: new Date().toISOString().slice(0, 10),
+    data_manutencao: todayLocalIso(),
     km_veiculo: '',
     custo: '',
     descricao: '',
@@ -136,7 +137,7 @@ export default function ManutencaoFormPage() {
             <input
               type="number"
               min={0}
-              step="0.1"
+              step="0.01"
               className="input"
               value={form.km_veiculo}
               onChange={(e) => setForm((f) => ({ ...f, km_veiculo: e.target.value }))}
@@ -166,7 +167,7 @@ export default function ManutencaoFormPage() {
               <input
                 type="number"
                 min={0}
-                step="0.1"
+                step="0.01"
                 className="input"
                 value={form.proxima_manutencao_km}
                 onChange={(e) => setForm((f) => ({ ...f, proxima_manutencao_km: e.target.value }))}

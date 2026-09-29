@@ -237,12 +237,19 @@ export async function trySync(): Promise<void> {
   syncing = true;
   try {
     const pending = await listQueuedMutations();
+    // Eventos de jornada dependem da ordem (máquina de estados no servidor): se um falhar, os
+    // seguintes do mesmo motorista esperam a próxima rodada em vez de serem rejeitados fora de ordem.
+    const motoristasComFalha = new Set<string>();
     for (const mutation of pending) {
       if (mutation.attempts >= MAX_ATTEMPTS) continue;
+      const motoristaId =
+        mutation.kind === 'create-registro-jornada' ? String(mutation.payload.motorista_id) : null;
+      if (motoristaId && motoristasComFalha.has(motoristaId)) continue;
       try {
         await sendMutation(mutation);
         await removeMutation(mutation.id);
       } catch (error) {
+        if (motoristaId) motoristasComFalha.add(motoristaId);
         await updateMutationAttempt(
           mutation.id,
           error instanceof Error ? error.message : 'erro desconhecido',

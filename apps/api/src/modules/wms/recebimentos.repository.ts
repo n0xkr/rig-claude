@@ -1,5 +1,6 @@
 import type { Recebimento, RecebimentoItem, StatusRecebimento } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 
 const TABLE = 'recebimentos';
 const ITENS_TABLE = 'recebimento_itens';
@@ -27,7 +28,7 @@ export class RecebimentosRepository {
     if (filter.cursor) query = query.lt('id', filter.cursor);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const rows = (data ?? []) as Recebimento[];
     const hasMore = rows.length > filter.limit;
     const page = hasMore ? rows.slice(0, filter.limit) : rows;
@@ -41,7 +42,7 @@ export class RecebimentosRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as Recebimento | null) ?? null;
   }
 
@@ -55,7 +56,7 @@ export class RecebimentosRepository {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as Recebimento | null) ?? null;
   }
 
@@ -74,7 +75,7 @@ export class RecebimentosRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Recebimento;
   }
 
@@ -85,7 +86,7 @@ export class RecebimentosRepository {
       .eq('id', id)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Recebimento;
   }
 
@@ -94,7 +95,7 @@ export class RecebimentosRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
   }
 
   // ----------------------------------------------------------------------
@@ -108,7 +109,7 @@ export class RecebimentosRepository {
       .from(ITENS_TABLE)
       .insert(itens.map((item) => ({ ...item, recebimento_id: recebimentoId })))
       .select('*');
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as RecebimentoItem[];
   }
 
@@ -118,7 +119,7 @@ export class RecebimentosRepository {
       .select('*')
       .eq('recebimento_id', recebimentoId)
       .order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as RecebimentoItem[];
   }
 
@@ -128,7 +129,7 @@ export class RecebimentosRepository {
       .select('*')
       .eq('id', itemId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as RecebimentoItem | null) ?? null;
   }
 
@@ -139,7 +140,7 @@ export class RecebimentosRepository {
       .eq('id', itemId)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as RecebimentoItem;
   }
 }

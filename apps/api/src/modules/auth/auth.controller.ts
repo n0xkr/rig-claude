@@ -45,6 +45,8 @@ export const AuthController = {
       return reply.send({ accessToken: session.accessToken, profile: session.profile });
     } catch (error) {
       if (error instanceof DomainError) {
+        if (error.status === 403) return Problems.forbidden(reply, error.detail ?? error.message);
+        if (error.status >= 500) return Problems.internal(reply, error.detail ?? error.message);
         return Problems.unauthorized(reply, error.detail ?? error.message);
       }
       throw error;
@@ -62,6 +64,8 @@ export const AuthController = {
       return reply.send({ accessToken: session.accessToken, profile: session.profile });
     } catch (error) {
       if (error instanceof DomainError) {
+        if (error.status === 403) return Problems.forbidden(reply, error.detail ?? error.message);
+        if (error.status >= 500) return Problems.internal(reply, error.detail ?? error.message);
         return Problems.unauthorized(reply, error.detail ?? error.message);
       }
       throw error;

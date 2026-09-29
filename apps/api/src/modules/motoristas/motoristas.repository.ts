@@ -1,5 +1,6 @@
 import type { CreateMotoristaInput, Motorista, UpdateMotoristaInput } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'motoristas';
 
@@ -16,7 +17,7 @@ export class MotoristasRepository {
       .limit(limit + 1);
     if (cursor) query = query.lt('id', cursor);
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     const rows = (data ?? []) as Motorista[];
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
@@ -30,7 +31,7 @@ export class MotoristasRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as Motorista | null) ?? null;
   }
 
@@ -41,13 +42,13 @@ export class MotoristasRepository {
       .eq('cpf', cpf)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as Motorista | null) ?? null;
   }
 
   async create(input: CreateMotoristaInput): Promise<Motorista> {
     const { data, error } = await supabaseAdmin.from(TABLE).insert(input).select('*').single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as Motorista;
   }
 
@@ -59,8 +60,20 @@ export class MotoristasRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as Motorista;
+  }
+
+  /** Viagens ainda em andamento (não ENCERRADA/CANCELADA) do motorista — o soft delete é um UPDATE, a FK RESTRICT do banco não protege. */
+  async countViagensAtivas(id: string): Promise<number> {
+    const { count, error } = await supabaseAdmin
+      .from('viagens')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null)
+      .not('status', 'in', '(ENCERRADA,CANCELADA)')
+      .eq('motorista_id', id);
+    if (error) throw fromPgError(error);
+    return count ?? 0;
   }
 
   async softDelete(id: string): Promise<void> {
@@ -68,6 +81,6 @@ export class MotoristasRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw fromPgError(error);
   }
 }

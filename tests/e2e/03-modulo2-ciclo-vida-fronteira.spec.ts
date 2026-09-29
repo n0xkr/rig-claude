@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, randomPlaca } from './helpers.js';
+import { loginAs, novaPlaca } from './helpers.js';
 
 /**
  * Módulo 2 (TMS Operacional). Nota sobre um gap real encontrado nesta
@@ -15,9 +15,9 @@ test('transiciona o status de uma viagem pela UI e vê a linha do tempo atualiza
   page,
 }) => {
   await loginAs(page, 'OPERADOR');
+  const placa = await novaPlaca(page);
   await page.getByRole('link', { name: 'Nova viagem' }).click();
-  const placa = randomPlaca();
-  await page.getByLabel('Placa do cavalo *').fill(placa);
+  await page.getByLabel('Placa do cavalo *').selectOption(placa);
   await page.getByLabel('Origem *').fill('Uruguaiana/RS');
   await page.getByLabel('Destino *', { exact: true }).fill('Santiago/CL');
   await page.getByRole('button', { name: 'Criar viagem' }).click();
@@ -42,9 +42,9 @@ test('KPIs de fronteira: registra uma etapa e vê o painel agregado por rota/via
   page,
 }) => {
   await loginAs(page, 'OPERADOR');
+  const placa = await novaPlaca(page);
   await page.getByRole('link', { name: 'Nova viagem' }).click();
-  const placa = randomPlaca();
-  await page.getByLabel('Placa do cavalo *').fill(placa);
+  await page.getByLabel('Placa do cavalo *').selectOption(placa);
   await page.getByLabel('Origem *').fill('Uruguaiana/RS');
   await page.getByLabel('Destino *', { exact: true }).fill('Montevidéu/UY');
   await page.getByRole('button', { name: 'Criar viagem' }).click();

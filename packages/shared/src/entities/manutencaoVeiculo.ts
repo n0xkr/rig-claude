@@ -24,7 +24,12 @@ export const ManutencaoVeiculoSchema = z.object({
 });
 export type ManutencaoVeiculo = z.infer<typeof ManutencaoVeiculoSchema>;
 
-export const CreateManutencaoVeiculoSchema = ManutencaoVeiculoSchema.omit({
+export const CreateManutencaoVeiculoSchema = ManutencaoVeiculoSchema.extend({
+  // Limites das colunas numeric do banco (custo: numeric(12,2); km: numeric(10,2)) — acima disso o Postgres responde 22003.
+  km_veiculo: z.number().nonnegative().max(99_999_999.99).nullable().optional(),
+  custo: z.number().nonnegative().max(9_999_999_999.99),
+  proxima_manutencao_km: z.number().nonnegative().max(99_999_999.99).nullable().optional(),
+}).omit({
   id: true,
   created_at: true,
   updated_at: true,

@@ -36,10 +36,15 @@ export function FreteContratadoForm({
       numero_fatura: form.numero_fatura || undefined,
       valor_contratado: Number(form.valor_contratado),
       retorno_vazio: form.retorno_vazio,
-      valor_custo_retorno_vazio: form.valor_custo_retorno_vazio
-        ? Number(form.valor_custo_retorno_vazio)
-        : undefined,
-      valor_frete_retorno: form.valor_frete_retorno ? Number(form.valor_frete_retorno) : undefined,
+      // Só envia o campo do cenário escolhido (retorno vazio x backhaul), ignorando o valor digitado antes de alternar o checkbox.
+      valor_custo_retorno_vazio:
+        form.retorno_vazio && form.valor_custo_retorno_vazio
+          ? Number(form.valor_custo_retorno_vazio)
+          : undefined,
+      valor_frete_retorno:
+        !form.retorno_vazio && form.valor_frete_retorno
+          ? Number(form.valor_frete_retorno)
+          : undefined,
       observacoes: form.observacoes || undefined,
     };
 

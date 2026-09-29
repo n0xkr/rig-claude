@@ -4,6 +4,7 @@ import type {
   UpdateDocumentoEmbarqueInput,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'documentos_embarque';
 
@@ -15,7 +16,7 @@ export class DocumentosEmbarqueRepository {
       .eq('viagem_id', viagemId)
       .is('deleted_at', null)
       .order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data ?? []) as DocumentoEmbarque[];
   }
 
@@ -26,13 +27,13 @@ export class DocumentosEmbarqueRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as DocumentoEmbarque | null) ?? null;
   }
 
   async create(input: CreateDocumentoEmbarqueInput): Promise<DocumentoEmbarque> {
     const { data, error } = await supabaseAdmin.from(TABLE).insert(input).select('*').single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as DocumentoEmbarque;
   }
 
@@ -44,7 +45,7 @@ export class DocumentosEmbarqueRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as DocumentoEmbarque;
   }
 
@@ -56,7 +57,7 @@ export class DocumentosEmbarqueRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as DocumentoEmbarque;
   }
 
@@ -65,6 +66,6 @@ export class DocumentosEmbarqueRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw fromPgError(error);
   }
 }

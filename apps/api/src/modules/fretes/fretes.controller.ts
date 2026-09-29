@@ -11,6 +11,7 @@ import { FretesService } from './fretes.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
 import { sendProblem } from '../../lib/problemDetails.js';
 import { DomainError } from '../../lib/errors.js';
+import { pgErrorToProblem } from '../../lib/pgErrors.js';
 
 const service = new FretesService();
 
@@ -27,6 +28,12 @@ function handleDomainError(error: unknown, reply: FastifyReply): boolean {
     sendProblem(reply, error.status, error.message, error.detail);
     return true;
   }
+  // Erros do Postgres (unique/FK/check/uuid inválido) viram 409/422/400 em vez de 500 genérico.
+  const pg = pgErrorToProblem(error);
+  if (pg) {
+    sendProblem(reply, pg.status, pg.title, pg.detail);
+    return true;
+  }
   return false;
 }
 
@@ -38,7 +45,8 @@ export const FretesController = {
       cursor?: string;
       limit?: string;
     };
-    const limit = query.limit ? Number(query.limit) : 20;
+    // `limit` inválido (NaN/negativo) quebraria o `.limit()` do PostgREST — normaliza para 1..200.
+    const limit = Math.min(Math.max(Math.trunc(Number(query.limit)) || 20, 1), 200);
     try {
       const result = await service.list({
         status: query.status,

@@ -7,6 +7,7 @@ import type {
   Viagem,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'viagens';
 const HISTORY_TABLE = 'status_viagem_historico';
@@ -34,7 +35,7 @@ export class ViagensRepository {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw fromPgError(error);
 
     const rows = (data ?? []) as Viagem[];
     const hasMore = rows.length > filter.limit;
@@ -50,7 +51,7 @@ export class ViagensRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as Viagem | null) ?? null;
   }
 
@@ -61,7 +62,7 @@ export class ViagensRepository {
       .eq('numero_crt', numeroCrt)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as Viagem | null) ?? null;
   }
 
@@ -71,7 +72,7 @@ export class ViagensRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as Viagem;
   }
 
@@ -83,7 +84,7 @@ export class ViagensRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as Viagem;
   }
 
@@ -92,7 +93,7 @@ export class ViagensRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw fromPgError(error);
   }
 
   /**
@@ -121,7 +122,7 @@ export class ViagensRepository {
       })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as StatusViagemHistorico;
   }
 
@@ -131,7 +132,7 @@ export class ViagensRepository {
       .select('*')
       .eq('viagem_id', viagemId)
       .order('created_at', { ascending: true });
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data ?? []) as StatusViagemHistorico[];
   }
 }

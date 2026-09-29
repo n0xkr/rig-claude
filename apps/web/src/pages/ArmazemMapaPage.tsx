@@ -71,6 +71,13 @@ export default function ArmazemMapaPage() {
         </div>
       )}
 
+      {armazens.length === 0 && (
+        <EmptyState
+          title="Nenhum armazém cadastrado"
+          description="Cadastre um armazém (tabela `armazens`) para poder criar endereços e operar o WMS."
+        />
+      )}
+
       {showForm && armazemId && (
         <EnderecoForm
           armazemId={armazemId}
@@ -131,8 +138,12 @@ function EnderecoForm({ armazemId, onCreated }: { armazemId: string; onCreated: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload: CreateEnderecoArmazemInput = { armazem_id: armazemId, ...form };
-    await create(payload);
-    onCreated();
+    try {
+      await create(payload);
+      onCreated();
+    } catch {
+      // erro já exposto via `error`
+    }
   }
 
   return (

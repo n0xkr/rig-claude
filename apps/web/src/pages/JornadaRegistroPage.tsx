@@ -49,7 +49,7 @@ export default function JornadaRegistroPage() {
     try {
       const { queued } = await registrar({
         motorista_id: motoristaId,
-        viagem_id: viagemId || null,
+        viagem_id: viagemId.trim() || null,
         tipo_evento: tipoEvento,
         timestamp_evento: new Date().toISOString(),
       });

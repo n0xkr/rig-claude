@@ -4,6 +4,7 @@ import type {
   UpdateEnderecoArmazemInput,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 
 const TABLE = 'enderecos_armazem';
 const ARMAZENS_TABLE = 'armazens';
@@ -37,7 +38,7 @@ export class EnderecosRepository {
     if (filter.cursor) query = query.lt('id', filter.cursor);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const rows = (data ?? []) as EnderecoArmazem[];
     const hasMore = rows.length > filter.limit;
     const page = hasMore ? rows.slice(0, filter.limit) : rows;
@@ -49,7 +50,7 @@ export class EnderecosRepository {
     let query = supabaseAdmin.from(TABLE).select('*').is('deleted_at', null);
     if (armazemId) query = query.eq('armazem_id', armazemId);
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as EnderecoArmazem[];
   }
 
@@ -60,13 +61,13 @@ export class EnderecosRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as EnderecoArmazem | null) ?? null;
   }
 
   async create(input: CreateEnderecoArmazemInput): Promise<EnderecoArmazem> {
     const { data, error } = await supabaseAdmin.from(TABLE).insert(input).select('*').single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as EnderecoArmazem;
   }
 
@@ -78,7 +79,7 @@ export class EnderecosRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as EnderecoArmazem;
   }
 
@@ -91,7 +92,7 @@ export class EnderecosRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
   }
 
   // --------------------------------------------------------------------
@@ -103,7 +104,7 @@ export class EnderecosRepository {
       .from(ARMAZENS_TABLE)
       .select('id, nome, area_m2')
       .is('deleted_at', null);
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as ArmazemRow[];
   }
 
@@ -114,7 +115,7 @@ export class EnderecosRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as ArmazemRow | null) ?? null;
   }
 }

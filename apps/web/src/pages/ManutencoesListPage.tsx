@@ -4,6 +4,7 @@ import { useManutencoesList } from '../hooks/useManutencoes.js';
 import { useVeiculosList } from '../hooks/useVeiculos.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { ManutencaoTipoBadge } from '../components/StatusBadge.js';
+import { formatDateOnly } from '../lib/dateOnly.js';
 
 /** Lista de manutenções da frota (Módulo 4, Controle de Frota — "Gestão de Ativos"). */
 export default function ManutencoesListPage() {
@@ -59,9 +60,9 @@ export default function ManutencoesListPage() {
                     {m.custo.toLocaleString('pt-BR')}
                   </p>
                   <p className="text-sm text-slate-400">
-                    {new Date(m.data_manutencao).toLocaleDateString('pt-BR')}
+                    {formatDateOnly(m.data_manutencao)}
                     {m.proxima_manutencao_data &&
-                      ` · próxima em ${new Date(m.proxima_manutencao_data).toLocaleDateString('pt-BR')}`}
+                      ` · próxima em ${formatDateOnly(m.proxima_manutencao_data)}`}
                   </p>
                 </div>
                 <ManutencaoTipoBadge tipo={m.tipo} />

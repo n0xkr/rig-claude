@@ -16,7 +16,7 @@ export class AuditoriaRepository {
   async list(filter: ListAuditLogsFilter): Promise<{ data: AuditLog[]; nextCursor: string | null }> {
     let query = supabaseAdmin
       .from(TABLE)
-      .select('*, user:profiles(*)')
+      .select('*, user:profiles(nome_completo, email)')
       .order('id', { ascending: false })
       .limit(filter.limit + 1);
 

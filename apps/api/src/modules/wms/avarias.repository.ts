@@ -1,5 +1,6 @@
 import type { Avaria } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { mapPgError } from './pgErrors.js';
 
 const TABLE = 'avarias';
 
@@ -24,7 +25,7 @@ export class AvariasRepository {
     if (filter.cursor) query = query.lt('id', filter.cursor);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     const rows = (data ?? []) as Avaria[];
     const hasMore = rows.length > filter.limit;
     const page = hasMore ? rows.slice(0, filter.limit) : rows;
@@ -38,7 +39,7 @@ export class AvariasRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data as Avaria | null) ?? null;
   }
 
@@ -48,7 +49,7 @@ export class AvariasRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Avaria;
   }
 
@@ -59,7 +60,7 @@ export class AvariasRepository {
       .eq('id', id)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return data as Avaria;
   }
 
@@ -68,7 +69,7 @@ export class AvariasRepository {
     if (periodStart) query = query.gte('created_at', periodStart);
     if (periodEnd) query = query.lte('created_at', periodEnd);
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) throw mapPgError(error);
     return (data ?? []) as Avaria[];
   }
 }

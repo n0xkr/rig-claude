@@ -50,7 +50,7 @@ export default function RecebimentosListPage() {
                   </p>
                   <p className="text-sm text-slate-400">
                     {r.data_prevista
-                      ? `previsto para ${new Date(r.data_prevista).toLocaleDateString('pt-BR')}`
+                      ? `previsto para ${new Date(`${r.data_prevista}T00:00:00`).toLocaleDateString('pt-BR')}`
                       : 'sem data prevista'}
                   </p>
                 </div>

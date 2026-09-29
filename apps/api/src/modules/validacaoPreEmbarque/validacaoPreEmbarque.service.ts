@@ -118,36 +118,36 @@ export class ValidacaoPreEmbarqueService {
         valorEncontrado: placaEsperada,
       });
     }
-    if (viagem.veiculo_id) {
-      const veiculo = await this.veiculosRepo.findById(viagem.veiculo_id);
-      if (!veiculo) {
-        achados.push({
-          campo: 'veiculo_id',
-          severidade: 'BLOQUEANTE',
-          mensagem: 'Veículo vinculado à viagem não foi encontrado',
-        });
-      } else if (!veiculo.ativo) {
-        achados.push({
-          campo: 'veiculo_id',
-          severidade: 'BLOQUEANTE',
-          mensagem: 'Veículo vinculado à viagem está inativo',
-        });
-      } else if (veiculo.placa !== viagem.placa_cavalo) {
-        achados.push({
-          campo: 'veiculo_id',
-          severidade: 'AVISO',
-          mensagem: 'Placa do veículo cadastrado diverge da placa informada na viagem',
-          valorEsperado: viagem.placa_cavalo,
-          valorEncontrado: veiculo.placa,
-        });
-      }
-    } else {
+    // `veiculo_id` é opcional na viagem, mas `placa_cavalo` é obrigatória e é FK
+    // para `veiculos.placa` — então o veículo sempre pode ser resolvido pela placa.
+    const veiculo = viagem.veiculo_id
+      ? await this.veiculosRepo.findById(viagem.veiculo_id)
+      : await this.veiculosRepo.findByPlaca(viagem.placa_cavalo);
+    if (!veiculo) {
       achados.push({
         campo: 'veiculo_id',
         severidade: 'BLOQUEANTE',
-        mensagem: 'Viagem sem veículo vinculado',
+        mensagem: 'Veículo da viagem não foi encontrado (ou foi removido)',
+        valorEncontrado: viagem.placa_cavalo,
+      });
+    } else if (!veiculo.ativo) {
+      achados.push({
+        campo: 'veiculo_id',
+        severidade: 'BLOQUEANTE',
+        mensagem: 'Veículo vinculado à viagem está inativo',
+      });
+    } else if (veiculo.placa !== viagem.placa_cavalo) {
+      achados.push({
+        campo: 'veiculo_id',
+        severidade: 'AVISO',
+        mensagem: 'Placa do veículo cadastrado diverge da placa informada na viagem',
+        valorEsperado: viagem.placa_cavalo,
+        valorEncontrado: veiculo.placa,
       });
     }
+
+    // `cnh_validade` é `date` (YYYY-MM-DD): compara como string, sem fuso horário.
+    const hoje = new Date().toISOString().slice(0, 10);
 
     // Motorista: precisa existir, estar ativo e com CNH válida.
     if (viagem.motorista_id) {
@@ -166,7 +166,7 @@ export class ValidacaoPreEmbarqueService {
             mensagem: 'Motorista vinculado à viagem está inativo',
           });
         }
-        if (motorista.cnh_validade && new Date(motorista.cnh_validade) < new Date()) {
+        if (motorista.cnh_validade && motorista.cnh_validade < hoje) {
           achados.push({
             campo: 'motorista_id',
             severidade: 'BLOQUEANTE',

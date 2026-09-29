@@ -16,6 +16,7 @@ const ENTRADAS = 'portaria_entradas';
 const DOCUMENTOS = 'portaria_documentos';
 const SAIDAS = 'portaria_saidas';
 const ORDENS_SERVICO = 'ordens_servico';
+const BUCKET_DOCUMENTOS = 'portaria-documentos';
 
 export interface ListEntradasFilter {
   status?: StatusPortariaEntrada;
@@ -102,6 +103,39 @@ export class PortariaRepository {
     return data as PortariaDocumento;
   }
 
+  async findDocumentoById(entradaId: string, documentoId: string): Promise<PortariaDocumento | null> {
+    const { data, error } = await supabaseAdmin
+      .from(DOCUMENTOS)
+      .select('*')
+      .eq('id', documentoId)
+      .eq('entrada_id', entradaId)
+      .is('deleted_at', null)
+      .maybeSingle();
+    if (error) throw error;
+    return (data as PortariaDocumento | null) ?? null;
+  }
+
+  /**
+   * Gera (service role) um token de upload assinado para o bucket privado.
+   * O browser não tem sessão do Supabase Auth, então não pode enviar direto.
+   */
+  async criarUrlUploadDocumento(path: string): Promise<{ path: string; token: string }> {
+    const { data, error } = await supabaseAdmin.storage
+      .from(BUCKET_DOCUMENTOS)
+      .createSignedUploadUrl(path);
+    if (error) throw error;
+    return { path: data.path, token: data.token };
+  }
+
+  /** Signed URL de leitura; devolve null se o objeto não existir no bucket. */
+  async criarUrlDownloadDocumento(path: string, expiresIn: number): Promise<string | null> {
+    const { data, error } = await supabaseAdmin.storage
+      .from(BUCKET_DOCUMENTOS)
+      .createSignedUrl(path, expiresIn);
+    if (error || !data) return null;
+    return data.signedUrl;
+  }
+
   async findSaidaByEntrada(entradaId: string): Promise<PortariaSaida | null> {
     const { data, error } = await supabaseAdmin
       .from(SAIDAS)
@@ -130,6 +164,15 @@ export class PortariaRepository {
       .single();
     if (error) throw error;
     return data as PortariaSaida;
+  }
+
+  /** Tempos de permanência de todas as saídas registradas (uma única query, para o KPI de média). */
+  async listTemposPatioMinutos(): Promise<number[]> {
+    const { data, error } = await supabaseAdmin.from(SAIDAS).select('tempo_patio_minutos');
+    if (error) throw error;
+    return ((data ?? []) as Array<{ tempo_patio_minutos: number }>).map(
+      (row) => row.tempo_patio_minutos,
+    );
   }
 
   async createOrdemServico(

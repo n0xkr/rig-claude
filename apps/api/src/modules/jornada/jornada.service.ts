@@ -8,6 +8,7 @@ import type {
 import { PROXIMO_EVENTO_JORNADA_VALIDO } from '@rigabras/shared';
 import { JornadaRepository, type ListEventosFilter } from './jornada.repository.js';
 import { MotoristasRepository } from '../motoristas/motoristas.repository.js';
+import { ViagensRepository } from '../viagens/viagens.repository.js';
 import { avaliarSessao, construirSessoesJornada } from './jornadaCompliance.js';
 import { InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
@@ -26,6 +27,7 @@ export class JornadaService {
   constructor(
     private readonly repo: JornadaRepository = new JornadaRepository(),
     private readonly motoristasRepo: MotoristasRepository = new MotoristasRepository(),
+    private readonly viagensRepo: ViagensRepository = new ViagensRepository(),
   ) {}
 
   async registrarEvento(
@@ -35,6 +37,11 @@ export class JornadaService {
   ): Promise<RegistroJornada> {
     const motorista = await this.motoristasRepo.findById(input.motorista_id);
     if (!motorista) throw new NotFoundError('motorista', input.motorista_id);
+    // registros_jornada.viagem_id tem FK para viagens: valida antes para responder 404 em vez de 500 (23503).
+    if (input.viagem_id) {
+      const viagem = await this.viagensRepo.findById(input.viagem_id);
+      if (!viagem) throw new NotFoundError('viagem', input.viagem_id);
+    }
 
     const ultimoEvento = await this.repo.findUltimoEventoByMotorista(input.motorista_id);
     const proximosValidos: TipoEventoJornada[] = ultimoEvento
@@ -132,8 +139,12 @@ export class JornadaService {
 
     const alertas: AlertaConformidadeMotorista[] = [];
     for (const motorista of motoristas) {
-      const eventosMotorista = eventosPorMotorista.get(motorista.id) ?? [];
-      if (eventosMotorista.length === 0) continue;
+      const eventosDaJanela = eventosPorMotorista.get(motorista.id) ?? [];
+      // A janela pode começar no meio de uma jornada: descarta eventos anteriores ao primeiro INICIO_JORNADA
+      // para não gerar o falso achado "sessão sem INICIO_JORNADA".
+      const primeiroInicio = eventosDaJanela.findIndex((e) => e.tipo_evento === 'INICIO_JORNADA');
+      if (primeiroInicio === -1) continue;
+      const eventosMotorista = eventosDaJanela.slice(primeiroInicio);
 
       const sessoes = construirSessoesJornada(eventosMotorista);
       const achadosDeRisco = sessoes

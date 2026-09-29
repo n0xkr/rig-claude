@@ -1,14 +1,18 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Cliente Supabase do browser, usado exclusivamente para upload direto de
- * documentos da portaria no Supabase Storage (bucket privado
- * 'portaria-documentos', ver migration 0008). Usa a ANON KEY — a
- * autorização real de leitura/escrita do bucket é feita pelas policies de
- * RLS de `storage.objects` (papel do usuário autenticado via Supabase Auth),
- * nunca por este client ser "de confiança". Login/CRUD de dados de negócio
- * continuam passando pela API própria (Fastify + JWT), este client não é
- * usado para autenticação.
+ * Cliente Supabase do browser, usado EXCLUSIVAMENTE para enviar o binário de
+ * documentos da portaria ao bucket privado 'portaria-documentos' usando um
+ * token de upload assinado gerado pela API (POST
+ * /portaria/entradas/:id/documentos/upload-url).
+ *
+ * Por que não fazer upload direto com a ANON KEY: o login do sistema é feito
+ * pela API própria (que chama `signInWithPassword` no servidor), então o
+ * browser NUNCA tem sessão do Supabase Auth — as policies de `storage.objects`
+ * (baseadas em `current_user_role()`/auth.uid()) rejeitariam o upload como
+ * papel `anon`. Com o token assinado, a autorização é da API (RBAC) e o
+ * Storage aceita o PUT sem depender de sessão. Login/CRUD de negócio
+ * continuam passando pela API (Fastify + JWT).
  */
 let client: SupabaseClient | null = null;
 
@@ -19,28 +23,30 @@ let client: SupabaseClient | null = null;
  */
 function getSupabaseStorage(): SupabaseClient {
   if (!client) {
-    client = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY,
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    );
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) {
+      throw new Error('Upload indisponível: VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY não configuradas');
+    }
+    client = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
   }
   return client;
 }
 
 const BUCKET = 'portaria-documentos';
 
-/** Envia um arquivo (foto/PDF) para o bucket da portaria e retorna o caminho armazenado. */
-export async function uploadPortariaDocumento(
-  entradaId: string,
+/** Envia o arquivo (foto/PDF) ao caminho/token assinados emitidos pela API. */
+export async function uploadPortariaDocumentoAssinado(
+  path: string,
+  token: string,
   file: File,
-): Promise<string> {
-  const ext = file.name.split('.').pop() ?? 'jpg';
-  const path = `${entradaId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await getSupabaseStorage().storage.from(BUCKET).upload(path, file, {
-    contentType: file.type || 'application/octet-stream',
-    upsert: false,
-  });
+): Promise<void> {
+  const { error } = await getSupabaseStorage()
+    .storage.from(BUCKET)
+    .uploadToSignedUrl(path, token, file, {
+      contentType: file.type || 'application/octet-stream',
+    });
   if (error) throw error;
-  return path;
 }

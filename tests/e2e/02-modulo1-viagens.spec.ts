@@ -1,15 +1,14 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, randomPlaca } from './helpers.js';
+import { loginAs, novaPlaca } from './helpers.js';
 
 test.describe('Módulo 1 — Gerenciamento de Risco (viagens)', () => {
   test('cria uma viagem, vê na lista e abre o detalhe', async ({ page }) => {
     await loginAs(page, 'OPERADOR');
+    const placa = await novaPlaca(page);
 
     await page.getByRole('link', { name: 'Nova viagem' }).click();
     await expect(page).toHaveURL(/\/viagens\/nova$/);
-
-    const placa = randomPlaca();
-    await page.getByLabel('Placa do cavalo *').fill(placa);
+    await page.getByLabel('Placa do cavalo *').selectOption(placa);
     await page.getByLabel('Origem *').fill('Uruguaiana/RS');
     await page.getByLabel('Destino *', { exact: true }).fill('Assunção/PY');
     await page.getByRole('button', { name: 'Criar viagem' }).click();

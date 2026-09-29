@@ -5,13 +5,17 @@ import type {
   CreatePortariaSaidaInput,
   OrdemServico,
   PortariaDocumento,
+  PortariaDocumentoDownloadUrl,
+  PortariaDocumentoUploadUrl,
   PortariaEntrada,
   PortariaEntradaDetalhe,
   PortariaSaida,
   StatusPortariaEntrada,
+  TipoDocumentoPortaria,
   Viagem,
 } from '@rigabras/shared';
 import { api, ApiError } from '../lib/apiClient.js';
+import { uploadPortariaDocumentoAssinado } from '../lib/supabaseClient.js';
 import type { LoadState } from './useViagens.js';
 
 export interface PortariaKpis {
@@ -114,7 +118,11 @@ export function usePortariaActions() {
       return await fn();
     } catch (err) {
       setError(
-        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+        err instanceof ApiError
+          ? (err.problem.detail ?? err.problem.title)
+          : err instanceof Error
+            ? err.message
+            : 'Erro inesperado',
       );
       throw err;
     } finally {
@@ -147,6 +155,40 @@ export function usePortariaActions() {
     [run],
   );
 
+  /**
+   * Upload de documento em 3 passos (o browser não tem sessão do Supabase Auth,
+   * então o Storage é acessado via token assinado emitido pela API):
+   * 1) pede caminho+token à API; 2) envia o binário ao Storage; 3) registra o
+   * metadado em `portaria_documentos` via API.
+   */
+  const anexarArquivo = useCallback(
+    (entradaId: string, tipo: TipoDocumentoPortaria, file: File) =>
+      run(async () => {
+        const upload = await api.post<PortariaDocumentoUploadUrl>(
+          `/portaria/entradas/${entradaId}/documentos/upload-url`,
+          { nome_arquivo: file.name },
+        );
+        await uploadPortariaDocumentoAssinado(upload.path, upload.token, file);
+        return api.post<PortariaDocumento>(`/portaria/entradas/${entradaId}/documentos`, {
+          tipo_documento: tipo,
+          storage_path: upload.path,
+          nome_arquivo: file.name,
+        });
+      }),
+    [run],
+  );
+
+  /** Signed URL temporária (gerada pela API) para abrir/baixar um documento do bucket privado. */
+  const obterUrlDocumento = useCallback(
+    (entradaId: string, documentoId: string) =>
+      run(() =>
+        api.get<PortariaDocumentoDownloadUrl>(
+          `/portaria/entradas/${entradaId}/documentos/${documentoId}/url`,
+        ),
+      ),
+    [run],
+  );
+
   const registrarSaida = useCallback(
     (entradaId: string, input: CreatePortariaSaidaInput) =>
       run(() =>
@@ -158,5 +200,14 @@ export function usePortariaActions() {
     [run],
   );
 
-  return { registrarEntrada, atualizarStatus, anexarDocumento, registrarSaida, submitting, error };
+  return {
+    registrarEntrada,
+    atualizarStatus,
+    anexarDocumento,
+    anexarArquivo,
+    obterUrlDocumento,
+    registrarSaida,
+    submitting,
+    error,
+  };
 }
