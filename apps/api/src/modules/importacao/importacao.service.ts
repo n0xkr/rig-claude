@@ -1,4 +1,4 @@
-import { CreateManutencaoVeiculoSchema, CreateViagemSchema } from '@rigabras/shared';
+import { CreateManutencaoVeiculoSchema, CreateVeiculoSchema, CreateViagemSchema } from '@rigabras/shared';
 import type {
   CommitImportacaoResult,
   ImportDataset,
@@ -14,7 +14,45 @@ import { writeAuditLog } from '../../lib/auditLog.js';
 const TARGET_SCHEMA = {
   viagens: CreateViagemSchema,
   manutencoes_veiculo: CreateManutencaoVeiculoSchema,
+  veiculos: CreateVeiculoSchema,
 } as const;
+
+/**
+ * Número como aparece em planilhas brasileiras: '78%', 'R$ 1.234,50', '184.500',
+ * '2500 km', '12,5'. Ponto seguido de exatamente 3 dígitos é separador de milhar.
+ */
+function parseNumeroBr(texto: string): number | null {
+  let t = texto.replace(/[^0-9.,-]/g, '');
+  if (t === '' || t === '-') return null;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = Number(t);
+  return Number.isNaN(n) ? null : n;
+}
+
+/** Remove acentos e padroniza para MAIUSCULA_COM_UNDERSCORE (ex: 'Em Trânsito' -> 'EM_TRANSITO'). */
+function slugEnum(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
+ * Aproxima o texto da planilha de uma das opções do enum: igualdade após
+ * normalizar, ou uma contida na outra ('EM_MANUTENCAO' ~ 'MANUTENCAO',
+ * 'CAVALO_MECANICO' ~ 'CAVALO'). Sem correspondência única, devolve o texto
+ * normalizado e a validação Zod real rejeita com mensagem clara.
+ */
+function normalizarEnum(raw: string, options?: string[]): string {
+  const slug = slugEnum(raw);
+  if (!options || options.length === 0 || options.includes(slug)) return slug;
+  const candidatos = options.filter((o) => slug.includes(o) || o.includes(slug));
+  return candidatos.length === 1 ? candidatos[0]! : slug;
+}
 
 /**
  * Coage o valor bruto vindo da planilha (string/número/Date do SheetJS) para
@@ -24,15 +62,19 @@ const TARGET_SCHEMA = {
  * vazia vira `undefined` (campo omitido), nunca uma string vazia, para que
  * campos opcionais não falhem validação por engano.
  */
-function coagirValor(raw: unknown, type: 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'enum'): unknown {
+function coagirValor(
+  raw: unknown,
+  type: 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'enum',
+  options?: string[],
+): unknown {
   if (raw === null || raw === undefined) return undefined;
   if (typeof raw === 'string' && raw.trim() === '') return undefined;
 
   switch (type) {
     case 'number': {
       if (typeof raw === 'number') return raw;
-      const parsed = Number(String(raw).replace(',', '.').trim());
-      return Number.isNaN(parsed) ? raw : parsed;
+      const parsed = parseNumeroBr(String(raw));
+      return parsed === null ? raw : parsed;
     }
     case 'boolean': {
       if (typeof raw === 'boolean') return raw;
@@ -62,7 +104,7 @@ function coagirValor(raw: unknown, type: 'text' | 'number' | 'boolean' | 'date' 
       return type === 'date' ? date.toISOString().slice(0, 10) : date.toISOString();
     }
     case 'enum':
-      return String(raw).trim().toUpperCase();
+      return normalizarEnum(String(raw), options);
     case 'text':
     default:
       return typeof raw === 'string' ? raw.trim() : String(raw);
@@ -99,6 +141,7 @@ export class ImportacaoService {
   private async coagirEValidarLinhas(
     target: ImportTarget,
     linhas: Array<Record<string, unknown>>,
+    opts: { criarVeiculosAusentes?: boolean; gravar?: boolean } = {},
   ): Promise<{ validas: Array<{ linha: number; dados: Record<string, unknown> }>; erros: ImportLinhaErro[] }> {
     const campos = IMPORT_TARGET_FIELDS[target];
     const schema = TARGET_SCHEMA[target];
@@ -116,8 +159,24 @@ export class ImportacaoService {
       const linhaBruta = linhas[i]!;
       const coagida: Record<string, unknown> = {};
       for (const campo of campos) {
-        if (campo.key === 'placa') continue; // resolvido separadamente abaixo
-        coagida[campo.key] = coagirValor(linhaBruta[campo.key], campo.type);
+        if (campo.key === 'placa' && target === 'manutencoes_veiculo') continue; // resolvido separadamente abaixo
+        coagida[campo.key] = coagirValor(linhaBruta[campo.key], campo.type, campo.options);
+      }
+
+      if (target === 'veiculos') {
+        if (typeof coagida.placa !== 'string' || coagida.placa === '') {
+          erros.push({ linha: linhaNum, campo: 'placa', mensagem: 'Placa não informada' });
+          continue;
+        }
+        coagida.placa = coagida.placa.toUpperCase();
+        coagida.tipo ??= 'CAVALO';
+        coagida.frota_propria ??= true;
+        if (typeof coagida.nivel_combustivel === 'number') {
+          // Excel guarda '55%' como 0,55: fração não inteira entre 0 e 1 é um percentual.
+          const bruto = coagida.nivel_combustivel;
+          const pct = bruto > 0 && bruto < 1 ? bruto * 100 : bruto;
+          coagida.nivel_combustivel = Math.max(0, Math.min(100, Math.round(pct)));
+        }
       }
 
       if (target === 'manutencoes_veiculo') {
@@ -143,7 +202,12 @@ export class ImportacaoService {
         // viagens.placa_cavalo é FK para veiculos.placa (exata, maiúscula): sem veículo
         // cadastrado o insert falharia no banco (23503), então valida aqui com msg clara.
         const placa = coagida.placa_cavalo.toUpperCase();
-        const veiculoId = await resolverVeiculo(placa);
+        let veiculoId = await resolverVeiculo(placa);
+        if (!veiculoId && opts.criarVeiculosAusentes) {
+          // Na validação (dry-run) só sinaliza; no commit cadastra o veículo mínimo.
+          veiculoId = opts.gravar ? await this.repo.createVeiculoStub(placa) : 'novo';
+          cachePlacas.set(placa, veiculoId);
+        }
         if (!veiculoId) {
           erros.push({
             linha: linhaNum,
@@ -153,7 +217,7 @@ export class ImportacaoService {
           continue;
         }
         coagida.placa_cavalo = placa;
-        coagida.veiculo_id = veiculoId;
+        if (veiculoId !== 'novo') coagida.veiculo_id = veiculoId;
       }
 
       const result = schema.safeParse(coagida);
@@ -176,8 +240,9 @@ export class ImportacaoService {
   async validar(
     target: ImportTarget,
     linhas: Array<Record<string, unknown>>,
+    criarVeiculosAusentes = false,
   ): Promise<ValidarImportacaoResult> {
-    const { validas, erros } = await this.coagirEValidarLinhas(target, linhas);
+    const { validas, erros } = await this.coagirEValidarLinhas(target, linhas, { criarVeiculosAusentes });
     return {
       totalLinhas: linhas.length,
       linhasValidas: validas.length,
@@ -200,8 +265,12 @@ export class ImportacaoService {
     linhas: Array<Record<string, unknown>>,
     userId: string | null,
     ip: string | null,
+    criarVeiculosAusentes = false,
   ): Promise<CommitImportacaoResult> {
-    const { validas, erros } = await this.coagirEValidarLinhas(target, linhas);
+    const { validas, erros } = await this.coagirEValidarLinhas(target, linhas, {
+      criarVeiculosAusentes,
+      gravar: true,
+    });
 
     const dataset = await this.repo.createDataset(nome, target, origem, userId);
 
@@ -209,7 +278,12 @@ export class ImportacaoService {
     const errosCommit: ImportLinhaErro[] = [...erros];
     for (const { linha, dados } of validas) {
       try {
-        await this.repo.bulkInsert(target, [{ ...dados, created_by: userId }]);
+        if (target === 'veiculos') {
+          // Acompanhamento: a mesma placa atualiza o veículo em vez de duplicar (tabela sem created_by).
+          await this.repo.upsertVeiculoPorPlaca(dados);
+        } else {
+          await this.repo.bulkInsert(target, [{ ...dados, created_by: userId }]);
+        }
         importadas++;
       } catch (err) {
         errosCommit.push({ linha, campo: null, mensagem: mensagemErroBanco(err) });

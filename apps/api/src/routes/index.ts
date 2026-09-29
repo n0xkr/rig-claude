@@ -28,6 +28,9 @@ import { importacaoRoutes } from '../modules/importacao/importacao.routes.js';
 import { chatbotRoutes } from '../modules/chatbot/chatbot.routes.js';
 import { auditoriaRoutes } from '../modules/auditoria/auditoria.routes.js';
 import { usuariosRoutes } from '../modules/usuarios/usuarios.routes.js';
+import { perfilRoutes } from '../modules/perfil/perfil.routes.js';
+import { iaSolicitacoesRoutes, importacaoLotesRoutes } from '../modules/iaSolicitacoes/iaSolicitacoes.routes.js';
+import { acompanhamentoRoutes } from '../modules/acompanhamento/acompanhamento.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -58,4 +61,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(chatbotRoutes, { prefix: `${API_PREFIX}/rigabras-ai` });
   await app.register(auditoriaRoutes, { prefix: `${API_PREFIX}/auditoria` });
   await app.register(usuariosRoutes, { prefix: `${API_PREFIX}/usuarios` });
+  await app.register(perfilRoutes, { prefix: `${API_PREFIX}/perfil` });
+  await app.register(iaSolicitacoesRoutes, { prefix: `${API_PREFIX}/ia-solicitacoes` });
+  await app.register(importacaoLotesRoutes, { prefix: `${API_PREFIX}/importacoes/lotes` });
+  await app.register(acompanhamentoRoutes, { prefix: `${API_PREFIX}/acompanhamento` });
 }

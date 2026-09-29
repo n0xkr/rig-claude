@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TipoVeiculoSchema } from '../enums.js';
+import { StatusOperacionalVeiculoSchema, TipoVeiculoSchema } from '../enums.js';
 
 export const VeiculoSchema = z.object({
   id: z.string().uuid(),
@@ -12,6 +12,15 @@ export const VeiculoSchema = z.object({
   capacidade_kg: z.number().nonnegative().nullable().optional(),
   rastreador_autotrac_id: z.string().nullable().optional(),
   ativo: z.boolean().default(true),
+  // Acompanhamento (migration 0011)
+  status_operacional: StatusOperacionalVeiculoSchema.default('DISPONIVEL'),
+  motorista_atual: z.string().nullable().optional(),
+  km_atual: z.number().nonnegative().nullable().optional(),
+  nivel_combustivel: z.number().int().min(0).max(100).nullable().optional(),
+  localizacao_atual: z.string().nullable().optional(),
+  ultima_manutencao_data: z.string().nullable().optional(),
+  proxima_manutencao_data: z.string().nullable().optional(),
+  observacoes_acompanhamento: z.string().nullable().optional(),
   created_at: z.string().datetime().optional(),
   updated_at: z.string().datetime().nullable().optional(),
   deleted_at: z.string().datetime().nullable().optional(),

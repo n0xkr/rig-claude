@@ -6,6 +6,7 @@ const DATASETS = 'import_datasets';
 const TARGET_TABLE: Record<ImportTarget, string> = {
   viagens: 'viagens',
   manutencoes_veiculo: 'manutencoes_veiculo',
+  veiculos: 'veiculos',
 };
 
 export class ImportacaoRepository {
@@ -18,6 +19,32 @@ export class ImportacaoRepository {
       .maybeSingle();
     if (error) throw error;
     return (data as { id: string } | null)?.id ?? null;
+  }
+
+  /** Veículo mínimo (só a placa) para não travar a importação de viagens/manutenções de placas ainda não cadastradas. */
+  async createVeiculoStub(placa: string): Promise<string> {
+    const { data, error } = await supabaseAdmin
+      .from('veiculos')
+      .insert({ placa, tipo: 'CAVALO', frota_propria: true, ativo: true })
+      .select('id')
+      .single();
+    if (error) throw error;
+    return (data as { id: string }).id;
+  }
+
+  /** Acompanhamento por planilha: placa existente é ATUALIZADA, nova é criada. */
+  async upsertVeiculoPorPlaca(dados: Record<string, unknown>): Promise<'criado' | 'atualizado'> {
+    const placa = String(dados.placa);
+    const existenteId = await this.findVeiculoIdByPlaca(placa);
+    if (existenteId) {
+      const { placa: _placa, ...campos } = dados;
+      const { error } = await supabaseAdmin.from('veiculos').update(campos).eq('id', existenteId);
+      if (error) throw error;
+      return 'atualizado';
+    }
+    const { error } = await supabaseAdmin.from('veiculos').insert(dados);
+    if (error) throw error;
+    return 'criado';
   }
 
   async createDataset(

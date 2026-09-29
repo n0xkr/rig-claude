@@ -41,6 +41,10 @@ import ImportarDadosPage from './pages/ImportarDadosPage.js';
 import RigabrasAiPage from './pages/RigabrasAiPage.js';
 import AuditoriaListPage from './pages/AuditoriaListPage.js';
 import UsuariosPage from './pages/UsuariosPage.js';
+import PerfilPage from './pages/PerfilPage.js';
+import SolicitacoesIaPage from './pages/SolicitacoesIaPage.js';
+import ImportarPlanilhaIaPage from './pages/ImportarPlanilhaIaPage.js';
+import AcompanhamentoPage from './pages/AcompanhamentoPage.js';
 
 export default function App() {
   const location = useLocation();
@@ -339,6 +343,30 @@ export default function App() {
               }
             />
             <Route
+              path="/importar-ia"
+              element={
+                <AuthGate>
+                  <ImportarPlanilhaIaPage />
+                </AuthGate>
+              }
+            />
+            <Route
+              path="/solicitacoes-ia"
+              element={
+                <AuthGate>
+                  <SolicitacoesIaPage />
+                </AuthGate>
+              }
+            />
+            <Route
+              path="/perfil"
+              element={
+                <AuthGate>
+                  <PerfilPage />
+                </AuthGate>
+              }
+            />
+            <Route
               path="/rigabras-ai"
               element={
                 <AuthGate>
@@ -351,6 +379,14 @@ export default function App() {
               element={
                 <AuthGate>
                   <AuditoriaListPage />
+                </AuthGate>
+              }
+            />
+            <Route
+              path="/acompanhamento"
+              element={
+                <AuthGate>
+                  <AcompanhamentoPage />
                 </AuthGate>
               }
             />

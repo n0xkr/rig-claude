@@ -59,6 +59,10 @@ export const TipoVeiculoSchema = z.enum([
 ]);
 export type TipoVeiculo = z.infer<typeof TipoVeiculoSchema>;
 
+/** Estado operacional "vivo" do veículo (acompanhamento de frota). */
+export const StatusOperacionalVeiculoSchema = z.enum(['DISPONIVEL', 'EM_TRANSITO', 'MANUTENCAO', 'GARAGEM']);
+export type StatusOperacionalVeiculo = z.infer<typeof StatusOperacionalVeiculoSchema>;
+
 export const PAISES_HABILITADOS = ['AR', 'BO', 'CL', 'PY', 'UY', 'PE'] as const;
 export const PaisHabilitadoSchema = z.enum(PAISES_HABILITADOS);
 export type PaisHabilitado = z.infer<typeof PaisHabilitadoSchema>;

@@ -35,3 +35,7 @@ export * from './entities/ordemServico.js';
 export * from './entities/importacao.js';
 export * from './entities/chatbot.js';
 export * from './entities/auditLog.js';
+export * from './entities/acompanhamento.js';
+export * from './entities/perfil.js';
+export * from './entities/iaSolicitacao.js';
+export * from './planilhaScan.js';

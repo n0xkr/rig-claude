@@ -130,6 +130,37 @@ export async function askOperationalQuestion(
   return resposta.trim();
 }
 
+/**
+ * Chamada genérica em modo JSON (`response_format: json_object`) usada pelos
+ * recursos de IA de importação e insights. Devolve o objeto já parseado —
+ * quem chama SEMPRE valida o formato com Zod antes de confiar no conteúdo.
+ */
+export async function completeJson(system: string, user: string, maxTokens = 1500): Promise<unknown> {
+  if (!isGroqConfigured) {
+    throw new GroqNotConfiguredError();
+  }
+  const completion = await getClient().chat.completions.create({
+    model: env.GROQ_MODEL,
+    temperature: 0.1,
+    max_tokens: maxTokens,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+  });
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) {
+    throw new Error('Resposta vazia da Groq');
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (parseError) {
+    logger.error({ raw, parseError }, 'Groq devolveu JSON inválido');
+    throw new Error('Resposta da Groq não é um JSON válido');
+  }
+}
+
 export class GroqNotConfiguredError extends Error {
   constructor() {
     super(

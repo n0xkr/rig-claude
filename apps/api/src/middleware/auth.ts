@@ -52,3 +52,21 @@ export function requireRole(...allowedRoles: UserRole[]) {
     }
   };
 }
+
+/**
+ * Restringe a rota a e-mails específicos (lista em `AUDITORIA_EMAILS`). Usado na
+ * Auditoria: por decisão do dono do sistema, só ele a acessa — nem o papel
+ * SUPERADMIN a enxerga. Deve ser usado após `authenticate`.
+ */
+export function requireEmails(allowedEmails: string[]) {
+  const allowed = new Set(allowedEmails.map((e) => e.trim().toLowerCase()).filter(Boolean));
+  return async function emailGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    if (!request.user) {
+      await Problems.unauthorized(reply);
+      return;
+    }
+    if (!allowed.has(request.user.email.trim().toLowerCase())) {
+      await Problems.forbidden(reply, 'A trilha de auditoria é restrita ao proprietário do sistema');
+    }
+  };
+}

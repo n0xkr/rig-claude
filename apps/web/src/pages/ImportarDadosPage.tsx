@@ -1,30 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { read, utils } from 'xlsx';
+import { Link } from 'react-router-dom';
 import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle } from 'lucide-react';
-import type { ImportTarget, ValidarImportacaoResult, ImportDataset } from '@rigabras/shared';
-import { IMPORT_TARGET_FIELDS } from '@rigabras/shared';
+import type { ImportTarget, ValidarImportacaoResult, ImportDataset, PlanilhaEscaneada } from '@rigabras/shared';
+import { IMPORT_TARGET_FIELDS, mapearPorNome, pontuarAlvo } from '@rigabras/shared';
+import { lerPlanilhaCompleta } from '../lib/lerPlanilha.js';
 import { useImportacaoActions } from '../hooks/useImportacao.js';
+import { AiImportWizard } from '../components/AiImportWizard.js';
 
 const TARGET_LABELS: Record<ImportTarget, string> = {
   viagens: 'Viagens (TMS / Gerenciamento de Risco)',
   manutencoes_veiculo: 'Manutenções de veículo (Frota)',
+  veiculos: 'Veículos (Frota / acompanhamento)',
 };
-
-/** Normaliza um nome de coluna para sugestão automática de mapeamento (case/acentos/espaços). */
-function normalizar(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-}
 
 /**
  * Importação de dados (Módulo 9) — ponte manual via Excel/CSV até a
  * integração com Google Sheets existir (documento de evolução, seções
  * 15-18): upload -> pré-visualização -> mapeamento de colunas -> validação
  * -> importação. Nunca apaga dados existentes; cada lote fica registrado
- * como um dataset auditável.
+ * como um dataset auditável. O arquivo é varrido inteiro (todas as abas, cabeçalho
+ * em qualquer linha); o usuário escolhe qual aba importar, com a melhor já pré-selecionada.
  */
 export default function ImportarDadosPage() {
   const { validar, importar, listarHistorico, submitting, error } = useImportacaoActions();
@@ -32,6 +27,8 @@ export default function ImportarDadosPage() {
 
   const [target, setTarget] = useState<ImportTarget>('viagens');
   const [nomeArquivo, setNomeArquivo] = useState('');
+  const [scan, setScan] = useState<PlanilhaEscaneada | null>(null);
+  const [abaAtual, setAbaAtual] = useState('');
   const [headers, setHeaders] = useState<string[]>([]);
   const [linhasBrutas, setLinhasBrutas] = useState<Array<Record<string, unknown>>>([]);
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
@@ -50,6 +47,8 @@ export default function ImportarDadosPage() {
   }, []);
 
   function resetArquivo() {
+    setScan(null);
+    setAbaAtual('');
     setHeaders([]);
     setLinhasBrutas([]);
     setMapeamento({});
@@ -57,27 +56,39 @@ export default function ImportarDadosPage() {
     setResultadoImportacao(null);
   }
 
+  /** Carrega uma aba: cabeçalhos/linhas reais + sugestão de mapeamento por nome (com sinônimos). */
+  function selecionarAba(planilha: PlanilhaEscaneada, nomeAba: string, alvo: ImportTarget) {
+    const aba = planilha.abas.find((a) => a.nome === nomeAba);
+    setAbaAtual(nomeAba);
+    setValidacao(null);
+    setResultadoImportacao(null);
+    setHeaders(aba?.cabecalhos ?? []);
+    setLinhasBrutas(aba?.linhas ?? []);
+    const sugestao = mapearPorNome(alvo, aba?.cabecalhos ?? []);
+    // mapeamento manual é campo -> coluna (inverso do retornado por mapearPorNome)
+    const porCampo: Record<string, string> = {};
+    for (const [coluna, campo] of Object.entries(sugestao)) if (campo) porCampo[campo] = coluna;
+    setMapeamento(porCampo);
+  }
+
+  /** Aba mais parecida com o destino escolhido — nunca a "primeira aba" às cegas. */
+  function melhorAba(planilha: PlanilhaEscaneada, alvo: ImportTarget): string {
+    const tabelas = planilha.abas.filter((a) => a.tipo === 'TABELA' && a.linhas.length > 0);
+    const ranqueadas = tabelas
+      .map((a) => ({ nome: a.nome, ...pontuarAlvo(alvo, a.cabecalhos) }))
+      .sort((x, y) => Number(y.obrigatoriosOk) - Number(x.obrigatoriosOk) || y.pontos - x.pontos);
+    return ranqueadas[0]?.nome ?? tabelas[0]?.nome ?? '';
+  }
+
   async function handleFile(file: File) {
     resetArquivo();
     setNomeArquivo(file.name);
-    const buffer = await file.arrayBuffer();
-    const workbook = read(buffer, { cellDates: true });
-    const primeiraAba = workbook.Sheets[workbook.SheetNames[0]!];
-    const linhas = utils.sheet_to_json<Record<string, unknown>>(primeiraAba!, { defval: '' });
-    const cabecalhos = linhas.length > 0 ? Object.keys(linhas[0]!) : [];
-    setHeaders(cabecalhos);
-    setLinhasBrutas(linhas);
-
-    // Sugestão automática: casa cada campo do sistema com a coluna cujo nome normalizado bate.
-    const sugestao: Record<string, string> = {};
-    for (const campo of campos) {
-      const match = cabecalhos.find(
-        (h) => normalizar(h) === normalizar(campo.key) || normalizar(h) === normalizar(campo.label),
-      );
-      if (match) sugestao[campo.key] = match;
-    }
-    setMapeamento(sugestao);
+    const planilha = await lerPlanilhaCompleta(file);
+    setScan(planilha);
+    selecionarAba(planilha, melhorAba(planilha, target), target);
   }
+
+  const abasComDados = scan?.abas.filter((a) => a.tipo === 'TABELA' && a.linhas.length > 0) ?? [];
 
   const linhasMapeadas = useMemo(() => {
     return linhasBrutas.map((linha) => {
@@ -108,6 +119,13 @@ export default function ImportarDadosPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
+      <Link
+        to="/importar-ia"
+        className="mb-3 inline-block text-xs text-tms-cyan hover:underline"
+        data-testid="link-importar-ia"
+      >
+        Importar planilha completa com a IA (cadastros com aprovação) →
+      </Link>
       <h1 className="mb-2 text-2xl font-bold text-white">Importar dados</h1>
       <p className="mb-6 text-sm text-slate-400">
         Upload manual de planilhas (.xlsx, .xls, .csv) — usado enquanto a integração automática com
@@ -115,6 +133,16 @@ export default function ImportarDadosPage() {
         normais.
       </p>
 
+      <section className="mb-8 rounded-xl border border-tms-cyan/30 bg-tms-cyan/5 p-5" data-testid="secao-importacao-ia">
+        <h2 className="mb-1 text-lg font-semibold text-white">Importação inteligente (IA)</h2>
+        <p className="mb-4 text-xs text-slate-400">
+          Envie qualquer planilha da operação: a IA identifica o tipo de dado, mapeia as colunas e normaliza os valores.
+          Você revisa e confirma antes de gravar.
+        </p>
+        <AiImportWizard />
+      </section>
+
+      <h2 className="mb-2 text-base font-semibold text-slate-200">Importação manual (mapeamento de colunas)</h2>
       <div className="mb-6 space-y-4 rounded-lg border border-slate-800 p-5">
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-slate-300">
@@ -124,8 +152,9 @@ export default function ImportarDadosPage() {
             className="input"
             value={target}
             onChange={(e) => {
-              setTarget(e.target.value as ImportTarget);
-              resetArquivo();
+              const novo = e.target.value as ImportTarget;
+              setTarget(novo);
+              if (scan) selecionarAba(scan, melhorAba(scan, novo), novo);
             }}
           >
             {(Object.keys(TARGET_LABELS) as ImportTarget[]).map((t) => (
@@ -161,6 +190,33 @@ export default function ImportarDadosPage() {
             </span>
           )}
         </div>
+
+        {scan && (
+          <label className="block" data-testid="manual-aba">
+            <span className="mb-1 block text-sm font-medium text-slate-300">
+              Aba da planilha ({scan.resumo.totalAbas} abas lidas, {abasComDados.length} com dados)
+            </span>
+            <select
+              className="input"
+              value={abaAtual}
+              onChange={(e) => selecionarAba(scan, e.target.value, target)}
+            >
+              {abasComDados.map((a) => (
+                <option key={a.nome} value={a.nome}>
+                  {a.nome} — {a.linhas.length} linhas, {a.cabecalhos.length} colunas
+                </option>
+              ))}
+            </select>
+            {scan.abas.find((a) => a.nome === abaAtual)?.observacoes.map((o) => (
+              <span key={o} className="mt-1 block text-xs text-slate-500">
+                • {o}
+              </span>
+            ))}
+          </label>
+        )}
+        {scan && abasComDados.length === 0 && (
+          <p className="text-sm text-amber-300">Nenhuma aba com tabela de dados foi encontrada neste arquivo.</p>
+        )}
       </div>
 
       {headers.length > 0 && (

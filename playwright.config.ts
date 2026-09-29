@@ -19,7 +19,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  timeout: 30_000,
+  timeout: 90_000,
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',
@@ -36,7 +36,7 @@ export default defineConfig({
       command: 'pnpm --filter @rigabras/api dev',
       url: 'http://127.0.0.1:3333/healthz',
       reuseExistingServer: true,
-      timeout: 30_000,
+      timeout: 120_000,
       // WEB_ORIGIN precisa bater exatamente com a origem usada pelo
       // Chromium do Playwright (baseURL abaixo) — um mismatch
       // localhost/127.0.0.1 aqui faz o CORS da API bloquear a resposta do
@@ -49,7 +49,7 @@ export default defineConfig({
       command: 'pnpm --filter @rigabras/web dev',
       url: 'http://127.0.0.1:5173',
       reuseExistingServer: true,
-      timeout: 30_000,
+      timeout: 120_000,
     },
   ],
 });

@@ -5,11 +5,12 @@ import { ImportacaoController } from './importacao.controller.js';
 const LEITURA_TODOS = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE', 'PORTARIA');
 const ESCRITA_OPERACIONAL = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR');
 
-/** Rotas do Módulo 9 (Importação de dados — Excel/CSV, ponte até a integração com Google Sheets). */
+/** Rotas do Módulo 9 (Importação de dados — Excel/CSV, com interpretação por IA). */
 export async function importacaoRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('onRequest', authenticate);
 
   app.get('/', { preHandler: LEITURA_TODOS }, ImportacaoController.listDatasets);
+  app.post('/ia/analisar', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.analisar);
   app.post('/validar', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.validar);
   app.post('/', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.importar);
 }

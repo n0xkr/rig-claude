@@ -13,7 +13,7 @@ import { z } from 'zod';
  * evita que uma planilha precise conter UUIDs internos, que o usuário de
  * negócio nunca teria em mãos.
  */
-export const ImportTargetSchema = z.enum(['viagens', 'manutencoes_veiculo']);
+export const ImportTargetSchema = z.enum(['viagens', 'manutencoes_veiculo', 'veiculos']);
 export type ImportTarget = z.infer<typeof ImportTargetSchema>;
 
 export const OrigemImportacaoSchema = z.enum(['EXCEL', 'CSV', 'MANUAL']);
@@ -41,6 +41,36 @@ export interface ImportFieldSpec {
  * quanto pelo backend (coerção de tipos antes da validação Zod real).
  */
 export const IMPORT_TARGET_FIELDS: Record<ImportTarget, ImportFieldSpec[]> = {
+  veiculos: [
+    { key: 'placa', label: 'Placa', required: true, type: 'text', hint: 'Se já existir, o veículo é ATUALIZADO (acompanhamento)' },
+    {
+      key: 'tipo',
+      label: 'Tipo do veículo',
+      required: false,
+      type: 'enum',
+      options: ['CAVALO', 'CARRETA_ABERTA', 'CARRETA_SIDER', 'CARRETA_OUTRO'],
+      hint: 'Padrão: CAVALO quando ausente',
+    },
+    { key: 'marca', label: 'Marca', required: false, type: 'text' },
+    { key: 'modelo', label: 'Modelo', required: false, type: 'text' },
+    { key: 'ano_fabricacao', label: 'Ano de fabricação', required: false, type: 'number' },
+    { key: 'capacidade_kg', label: 'Capacidade (kg)', required: false, type: 'number' },
+    { key: 'frota_propria', label: 'Frota própria', required: false, type: 'boolean' },
+    {
+      key: 'status_operacional',
+      label: 'Status operacional',
+      required: false,
+      type: 'enum',
+      options: ['DISPONIVEL', 'EM_TRANSITO', 'MANUTENCAO', 'GARAGEM'],
+    },
+    { key: 'motorista_atual', label: 'Motorista atual', required: false, type: 'text' },
+    { key: 'km_atual', label: 'Quilometragem atual', required: false, type: 'number' },
+    { key: 'nivel_combustivel', label: 'Nível de combustível (%)', required: false, type: 'number' },
+    { key: 'localizacao_atual', label: 'Localização atual', required: false, type: 'text' },
+    { key: 'ultima_manutencao_data', label: 'Última manutenção', required: false, type: 'date' },
+    { key: 'proxima_manutencao_data', label: 'Próxima manutenção', required: false, type: 'date' },
+    { key: 'observacoes_acompanhamento', label: 'Observações', required: false, type: 'text' },
+  ],
   viagens: [
     { key: 'placa_cavalo', label: 'Placa do cavalo', required: true, type: 'text' },
     { key: 'numero_crt', label: 'Número do CRT', required: false, type: 'text' },
@@ -92,6 +122,7 @@ export type ImportLinhaErro = z.infer<typeof ImportLinhaErroSchema>;
 
 export const ValidarImportacaoInputSchema = z.object({
   target: ImportTargetSchema,
+  criarVeiculosAusentes: z.boolean().optional(),
   linhas: z.array(z.record(z.unknown())).min(1).max(5000),
 });
 export type ValidarImportacaoInput = z.infer<typeof ValidarImportacaoInputSchema>;
@@ -106,6 +137,7 @@ export type ValidarImportacaoResult = z.infer<typeof ValidarImportacaoResultSche
 
 export const CommitImportacaoInputSchema = z.object({
   target: ImportTargetSchema,
+  criarVeiculosAusentes: z.boolean().optional(),
   nome: z.string().min(1),
   origem: OrigemImportacaoSchema.default('EXCEL'),
   linhas: z.array(z.record(z.unknown())).min(1).max(5000),

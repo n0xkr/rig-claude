@@ -5,12 +5,15 @@ import {
   Bot,
   ClipboardCheck,
   Clock,
+  FileSpreadsheet,
   Gauge,
   LayoutDashboard,
   LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  Radar,
+  Sparkles,
   ShieldCheck,
   Truck,
   UploadCloud,
@@ -23,7 +26,9 @@ import {
 } from 'lucide-react';
 import type { UserRole } from '@rigabras/shared';
 import logo from '../../assets/logo-rigabras.jpg';
-import { getCurrentUserRole } from '../../lib/apiClient.js';
+import type { Perfil } from '@rigabras/shared';
+import { api, getCurrentUserRole } from '../../lib/apiClient.js';
+import { useResumoSolicitacoesIa } from '../../hooks/useSolicitacoesIa.js';
 import { haptic } from '../../lib/haptics.js';
 
 interface NavItem {
@@ -31,6 +36,10 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   roles?: UserRole[];
+  /** Só aparece para quem a API autoriza (ex.: Auditoria restrita ao proprietário). */
+  exigeAuditoria?: boolean;
+  /** Mostra o contador de solicitações pendentes da IA. */
+  badge?: 'solicitacoes';
 }
 
 const NAV: NavItem[] = [
@@ -40,12 +49,15 @@ const NAV: NavItem[] = [
   { to: '/portaria', label: 'Portaria', icon: ClipboardCheck },
   { to: '/fronteira/kpis', label: 'KPIs de fronteira', icon: Gauge },
   { to: '/fretes', label: 'Financeiro do frete', icon: Wallet },
+  { to: '/acompanhamento', label: 'Acompanhamento', icon: Radar },
   { to: '/frota/kpis', label: 'Frota', icon: Wrench },
   { to: '/jornada', label: 'Jornada', icon: Clock },
   { to: '/wms', label: 'WMS', icon: Warehouse },
   { to: '/exportacoes', label: 'Exportações', icon: UploadCloud },
   { to: '/importar-dados', label: 'Importar dados', icon: UploadCloud },
-  { to: '/auditoria', label: 'Auditoria', icon: ShieldCheck, roles: ['SUPERADMIN', 'ADMIN'] },
+  { to: '/importar-ia', label: 'Importar com IA', icon: FileSpreadsheet, roles: ['SUPERADMIN', 'ADMIN', 'OPERADOR'] },
+  { to: '/solicitacoes-ia', label: 'Solicitações da IA', icon: Sparkles, roles: ['SUPERADMIN', 'ADMIN'], badge: 'solicitacoes' },
+  { to: '/auditoria', label: 'Auditoria', icon: ShieldCheck, exigeAuditoria: true },
   { to: '/usuarios', label: 'Usuários', icon: Users, roles: ['SUPERADMIN'] },
 ];
 
@@ -57,16 +69,19 @@ function NavList({
   items,
   collapsed,
   onNavigate,
+  badges = {},
 }: {
   items: NavItem[];
   collapsed: boolean;
   onNavigate?: () => void;
+  badges?: Partial<Record<NonNullable<NavItem['badge']>, number>>;
 }) {
   const { pathname } = useLocation();
   return (
     <nav className="flex flex-col gap-1" aria-label="Navegação principal">
-      {items.map(({ to, label, icon: Icon }) => {
+      {items.map(({ to, label, icon: Icon, badge }) => {
         const active = isActive(pathname, to);
+        const contagem = badge ? (badges[badge] ?? 0) : 0;
         return (
           <Link
             key={to}
@@ -90,6 +105,17 @@ function NavList({
             )}
             <Icon className={`relative h-[18px] w-[18px] shrink-0 ${active ? 'text-tms-cyan' : ''}`} />
             {!collapsed && <span className="relative truncate">{label}</span>}
+            {contagem > 0 && (
+              <span
+                data-testid="nav-badge-solicitacoes"
+                aria-label={`${contagem} pendentes`}
+                className={`relative rounded-full bg-tms-cyan px-1.5 text-[10px] font-bold leading-4 text-slate-900 ${
+                  collapsed ? 'absolute right-1 top-1' : 'ml-auto'
+                }`}
+              >
+                {contagem > 99 ? '99+' : contagem}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -123,7 +149,28 @@ export function DashboardLayout({
 
   useEffect(() => setDrawer(false), [pathname]);
 
-  const items = NAV.filter((i) => !i.roles || (role && i.roles.includes(role)));
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    api
+      .get<Perfil>('/perfil')
+      .then((p) => ativo && setPerfil(p))
+      .catch(() => undefined);
+    const aoAtualizar = (e: Event) => setPerfil((atual) => ({ ...(atual ?? ({} as Perfil)), ...(e as CustomEvent<Perfil>).detail }));
+    window.addEventListener('rigabras:perfil-atualizado', aoAtualizar);
+    return () => {
+      ativo = false;
+      window.removeEventListener('rigabras:perfil-atualizado', aoAtualizar);
+    };
+  }, []);
+
+  const podeDecidirIa = role === 'SUPERADMIN' || role === 'ADMIN';
+  const { resumo } = useResumoSolicitacoesIa({ pollMs: podeDecidirIa ? 30000 : 0 });
+  const badges = { solicitacoes: podeDecidirIa ? (resumo?.pendentes ?? 0) : 0 };
+
+  const items = NAV.filter(
+    (i) => (!i.roles || (role && i.roles.includes(role))) && (!i.exigeAuditoria || perfil?.pode_ver_auditoria === true),
+  );
   const current = items.find((i) => isActive(pathname, i.to));
 
   function logout() {
@@ -162,6 +209,22 @@ export function DashboardLayout({
             {current?.label ?? 'Rigabras TMS'}
           </p>
           <div className="ml-auto flex items-center gap-3">
+            <Link
+              to="/perfil"
+              data-testid="perfil-link"
+              title="Meu perfil"
+              aria-label="Meu perfil"
+              className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-sm text-slate-300 hover:bg-white/5 hover:text-white"
+            >
+              {perfil?.avatar_url ? (
+                <img src={perfil.avatar_url} alt="" className="h-7 w-7 rounded-full border border-white/10 object-cover" />
+              ) : (
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-tms-cyan/30 bg-tms-cyan/10 text-xs font-semibold text-tms-cyan">
+                  {(perfil?.nome_completo ?? '?').trim().charAt(0).toUpperCase() || '?'}
+                </span>
+              )}
+              <span className="hidden max-w-[10rem] truncate sm:inline">{perfil?.nome_completo?.split(' ')[0] ?? ''}</span>
+            </Link>
             <button
               type="button"
               data-testid="logout-button"
@@ -192,7 +255,7 @@ export function DashboardLayout({
           )}
         </Link>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <NavList items={items} collapsed={collapsed} />
+          <NavList items={items} collapsed={collapsed} badges={badges} />
         </div>
         <button
           type="button"
@@ -232,7 +295,7 @@ export function DashboardLayout({
                 </button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <NavList items={items} collapsed={false} onNavigate={() => setDrawer(false)} />
+                <NavList items={items} collapsed={false} onNavigate={() => setDrawer(false)} badges={badges} />
               </div>
             </motion.aside>
           </>

@@ -49,6 +49,21 @@ export function getCurrentUserRole(): UserRole | null {
   }
 }
 
+/** E-mail do usuário a partir do JWT (só para exibição/UX; a autorização real é do backend). */
+export function getCurrentUserEmail(): string | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const payloadSegment = token.split('.')[1];
+    if (!payloadSegment) return null;
+    const normalized = payloadSegment.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(normalized)) as { email?: string };
+    return payload.email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 let refreshEmAndamento: Promise<boolean> | null = null;
 
 /**

@@ -67,6 +67,12 @@ const EnvSchema = z.object({
   // este projeto (verificado via GET /openai/v1/models da Groq).
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
 
+  /**
+   * E-mails (separados por vírgula) autorizados a ver a trilha de Auditoria.
+   * A auditoria é restrita a pessoas específicas — nem o papel SUPERADMIN a vê.
+   */
+  AUDITORIA_EMAILS: z.string().default('otavio@otavio.com'),
+
   REDIS_URL: z.string().optional(),
   WEB_ORIGIN: z.string().default('http://localhost:5173'),
 
