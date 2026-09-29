@@ -5,6 +5,7 @@ import { useRecebimentoDetail, useRecebimentoWorkflow } from '../hooks/useRecebi
 import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 import { RecebimentoStatusBadge } from '../components/StatusBadge.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 /** Detalhe/workflow de um recebimento (Módulo 5, WMS — Recebimento e Conferência): inicia a conferência, confere item a item (endereçando no armazém) e conclui. */
 export default function RecebimentoDetailPage() {
@@ -18,7 +19,7 @@ export default function RecebimentoDetailPage() {
     error: wfError,
   } = useRecebimentoWorkflow();
   const { armazens } = useArmazensList();
-  const { enderecos } = useEnderecosList(armazens[0]?.id);
+  const { enderecos, reload: reloadEnderecos } = useEnderecosList(armazens[0]?.id);
 
   if (state === 'loading' || state === 'idle') return <LoadingSkeleton />;
   if (state === 'error' || !recebimento)
@@ -77,6 +78,8 @@ export default function RecebimentoDetailPage() {
             recebimentoId={recebimento.id}
             item={item}
             enderecos={enderecos}
+            armazemId={armazens[0]?.id}
+            recarregarEnderecos={reloadEnderecos}
             disabled={recebimento.status !== 'EM_CONFERENCIA'}
             onConferido={async (input) => {
               await conferirItem(recebimento.id, item.id, input);
@@ -110,7 +113,11 @@ function ItemConferencia({
   enderecos,
   disabled,
   onConferido,
+  armazemId,
+  recarregarEnderecos,
 }: {
+  armazemId?: string;
+  recarregarEnderecos: () => unknown;
   recebimentoId: string;
   item: {
     id: string;
@@ -124,6 +131,7 @@ function ItemConferencia({
 }) {
   const [quantidade, setQuantidade] = useState(String(item.quantidade_esperada));
   const [enderecoId, setEnderecoId] = useState('');
+  const novo = useCadastroRapido();
   const jaConferido = item.quantidade_conferida != null;
 
   return (
@@ -148,7 +156,7 @@ function ItemConferencia({
           <select
             className="input"
             value={enderecoId}
-            onChange={(e) => setEnderecoId(e.target.value)}
+            onChange={novo.aoMudar('endereco', setEnderecoId, recarregarEnderecos, { armazem_id: armazemId })}
             disabled={disabled}
           >
             <option value="">Endereço...</option>
@@ -157,7 +165,9 @@ function ItemConferencia({
                 {e.area}-{e.rua}-{e.prateleira}-{e.posicao}
               </option>
             ))}
+            <OpcaoAdicionarNovo />
           </select>
+          {novo.modal}
           <button
             disabled={disabled || !enderecoId}
             onClick={() =>

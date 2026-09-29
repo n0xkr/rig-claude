@@ -96,9 +96,18 @@ export class EnderecosRepository {
   }
 
   // --------------------------------------------------------------------
-  // armazens — somente leitura (a tabela pertence à migration 0001; este
-  // módulo apenas lê para listar/validar o(s) armazém(ns) físico(s)).
+  // armazens (tabela da migration 0001): o(s) armazém(ns) físico(s).
   // --------------------------------------------------------------------
+  async createArmazem(input: { nome: string; endereco?: string | null; area_m2?: number | null }): Promise<ArmazemRow> {
+    const { data, error } = await supabaseAdmin
+      .from(ARMAZENS_TABLE)
+      .insert(input)
+      .select('id, nome, area_m2')
+      .single();
+    if (error) throw mapPgError(error);
+    return data as ArmazemRow;
+  }
+
   async listArmazens(): Promise<ArmazemRow[]> {
     const { data, error } = await supabaseAdmin
       .from(ARMAZENS_TABLE)

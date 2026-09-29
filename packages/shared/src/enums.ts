@@ -212,8 +212,13 @@ export function statusViagemDeTexto(texto: unknown): StatusViagem | null {
 
   if (tem(' cancelad')) return 'CANCELADA';
   if (tem(' fim de viagem', ' finalizad', ' encerrad', ' concluid')) return 'ENCERRADA';
-  if (tem(' retornando', ' retorno vazio', ' voltando', ' regressando')) return 'RETORNANDO_VAZIO';
-  if (tem(' vazio no cliente', ' descarregad', ' descarregou', ' descarga concluida'))
+  // Veículo de volta à base, vazio: a viagem acabou.
+  if (tem(' patio rigabras', ' vazio no patio', ' retornou vazio', ' chegou vazio')) return 'ENCERRADA';
+  // Retorno com carga (importação de volta a Uruguaiana): é uma viagem rumo à fronteira.
+  if (tem(' ret carregado', ' retorno carregado', ' retornando carregado')) return 'EM_TRANSITO_FRONTEIRA';
+  if (tem(' retornando', ' retorno vazio', ' ret vazio', ' voltando', ' regressando', ' transito ret '))
+    return 'RETORNANDO_VAZIO';
+  if (tem(' vazio no cliente', ' descarregad', ' descarregou', ' descarga concluida', ' entregue', ' entregado'))
     return 'VAZIO_NO_CLIENTE';
   if (tem(' cliente') && saiu && !tem(' aduana')) return 'SAIDA_CLIENTE';
   if (tem(' multilog')) return saiu ? 'SAIDA_ADUANA_MULTILOG' : 'ENTRADA_ADUANA_MULTILOG';
@@ -224,6 +229,11 @@ export function statusViagemDeTexto(texto: unknown): StatusViagem | null {
   if (tem(' programado para carregar', ' programado p carregar', ' programado pra carregar'))
     return 'PROGRAMADO_CARREGAR';
   if (tem(' cruze', ' cruce', ' cruzar')) return 'NA_FRONTEIRA_AGUARDANDO_CRUZE';
+  // Carga descarregada no armazém da Rigabras em Uruguaiana (transbordo na fronteira).
+  if (tem(' armazem rigabras', ' transbordo')) return 'NA_FRONTEIRA';
+  if (tem(' em aduana', ' na aduana')) return 'ENTRADA_ADUANA_MULTILOG';
+  if (tem(' transito a uruguaiana', ' transito para uruguaiana', ' rumo a uruguaiana'))
+    return 'EM_TRANSITO_FRONTEIRA';
   if (tem(' fronteira')) {
     if (tem(' transito', ' rumo', ' indo', ' a caminho', ' em viagem'))
       return 'EM_TRANSITO_FRONTEIRA';

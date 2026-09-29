@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Database,
+  Download,
   FileSpreadsheet,
   Link2,
   Loader2,
@@ -21,6 +22,7 @@ import {
   type StatusViagem,
 } from '@rigabras/shared';
 import { lerPlanilhaCompleta } from '../lib/lerPlanilha.js';
+import { baixarPlanilhaModelo } from '../lib/planilhaModelo.js';
 import { api, ApiError } from '../lib/apiClient.js';
 import { haptic } from '../lib/haptics.js';
 
@@ -37,10 +39,95 @@ async function lerArquivos(files: File[]): Promise<Arquivos> {
       nome: f.name,
       abas: scan.abas
         .filter((a) => a.tipo === 'TABELA' && a.linhas.length > 0)
-        .map((a) => ({ nome: a.nome, cabecalhos: a.cabecalhos, linhas: a.linhas as Array<Record<string, unknown>> })),
+        // A varredura já normaliza as células para string | number | boolean | null.
+        .map((a) => ({
+          nome: a.nome,
+          cabecalhos: a.cabecalhos,
+          linhas: a.linhas as Arquivos[number]['abas'][number]['linhas'],
+        })),
     });
   }
   return out;
+}
+
+const TIPO_COLUNA_LABEL: Record<string, string> = {
+  vazio: 'vazia',
+  booleano: 'sim/não',
+  hora: 'hora',
+  data: 'data',
+  datahora: 'data e hora',
+  placa: 'placa',
+  placas: 'conjunto de placas',
+  numero: 'número',
+  codigo: 'código',
+  texto: 'texto',
+};
+
+/** Resultado da padronização da aba: tipo de cada coluna, conversões, inconsistências e descartes. */
+function TratamentoAba({ aba }: { aba: ImportacaoInteligenteResultado['abas'][number] }) {
+  const [aberto, setAberto] = useState(false);
+  const comPerfil = aba.colunas.filter((c) => c.tipo);
+  if (comPerfil.length === 0) return null;
+  const inconsistentes = comPerfil.reduce((s, c) => s + (c.inconsistencias ?? 0), 0);
+  const convertidas = comPerfil.reduce((s, c) => s + (c.convertidas ?? 0), 0);
+  const descartadas = aba.descartadas ?? [];
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:underline"
+        data-testid="importacao-tratamento-toggle"
+      >
+        {aberto ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        Tratamento: {convertidas} célula(s) padronizada(s)
+        {inconsistentes > 0 ? ` · ${inconsistentes} inconsistência(s)` : ''}
+        {descartadas.length > 0 ? ` · ${descartadas.length} linha(s) descartada(s)` : ''}
+        {aba.duplicadas ? ` · ${aba.duplicadas} duplicada(s)` : ''}
+      </button>
+      {aberto && (
+        <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200" data-testid="importacao-tratamento">
+          <table className="w-full min-w-[40rem] text-left text-[11px]">
+            <thead className="bg-slate-50 text-slate-500">
+              <tr>
+                <th className="p-1.5">Coluna</th>
+                <th className="p-1.5">Tipo detectado</th>
+                <th className="p-1.5">Preenchidas</th>
+                <th className="p-1.5">Padronizadas</th>
+                <th className="p-1.5">Exemplos (já padronizados)</th>
+                <th className="p-1.5">Inconsistências</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comPerfil.map((c) => (
+                <tr key={c.coluna} className="border-t border-slate-100">
+                  <td className="p-1.5 font-medium text-slate-800">{c.coluna}</td>
+                  <td className="p-1.5">
+                    {TIPO_COLUNA_LABEL[c.tipo!] ?? c.tipo}
+                    {c.formato ? <span className="text-slate-400"> ({c.formato})</span> : null}
+                  </td>
+                  <td className="p-1.5">{c.preenchidas}</td>
+                  <td className="p-1.5">{c.convertidas}</td>
+                  <td className="p-1.5 text-slate-500">{(c.exemplos ?? []).slice(0, 3).join(' · ')}</td>
+                  <td className={`p-1.5 ${c.inconsistencias ? 'text-amber-700' : 'text-slate-400'}`}>
+                    {c.inconsistencias
+                      ? `${c.inconsistencias}: ${(c.exemplosInconsistencia ?? []).map((x) => `L${x.linha} "${x.valor}"`).join(', ')}`
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {descartadas.length > 0 && (
+            <p className="border-t border-slate-100 p-1.5 text-[11px] text-slate-500">
+              Descartadas: {descartadas.slice(0, 20).map((d) => `L${d.linha} (${d.motivo})`).join(', ')}
+              {descartadas.length > 20 ? ` … +${descartadas.length - 20}` : ''}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -111,6 +198,19 @@ export function ImportacaoInteligente({ onImported }: { onImported?: () => void 
 
   return (
     <div className="space-y-4" data-testid="importacao-inteligente">
+      {fase === 'inicio' && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm">
+          <span>Não tem planilha pronta? Baixe o modelo com as colunas que o sistema entende.</span>
+          <button
+            type="button"
+            onClick={() => baixarPlanilhaModelo()}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-100"
+            data-testid="gerar-planilha-modelo"
+          >
+            <Download className="h-3.5 w-3.5" /> Gerar planilha modelo
+          </button>
+        </div>
+      )}
       {fase === 'inicio' || ocupado ? (
         <div
           onDragOver={(e) => e.preventDefault()}
@@ -238,6 +338,7 @@ export function ImportacaoInteligente({ onImported }: { onImported?: () => void 
                       <span className="text-slate-400">· {a.linhas} linhas</span>
                     </p>
                     {a.observacao && <p className="text-slate-500">{a.observacao}</p>}
+                    <TratamentoAba aba={a} />
                     {a.tipo !== 'ignorada' && (
                       <p className="mt-1 flex flex-wrap gap-1">
                         {a.colunas.map((c) => (

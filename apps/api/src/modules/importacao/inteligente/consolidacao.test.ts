@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { statusViagemDeTexto } from '@rigabras/shared';
+import { PLANILHA_MODELO, statusViagemDeTexto } from '@rigabras/shared';
 import { classificarAba, lerRegistros, type AbaLida, type TipoDados } from './interpretacao.js';
 import { consolidar, paisDe, type BaseExistente } from './consolidacao.js';
 
@@ -30,6 +30,115 @@ describe('importação inteligente', () => {
     expect(statusViagemDeTexto('Aguardando pedido de cruze')).toBe('NA_FRONTEIRA_AGUARDANDO_CRUZE');
     expect(statusViagemDeTexto('20 Finalizado')).toBe('ENCERRADA');
     expect(statusViagemDeTexto('xyz')).toBeNull();
+  });
+
+  it('reconhece a planilha de controle de transportes (Sheet1 com "Placas" do conjunto)', () => {
+    const cab = [
+      'Tipo de Veiculo', 'Data Solicitação', 'Data Coleta', 'Hora', 'Motorista', 'Placas', 'Status',
+      'Fatura Rigabras', 'Fatura Exportação', 'Lote', 'Emissão Fatura Rigabras', 'Vencimento Fatura Rigabras',
+      'Peso Bruto', 'Nº transporte', 'Nº CRT', 'Origem', 'Destino', 'Data Fim do Transporte',
+      'Hora Fim do transporte', 'Observações adicionais',
+    ];
+    const linha = (crt: string, placas: string) => ({
+      'Tipo de Veiculo': 'RODOTREM', 'Data Solicitação': '2024-05-10', 'Data Coleta': '2024-05-13', Hora: '09:00',
+      Motorista: 'MARCELO SILVA', Placas: placas, Status: 'ENTREGUE', 'Fatura Rigabras': '20659/24',
+      'Peso Bruto': '10.781,00', 'Nº transporte': '13119132', 'Nº CRT': crt, Origem: 'ITAJAI/SC',
+      Destino: 'BUENOS AIRES', 'Data Fim do Transporte': '2024-05-22', 'Hora Fim do transporte': '20:36',
+    });
+    const aba = ler('Sheet1', cab, [linha('BR.2715.100001', 'MLM1E90/MLM2F11'), linha('BR.2715.100002', 'MLM1E90/MLM2F11')]);
+    expect(aba.tipo).toBe('viagens');
+    const r = aba.registros[0]!.campos;
+    expect(r.placa_cavalo).toBe('MLM1E90');
+    expect(r.placa_carreta).toBe('MLM2F11');
+    expect(r.numero_crt).toBe('BR.2715.100001');
+    expect(r.codigo_externo).toBeUndefined();
+    expect(r.data_coleta).toBe('2024-05-13T12:00:00.000Z');
+    expect(r.data_entrega).toBe('2024-05-22T23:36:00.000Z');
+    expect(aba.registros[0]!.extras['Nº transporte']).toBe('13119132');
+    const plano = consolidar([aba], vazia(), new Map());
+    // Mesmo cavalo, mesmo dia de coleta: uma viagem (rodotrem) com os dois CRTs.
+    expect(plano.viagens).toHaveLength(1);
+    expect(plano.viagens[0]!.cargas.map((x) => x.numero_documento)).toEqual(['BR.2715.100001', 'BR.2715.100002']);
+    expect(plano.viagens[0]!.dados.peso_kg).toBe(21562);
+    expect(plano.viagens[0]!.dados.status).toBe('ENCERRADA');
+  });
+
+  it('VEGA: lotes do mesmo CRT somam peso, linha duplicada é ignorada, data com mês por extenso', () => {
+    const cab = ['Data Coleta', 'Motorista', 'Placas', 'Status', 'Lote', 'Peso Bruto', 'Nº CRT', 'Origem', 'Destino', 'Data Fim do Transporte', 'Hora Fim do transporte', 'Observações adicionais'];
+    const l = (lote: string, peso: string, crt: string, fim: string, placas = 'MLM1E90/MMA9I46/MMA9I96') => ({
+      'Data Coleta': '10/05/2024', Motorista: 'MARCELO MACHADO', Placas: placas, Status: 'ENTREGUE', Lote: lote,
+      'Peso Bruto': peso, 'Nº CRT': crt, Origem: 'ITAJAÍ/SC', Destino: 'BUENOS AIRES/AR',
+      'Data Fim do Transporte': fim, 'Hora Fim do transporte': '20:36:00', 'Observações adicionais': 'GONVARRI',
+    });
+    const linhas = [
+      l('A1', ' 10.781,00 ', 'BR.1', '22.mai.2024'),
+      l('A2', ' 13.602,00 ', 'BR.1', '22.mai.2024'),
+      l('A2', ' 13.602,00 ', 'BR.1', '22.mai.2024'), // duplicada
+      l('B1', ' 13.783,00 ', 'BR.2', '21.Mai.2024'),
+    ];
+    const aba = ler('Sheet1', cab, linhas);
+    expect(aba.registros[0]!.campos.data_entrega).toBe('2024-05-22T23:36:00.000Z');
+    expect(aba.registros[0]!.campos.placa_carreta_2).toBe('MMA9I96');
+    const plano = consolidar([aba], vazia(), new Map());
+    expect(plano.viagens).toHaveLength(1);
+    const v = plano.viagens[0]!;
+    expect(v.cargas.find((x) => x.numero_documento === 'BR.1')!.peso_kg).toBe(24383);
+    expect(v.dados.peso_kg).toBe(38166);
+    expect((v.dados.dados_extras as Record<string, unknown>).Lote).toBe('A1 | A2 | B1');
+    expect(plano.avisos.some((a) => a.includes('1 linha(s) idêntica'))).toBe(true);
+
+    // Reimportar a mesma planilha não muda nada (os lotes não somam de novo sobre o banco).
+    const gravada = { id: 'v1', ...v.dados, motorista_id: null };
+    const base: BaseExistente = { ...vazia(), viagens: [gravada], cargasPorViagem: new Map([['v1', v.cargas]]) };
+    const de_novo = consolidar([ler('Sheet1', cab, linhas)], base, new Map());
+    expect(de_novo.viagens).toHaveLength(1);
+    expect(de_novo.viagens[0]!.cargas.find((x) => x.numero_documento === 'BR.2')!.peso_kg).toBe(13783);
+    expect(de_novo.viagens[0]!.cargasMudaram).toBe(false);
+    expect(de_novo.viagens[0]!.dados.peso_kg).toBeUndefined();
+  });
+
+  it('placas coladas e retrato da frota (manutenção/pátio/retorno) não viram viagem falsa', () => {
+    const cab = ['Placa Cavalo', 'Placa Carreta', 'Motorista', 'Cliente', 'Origem (Ida)', 'Destino (Ida)', 'Cliente2', 'Origem (Ret)', 'Destino (Ret)', 'STATUS', 'Observações'];
+    const aba = ler('Sheet1', cab, [
+      { 'Placa Cavalo': 'JDE5H04', Cliente: 'DIGITAL DIESEL', 'Destino (Ida)': 'TRES CACHOEIRAS RS', STATUS: 'SEM MOTORISTA', Observações: 'VEICULO EM MANUTENÇÃO' },
+      { 'Placa Cavalo': 'JDE5H06', 'Placa Carreta': 'DTD8C27', Motorista: 'ISMAR', Cliente: 'RETORNOU VAZIO DA GONVARRI', STATUS: 'PATIO RIGABRAS', Observações: 'VEICULO VAZIO NO PATIO RIGABRAS' },
+      { 'Placa Cavalo': 'JDE5H01', 'Placa Carreta': 'JDO1E73', Motorista: 'JUAREZ PAHIM', Cliente: 'RETORNANDO VAZIO DA BALL PY', STATUS: 'RET.VAZIO', Observações: 'VEICULO EM TRANSITO RET. URUGUAIANA' },
+      { 'Placa Cavalo': 'JCR9G17', 'Placa Carreta': 'JDO5J15', Motorista: 'CARLOS DUTRA', Cliente2: 'TRANSWEIDE', 'Origem (Ret)': 'SANTIAGO CL', 'Destino (Ret)': 'URUGUAIANA', STATUS: 'RET.CARREGADO', Observações: 'VEICULO EM TRANSITO RET. URUGUAIANA' },
+      { 'Placa Cavalo': 'JDE5H03', 'Placa Carreta': 'DTD9J28', Motorista: 'JONAS EDUARDO', Cliente: 'GONVARRI', 'Origem (Ida)': 'URUGUAIANA', 'Destino (Ida)': 'BUENOS AIRES', STATUS: 'RAMÃO VARGAS', Observações: 'VEICULO LIBERADO EM LIBRES' },
+    ]);
+    expect(aba.tipo).toBe('viagens');
+    const plano = consolidar([aba], vazia(), new Map());
+    const por = Object.fromEntries(plano.viagens.map((v) => [v.previa.placa_cavalo, v.previa]));
+    expect(Object.keys(por).sort()).toEqual(['JCR9G17', 'JDE5H01', 'JDE5H03']);
+    expect(por.JDE5H01!.status).toBe('RETORNANDO_VAZIO');
+    expect(por.JDE5H01!.cliente).toBe('BALL PY');
+    expect(por.JCR9G17).toMatchObject({ status: 'EM_TRANSITO_FRONTEIRA', cliente: 'TRANSWEIDE', origem: 'SANTIAGO CL', destino: 'URUGUAIANA' });
+    expect(por.JDE5H03!.status).toBe('SAIDA_ADUANA_COTECAR');
+    const veic = Object.fromEntries(plano.veiculos.map((v) => [v.ref, v.dados]));
+    expect(veic.JDE5H04!.status_operacional).toBe('MANUTENCAO');
+    expect(veic.JDE5H06!.status_operacional).toBe('DISPONIVEL');
+    expect(plano.clientes.map((c) => c.dados.nome)).not.toContain('DIGITAL DIESEL');
+  });
+
+  it('planilha modelo: toda aba é reconhecida e toda coluna tem campo', () => {
+    const esperado: Record<string, string> = {
+      Viagens: 'viagens',
+      Motoristas: 'motoristas',
+      Veiculos: 'veiculos',
+      Clientes: 'clientes',
+      'CRT e DANFE': 'cargas',
+    };
+    for (const m of PLANILHA_MODELO) {
+      const c = classificarAba({ nome: m.aba, cabecalhos: m.colunas, linhas: m.exemplos });
+      expect(c?.tipo, m.aba).toBe(esperado[m.aba]);
+      const semCampo = m.colunas.filter((col) => !c!.mapa!.porColuna.has(col));
+      expect(semCampo, m.aba).toEqual([]);
+    }
+    const viagens = PLANILHA_MODELO[0]!;
+    const r = ler(viagens.aba, viagens.colunas, viagens.exemplos).registros[0]!;
+    expect(Object.keys(r.extras)).toEqual([]);
+    expect(r.campos.pesquisa_gr).toBe(true);
+    expect(r.campos.peso_kg).toBe(24500);
   });
 
   it('descobre o país pelo destino', () => {

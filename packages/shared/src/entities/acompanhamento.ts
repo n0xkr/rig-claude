@@ -8,6 +8,11 @@ export const ViagemAtivaResumoSchema = z.object({
   origem: z.string(),
   destino: z.string(),
   status: z.string(),
+  motorista: z.string().nullable().optional(),
+  cliente: z.string().nullable().optional(),
+  localizacao: z.string().nullable().optional(),
+  /** Cavalo da viagem, quando o veículo é a carreta engatada nele. */
+  cavalo: z.string().nullable().optional(),
 });
 export type ViagemAtivaResumo = z.infer<typeof ViagemAtivaResumoSchema>;
 

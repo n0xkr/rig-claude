@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { CreateEnderecoArmazemSchema, UpdateEnderecoArmazemSchema } from '@rigabras/shared';
 import { EnderecosService } from './enderecos.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
@@ -6,6 +7,12 @@ import { sendProblem } from '../../lib/problemDetails.js';
 import { DomainError } from '../../lib/errors.js';
 
 const service = new EnderecosService();
+
+const CreateArmazemSchema = z.object({
+  nome: z.string().trim().min(1).max(200),
+  endereco: z.string().trim().max(500).nullish(),
+  area_m2: z.coerce.number().positive().nullish(),
+});
 
 function handleDomainError(error: unknown, reply: FastifyReply): boolean {
   if (error instanceof DomainError) {
@@ -40,6 +47,13 @@ export const EnderecosController = {
   async listArmazens(_request: FastifyRequest, reply: FastifyReply) {
     const armazens = await service.listArmazens();
     return reply.send({ data: armazens });
+  },
+
+  async createArmazem(request: FastifyRequest, reply: FastifyReply) {
+    const body = parseOrProblem(CreateArmazemSchema, request.body, reply);
+    if (!body) return;
+    const created = await service.createArmazem(body, request.user?.sub ?? null, request.ip);
+    return reply.status(201).send(created);
   },
 
   async getById(request: FastifyRequest, reply: FastifyReply) {

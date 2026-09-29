@@ -22,6 +22,23 @@ export class EnderecosService {
     return this.repo.listArmazens();
   }
 
+  async createArmazem(
+    input: { nome: string; endereco?: string | null; area_m2?: number | null },
+    userId: string | null,
+    ip: string | null,
+  ) {
+    const created = await this.repo.createArmazem(input);
+    await writeAuditLog({
+      userId,
+      action: 'CREATE',
+      entity: 'armazens',
+      entityId: created.id,
+      changes: { after: created },
+      ip,
+    });
+    return created;
+  }
+
   async getById(id: string): Promise<EnderecoArmazem> {
     const endereco = await this.repo.findById(id);
     if (!endereco) throw new NotFoundError('endereco_armazem', id);

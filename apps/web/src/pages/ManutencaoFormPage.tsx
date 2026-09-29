@@ -6,6 +6,7 @@ import type { CreateManutencaoVeiculoInput, TipoManutencaoVeiculo } from '@rigab
 import { useCreateManutencao } from '../hooks/useManutencoes.js';
 import { useVeiculosList } from '../hooks/useVeiculos.js';
 import { LoadingSkeleton } from '../components/StateViews.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 import { todayLocalIso } from '../lib/dateOnly.js';
 
 const TIPOS: TipoManutencaoVeiculo[] = [
@@ -20,7 +21,8 @@ const TIPOS: TipoManutencaoVeiculo[] = [
 export default function ManutencaoFormPage() {
   const navigate = useNavigate();
   const { create, submitting, error } = useCreateManutencao();
-  const { state: veiculosState, veiculos } = useVeiculosList();
+  const { state: veiculosState, veiculos, reload: reloadVeiculos } = useVeiculosList();
+  const novo = useCadastroRapido();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [form, setForm] = useState({
     veiculo_id: '',
@@ -73,6 +75,7 @@ export default function ManutencaoFormPage() {
         <ArrowLeft className="h-4 w-4" /> Voltar para manutenções
       </Link>
       <h1 className="mb-6 text-2xl font-bold text-slate-900">Nova manutenção</h1>
+      {novo.modal}
 
       {veiculosState === 'loading' ? (
         <LoadingSkeleton rows={2} />
@@ -86,7 +89,7 @@ export default function ManutencaoFormPage() {
               required
               className="input"
               value={form.veiculo_id}
-              onChange={(e) => setForm((f) => ({ ...f, veiculo_id: e.target.value }))}
+              onChange={novo.aoMudar('veiculo', (id) => setForm((f) => ({ ...f, veiculo_id: id })), reloadVeiculos)}
             >
               <option value="">Selecione...</option>
               {veiculos.map((v) => (
@@ -94,6 +97,7 @@ export default function ManutencaoFormPage() {
                   {v.placa} {v.modelo ? `— ${v.modelo}` : ''}
                 </option>
               ))}
+              <OpcaoAdicionarNovo />
             </select>
           </Field>
 

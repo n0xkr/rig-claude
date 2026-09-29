@@ -14,7 +14,9 @@ import { isSchemaAusente } from '../../../lib/permissoes.js';
 import { erroMigration0014 } from '../../../lib/schemaPendente.js';
 import { pgErrorToProblem } from '../../../lib/pgErrors.js';
 import { normTexto } from '../../iaSolicitacoes/leitura.js';
-import { mapearColunas } from './dicionario.js';
+import { ehExtraConhecido, mapearColunas } from './dicionario.js';
+import { padronizarAba, validarVolume } from './padronizacao.js';
+import { DomainError } from '../../../lib/errors.js';
 import {
   camposLivres,
   classificarAba,
@@ -82,11 +84,16 @@ export class ImportacaoInteligenteService {
     const avisos: string[] = [];
 
     // 1. O que é cada aba e o que significa cada coluna.
+    const excesso = validarVolume(input.arquivos);
+    if (excesso) throw new DomainError('Importação grande demais', 413, excesso);
     for (const arq of input.arquivos) {
-      for (const aba of arq.abas) {
-        const cabecalhos = aba.cabecalhos.filter((c) => c && c !== '__linha');
-        const linhas = aba.linhas.filter((l) => Object.entries(l).some(([k, v]) => k !== '__linha' && !vazio(v)));
-        const base = { nome: aba.nome, cabecalhos, linhas };
+      for (const abaBruta of arq.abas) {
+        // Etapa 1: tratamento e padronização de todas as células (ver padronizacao.ts).
+        const padr = padronizarAba(abaBruta);
+        const aba = { nome: padr.nome };
+        const cabecalhos = padr.cabecalhos;
+        const linhas = padr.linhas as Array<Record<string, unknown>>;
+        const base = { nome: padr.nome, cabecalhos, linhas };
         let cls = classificarAba(base);
         let origemTipo: 'dicionario' | 'ia' | 'nome' = cls?.origem ?? 'dicionario';
         if (!cls && linhas.length > 0 && cabecalhos.length > 1) {
@@ -101,7 +108,10 @@ export class ImportacaoInteligenteService {
         const daIa = new Set<string>();
         if (tipo !== 'ignorada' && linhas.length > 0) {
           const semCampo = cabecalhos.filter(
-            (col) => !porColuna.has(col) && linhas.some((l) => !vazio(l[col])),
+            (col) =>
+              !porColuna.has(col) &&
+              !(tipo === 'viagens' && ehExtraConhecido(col)) &&
+              linhas.some((l) => !vazio(l[col])),
           );
           if (semCampo.length > 0) {
             const livres = camposLivres(tipo, new Set(porColuna.values()));
@@ -129,7 +139,24 @@ export class ImportacaoInteligenteService {
             tipo,
             origemTipo,
             linhas: linhas.length,
-            colunas: descreverColunas(tipo, cabecalhos, porColuna, daIa),
+            colunas: descreverColunas(tipo, cabecalhos, porColuna, daIa).map((c) => {
+              const p = padr.colunas.find((x) => x.coluna === c.coluna);
+              return p
+                ? {
+                    ...c,
+                    tipo: p.tipo,
+                    formato: p.formato,
+                    preenchidas: p.preenchidas,
+                    distintos: p.distintos,
+                    exemplos: p.exemplos,
+                    convertidas: p.convertidas,
+                    inconsistencias: p.inconsistencias,
+                    exemplosInconsistencia: p.exemplosInconsistencia,
+                  }
+                : c;
+            }),
+            descartadas: padr.descartadas.slice(0, 200),
+            duplicadas: padr.duplicadas,
             observacao:
               tipo === 'ignorada'
                 ? linhas.length === 0
@@ -146,8 +173,11 @@ export class ImportacaoInteligenteService {
     for (const a of abas)
       if (a.tipo === 'viagens')
         for (const r of a.registros) {
-          const t = r.campos.status_texto;
-          if (typeof t === 'string' && !statusViagemDeTexto(t)) naoEntendidos.add(t);
+          // Só vai para a IA o que nenhuma regra entende em nenhum dos textos da linha.
+          const ts = [r.campos.status_texto, r.campos.localizacao, r.campos.observacoes, r.campos.cliente];
+          if (ts.some((t) => typeof t === 'string' && statusViagemDeTexto(t))) continue;
+          for (const t of [r.campos.status_texto, r.campos.observacoes])
+            if (typeof t === 'string') naoEntendidos.add(t);
         }
     const statusIa: Map<string, StatusViagem> = await statusComIa([...naoEntendidos]);
     if (naoEntendidos.size > 0 && statusIa.size < naoEntendidos.size)

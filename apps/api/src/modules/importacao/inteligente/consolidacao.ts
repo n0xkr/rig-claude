@@ -221,7 +221,12 @@ export function consolidar(
   const regs = (tipo: string) => abas.filter((a) => a.tipo === tipo).flatMap((a) => a.registros);
 
   // ----- índices do que já existe --------------------------------------------------
-  const veiculoPorPlaca = new Map(base.veiculos.map((v) => [String(v.placa).toUpperCase(), v]));
+  // Chave sem hífen/espaço: cadastros antigos têm "IIK-3294" e a planilha traz "IIK3294".
+  const chavePlaca = (p: unknown) => String(p ?? '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const veiculoPorPlaca = new Map(base.veiculos.map((v) => [chavePlaca(v.placa), v]));
+  /** Placa como está no cadastro (viagens.placa_cavalo é FK para veiculos.placa). */
+  const placaCadastro = <T,>(p: T): T =>
+    typeof p === 'string' ? ((veiculoPorPlaca.get(chavePlaca(p))?.placa as T | undefined) ?? p) : p;
   const motoristaPor = new Map<string, Row>();
   for (const m of base.motoristas) {
     if (m.codigo_externo) motoristaPor.set(`c:${normTexto(m.codigo_externo)}`, m);
@@ -338,7 +343,7 @@ export function consolidar(
   // ----- veículos ------------------------------------------------------------------
   const planoVeiculo = new Map<string, PlanoRegistro>();
   const registrarVeiculo = (placa: string, dados: Row, stub: boolean) => {
-    const ex = veiculoPorPlaca.get(placa);
+    const ex = veiculoPorPlaca.get(chavePlaca(placa));
     const ja = planoVeiculo.get(placa);
     if (ja) {
       if (stub) return;
@@ -437,18 +442,68 @@ export function consolidar(
   // ----- viagens -------------------------------------------------------------------
   const ativasPorPlaca = new Map<string, Row[]>();
   const porCodigo = new Map<string, Row>();
-  const porDocumento = new Map<string, Row>();
+  // Documento -> viagens (um CRT dividido entre caminhões aparece em mais de uma viagem).
+  const porDocumento = new Map<string, Row[]>();
+  const indexarDoc = (n: unknown, v: Row) => {
+    const k = String(n).toUpperCase();
+    const lista = porDocumento.get(k) ?? [];
+    if (!lista.includes(v)) porDocumento.set(k, [...lista, v]);
+  };
   for (const v of base.viagens) {
     if (v.codigo_externo) porCodigo.set(normTexto(v.codigo_externo), v);
-    if (v.numero_crt) porDocumento.set(String(v.numero_crt).toUpperCase(), v);
-    for (const c of base.cargasPorViagem.get(String(v.id)) ?? []) porDocumento.set(c.numero_documento.toUpperCase(), v);
+    if (v.numero_crt) indexarDoc(v.numero_crt, v);
+    for (const c of base.cargasPorViagem.get(String(v.id)) ?? []) indexarDoc(c.numero_documento, v);
     if (!STATUS_VIAGEM_TERMINAIS.includes(v.status as StatusViagem)) {
-      const p = String(v.placa_cavalo).toUpperCase();
+      const p = chavePlaca(v.placa_cavalo);
       ativasPorPlaca.set(p, [...(ativasPorPlaca.get(p) ?? []), v]);
     }
   }
   const usadas = new Set<string>();
   const planoPorChave = new Map<string, PlanoViagem>();
+  const assinaturas = new Map<PlanoViagem, Set<string>>();
+  const extrasDe = new Map<PlanoViagem, { cargasAntes: ViagemCargaInput[]; motoristaNovo: boolean; fonte: string }>();
+  let linhasDuplicadas = 0;
+
+  /** Junta mais uma linha (lote/CRT) à viagem: pesos dos lotes somam, textos se acumulam. */
+  const juntarLinha = (pv: PlanoViagem, dados: Row, cargas: ViagemCargaInput[]) => {
+    const soma = (a: unknown, b: unknown) =>
+      typeof a === 'number' && typeof b === 'number' ? Math.round((a + b) * 1000) / 1000 : (a ?? b);
+    for (const nova of cargas) {
+      const i = pv.cargas.findIndex((x) => x.numero_documento === nova.numero_documento);
+      if (i < 0) {
+        pv.cargas.push(nova);
+        continue;
+      }
+      const atual = pv.cargas[i]!;
+      pv.cargas[i] = {
+        ...atual,
+        mercadoria: atual.mercadoria ?? nova.mercadoria,
+        tipo_mercadoria: atual.tipo_mercadoria ?? nova.tipo_mercadoria,
+        moeda: atual.moeda ?? nova.moeda,
+        peso_kg: soma(atual.peso_kg, nova.peso_kg) as number | null,
+        valor_mercadoria: soma(atual.valor_mercadoria, nova.valor_mercadoria) as number | null,
+      };
+    }
+    const d = pv.dados;
+    for (const [k, v] of Object.entries(dados)) {
+      if (v === undefined || v === null || k === 'numero_crt') continue;
+      if (k === 'peso_kg' || k === 'valor_mercadoria') {
+        if (cargas.length === 0) d[k] = soma(d[k], v);
+      } else if (k === 'dados_extras') {
+        const ex = { ...((d.dados_extras as Row | undefined) ?? {}) };
+        for (const [ck, cv] of Object.entries(v as Row)) {
+          const antes = ex[ck];
+          if (antes === undefined || antes === '') ex[ck] = cv;
+          else if (!String(antes).split(' | ').includes(String(cv))) ex[ck] = `${String(antes)} | ${String(cv)}`;
+        }
+        d.dados_extras = ex;
+      } else if (k === 'observacoes') {
+        if (!String(d.observacoes ?? '').includes(String(v))) d.observacoes = d.observacoes ? `${String(d.observacoes)} | ${String(v)}` : v;
+      } else if (k === 'data_entrega') {
+        if (!d.data_entrega || Date.parse(String(v)) > Date.parse(String(d.data_entrega))) d.data_entrega = v;
+      } else if (d[k] === undefined) d[k] = v;
+    }
+  };
 
   for (const r of regs('viagens')) {
     const c = r.campos;
@@ -459,6 +514,25 @@ export function consolidar(
       continue;
     }
     const codigo = c.codigo_externo ? String(c.codigo_externo).trim() : null;
+
+    // "RETORNANDO VAZIO DA BALL PY" na coluna de cliente é situação, não nome de cliente.
+    let cliente = typeof c.cliente === 'string' ? c.cliente : undefined;
+    let textoCliente: string | null = null;
+    const mCli = cliente?.match(/^(?:retornando|retornou|voltando|voltou)\s+vazi[oa]\s+(?:d[aeo]s?\s+)?(.*)$/i);
+    if (mCli) {
+      textoCliente = cliente!;
+      cliente = mCli[1]?.trim() || undefined;
+    }
+    // Planilha de frota com ida e volta: sem ida preenchida, a viagem atual é a perna de volta.
+    let origem = c.origem as string | undefined;
+    let destino = c.destino as string | undefined;
+    if (!origem && !destino && !cliente && (c.origem_retorno || c.destino_retorno || c.cliente_retorno)) {
+      origem = c.origem_retorno as string | undefined;
+      destino = c.destino_retorno as string | undefined;
+      cliente = c.cliente_retorno as string | undefined;
+    } else if (c.origem_retorno || c.destino_retorno || c.cliente_retorno) {
+      r.extras['Retorno'] = [c.cliente_retorno, c.origem_retorno, c.destino_retorno].filter(Boolean).join(' · ');
+    }
 
     // Documentos (CRT/DANFE) da própria linha + os de outras abas (averbações, lista de CRT...).
     let cargas: ViagemCargaInput[] = [];
@@ -488,12 +562,12 @@ export function consolidar(
     const externas = codigo ? cargasPorRef.get(refViagem(codigo)!) : undefined;
     if (externas) cargas = mesclarCargas(cargas, externas);
 
-    // Status: coluna de status -> localização/observação -> marcadores Sim/Não -> IA.
+    // Status: regras sobre status -> localização -> observação -> cliente; depois a IA; depois Sim/Não.
     let status: StatusViagem | null = null;
     const textoStatus = typeof c.status_texto === 'string' ? c.status_texto : null;
-    if (textoStatus) status = statusViagemDeTexto(textoStatus) ?? statusIa.get(textoStatus) ?? null;
-    if (!status && typeof c.localizacao === 'string') status = statusViagemDeTexto(c.localizacao);
-    if (!status && typeof c.observacoes === 'string') status = statusViagemDeTexto(c.observacoes) ?? statusIa.get(c.observacoes) ?? null;
+    const textoObs = typeof c.observacoes === 'string' ? c.observacoes : null;
+    for (const t of [textoStatus, c.localizacao, textoObs, textoCliente]) if (!status && t) status = statusViagemDeTexto(t);
+    for (const t of [textoStatus, textoObs]) if (!status && t) status = statusIa.get(t) ?? null;
     if (!status) {
       if (c.descarregou === true) status = 'VAZIO_NO_CLIENTE';
       else if (c.chegou === true) status = 'CHEGADA_CLIENTE';
@@ -502,7 +576,47 @@ export function consolidar(
       else if (c.carregou === true) status = 'CARREGADO_AGUARDANDO_DOCUMENTOS';
     }
     if (status) status = STATUS_VIAGEM_LEGADO_PARA_ATUAL[status] ?? status;
+    // Planilha histórica: entregue/sem etapa e com data de fim já passada = viagem encerrada
+    // (senão centenas de viagens antigas ficariam "em andamento" no acompanhamento).
+    if (
+      (!status || status === 'VAZIO_NO_CLIENTE' || status === 'CHEGADA_CLIENTE') &&
+      typeof c.data_entrega === 'string' &&
+      Date.now() - Date.parse(c.data_entrega) > 3 * 86400000
+    )
+      status = 'ENCERRADA';
     if (status) plano.cruzamentos.status_deduzidos++;
+
+    // Planilha-retrato da frota (sem datas): a linha também diz a situação do veículo. Linha que
+    // só fala do veículo (manutenção, sem motorista, sem rota) não vira viagem.
+    const dataLinha = (c.data_coleta ?? c.data_programacao ?? c.data_entrega) as string | undefined;
+    const textos = ` ${normTexto([textoStatus, textoObs, textoCliente].filter(Boolean).join(' '))} `;
+    const emManutencao = / manutenc| oficina /.test(textos);
+    const soVeiculo = emManutencao || (!status && !codigo && cargas.length === 0 && !origem && !destino && !cliente);
+    if (!dataLinha) {
+      const situacao = emManutencao
+        ? 'MANUTENCAO'
+        : / sem motorista /.test(textos)
+          ? 'GARAGEM'
+          : status === 'ENCERRADA'
+            ? 'DISPONIVEL'
+            : null;
+      if (situacao)
+        registrarVeiculo(
+          placa,
+          {
+            status_operacional: situacao,
+            ...(emManutencao && (cliente || destino) ? { localizacao_atual: [cliente, destino].filter(Boolean).join(' — ') } : {}),
+            ...(textoObs ? { observacoes_acompanhamento: textoObs } : {}),
+          },
+          false,
+        );
+    }
+    if (soVeiculo) {
+      registrarVeiculo(placa, { tipo: 'CAVALO' }, true);
+      for (const pc of [c.placa_carreta, c.placa_carreta_2])
+        if (typeof pc === 'string') registrarVeiculo(pc, { tipo: 'CARRETA_OUTRO' }, true);
+      continue;
+    }
 
     // Checagens GR: colunas da própria aba; na falta delas, as abas de checklist/SMP/consultas.
     const grs = [c.pesquisa_gr, c.pesquisa_seguradora].filter((x) => typeof x === 'boolean') as boolean[];
@@ -522,6 +636,17 @@ export function consolidar(
     const checklist = typeof c.checklist_ok === 'boolean' ? c.checklist_ok : doIndice(checklistOk);
     const smp = typeof c.smp_ok === 'boolean' ? c.smp_ok : doIndice(smpOk);
 
+    // Cadastro novo que só aparece em planilha de viagens com data (histórico de embarques, ex.:
+    // VEGA) é de transportador/agregado: entra como terceiro, não como frota própria. Quem já
+    // existe (ou veio antes da planilha da frota) não muda.
+    const nMotoristas = plano.motoristas.length;
+    const nVeiculos = plano.veiculos.length;
+    const marcarTerceiros = () => {
+      if (!dataLinha) return;
+      for (const p of plano.motoristas.slice(nMotoristas)) if (p.acao === 'criar') p.dados.frota_propria = false;
+      for (const p of plano.veiculos.slice(nVeiculos)) if (p.acao === 'criar') p.dados.frota_propria = false;
+    };
+
     // Motorista: código -> nome; se não existir em lugar nenhum, é cadastrado com o nome.
     let motoristaPlano: PlanoRegistro | null = null;
     if (c.motorista_codigo || c.motorista_nome) {
@@ -539,15 +664,16 @@ export function consolidar(
     }
 
     // Cliente citado na viagem vira cadastro de cliente (se ainda não existir).
-    if (typeof c.cliente === 'string') registrarCliente({ nome: c.cliente });
+    if (cliente) registrarCliente({ nome: cliente });
 
     // Veículos: cavalo e carretas existem? senão são cadastrados (placa + tipo).
     const tipoTexto = r.extras['Tipo de veículo'] ?? r.extras['★Tipo de veículo'] ?? '';
     registrarVeiculo(placa, { tipo: 'CAVALO' }, true);
     for (const pc of [c.placa_carreta, c.placa_carreta_2])
       if (typeof pc === 'string') registrarVeiculo(pc, { tipo: tipoVeiculoDe('carreta', tipoTexto) ?? 'CARRETA_OUTRO' }, true);
+    marcarTerceiros();
 
-    const pais = paisDe(c.pais_destino) ?? paisDe(c.destino);
+    const pais = paisDe(c.pais_destino) ?? paisDe(destino);
     const peso =
       typeof c.peso_kg === 'number' ? c.peso_kg : typeof c.peso_t === 'number' ? Math.round(c.peso_t * 1000) : undefined;
     const extras: Row = { ...r.extras };
@@ -555,12 +681,12 @@ export function consolidar(
     if (textoStatus && !statusViagemDeTexto(textoStatus)) extras['Status (texto da planilha)'] = textoStatus;
     const dados: Row = {
       codigo_externo: codigo ?? undefined,
-      placa_cavalo: placa,
-      placa_carreta: c.placa_carreta,
-      placa_carreta_2: c.placa_carreta_2,
-      cliente: c.cliente,
-      origem: c.origem,
-      destino: c.destino,
+      placa_cavalo: placaCadastro(placa),
+      placa_carreta: placaCadastro(c.placa_carreta),
+      placa_carreta_2: placaCadastro(c.placa_carreta_2),
+      cliente,
+      origem,
+      destino,
       pais_destino: pais ?? undefined,
       mercadoria: c.mercadoria,
       tipo_mercadoria: c.tipo_mercadoria,
@@ -593,30 +719,56 @@ export function consolidar(
     }
     for (const k of Object.keys(dados)) if (dados[k] === undefined || dados[k] === null) delete dados[k];
 
-    // Mesma viagem repetida no próprio arquivo (mesmo ID ou documento): junta as linhas.
-    const chaveLocal = codigo ? `v:${normTexto(codigo)}` : dados.numero_crt ? `d:${String(dados.numero_crt)}` : null;
+    // Mesma viagem em várias linhas do arquivo (uma linha por lote/CRT): mesmo ID, ou mesmo
+    // cavalo no mesmo dia de coleta, ou mesmo cavalo + mesmo CRT. O CRT sozinho não identifica a
+    // viagem: um CRT pode ser dividido entre dois caminhões.
+    const diaViagem = [c.data_coleta, c.data_programacao].find((x): x is string => typeof x === 'string')?.slice(0, 10);
+    const chaveLocal = codigo
+      ? `v:${normTexto(codigo)}`
+      : diaViagem
+        ? `t:${chavePlaca(placa)}|${diaViagem}`
+        : dados.numero_crt
+          ? `d:${chavePlaca(placa)}|${String(dados.numero_crt)}`
+          : null;
     const repetida = chaveLocal ? planoPorChave.get(chaveLocal) : undefined;
     if (repetida) {
-      Object.assign(repetida.dados, Object.fromEntries(Object.entries(dados).filter(([, v]) => v !== undefined)));
-      repetida.cargas = mesclarCargas(repetida.cargas, cargas);
+      // Linha idêntica a outra já lida (copiada duas vezes na planilha): ignora.
+      const assinatura = JSON.stringify([c, r.extras]);
+      const vistas = assinaturas.get(repetida)!;
+      if (vistas.has(assinatura)) {
+        linhasDuplicadas++;
+        continue;
+      }
+      vistas.add(assinatura);
+      juntarLinha(repetida, dados, cargas);
       repetida.fontes.push(fonte);
+      repetida.previa.fontes.push(fonte);
       continue;
     }
 
-    // Casa com uma viagem já cadastrada: ID da planilha -> CRT/DANFE -> viagem ativa do mesmo cavalo.
+    // Casa com uma viagem já cadastrada: ID da planilha -> CRT/DANFE (mesmo cavalo) -> viagem ativa do cavalo.
     let existente: Row | null = null;
     if (codigo) existente = porCodigo.get(normTexto(codigo)) ?? null;
     if (!existente)
       for (const cg of cargas) {
-        const e = porDocumento.get(cg.numero_documento);
+        const e = (porDocumento.get(cg.numero_documento) ?? []).find(
+          (v) => chavePlaca(v.placa_cavalo) === chavePlaca(placa) && !usadas.has(String(v.id)),
+        );
         if (e) {
           existente = e;
           break;
         }
       }
     if (!existente) {
-      const candidatas = (ativasPorPlaca.get(placa) ?? []).filter((v) => {
+      // Linha histórica (já encerrada, com data) nunca fecha a viagem que o cavalo está fazendo
+      // agora: só casa com uma viagem apenas programada e de data próxima.
+      const historica = dados.status === 'ENCERRADA' && !!dataLinha;
+      const candidatas = (ativasPorPlaca.get(chavePlaca(placa)) ?? []).filter((v) => {
         if (usadas.has(String(v.id))) return false;
+        if (historica) {
+          if (v.status !== 'PROGRAMADA' || !dataLinha || typeof v.data_programacao !== 'string') return false;
+          if (Math.abs(Date.parse(dataLinha) - Date.parse(v.data_programacao)) / 86400000 > 5) return false;
+        }
         if (codigo && v.codigo_externo && normTexto(v.codigo_externo) !== normTexto(codigo)) return false;
         if (typeof dados.data_programacao === 'string' && typeof v.data_programacao === 'string' && v.codigo_externo) {
           const dias = Math.abs(Date.parse(dados.data_programacao) - Date.parse(v.data_programacao)) / 86400000;
@@ -628,19 +780,75 @@ export function consolidar(
     }
     if (existente && usadas.has(String(existente.id))) existente = null;
     if (existente) usadas.add(String(existente.id));
+    // Retrato da frota dizendo "voltou vazio ao pátio" sem viagem aberta: nada a encerrar.
+    if (!existente && dados.status === 'ENCERRADA' && !dataLinha) continue;
 
     const cargasAntes = existente ? (base.cargasPorViagem.get(String(existente.id)) ?? []) : [];
-    const cargasFinal = mesclarCargas(cargasAntes, cargas);
-    const cargasMudaram = !cargaIgual(cargasFinal, cargasAntes);
-
     if (motoristaPlano?.existente) dados.motorista_id = motoristaPlano.existente.id;
-    let acao: Acao = 'criar';
-    let dadosFinais = dados;
-    if (existente) {
-      dadosFinais = diferenca(dados, existente);
-      const motoristaNovo = !!motoristaPlano && !motoristaPlano.existente;
-      acao =
-        Object.keys(dadosFinais).length > 0 || cargasMudaram || motoristaNovo ? 'atualizar' : 'igual';
+
+    const pv: PlanoViagem = {
+      acao: existente ? 'atualizar' : 'criar',
+      ref: chaveLocal ?? `linha:${r.arquivo}:${r.aba}:${r.linha}`,
+      existente,
+      // Completo durante a leitura; a diferença com o banco é calculada depois de juntar as linhas.
+      dados,
+      motoristaRef: motoristaPlano?.ref ?? null,
+      // Só os documentos da planilha: os lotes somam entre si; o banco entra no fechamento.
+      cargas: mesclarCargas([], cargas),
+      cargasMudaram: false,
+      statusAnterior: (existente?.status as StatusViagem | undefined) ?? null,
+      motoristaAnteriorId: (existente?.motorista_id as string | undefined) ?? null,
+      fontes: [fonte],
+      previa: {
+        acao: existente ? 'atualizar' : 'criar',
+        chave: codigo ?? String(dados.numero_crt ?? placa),
+        placa_cavalo: placa,
+        placa_carreta: (c.placa_carreta as string) ?? (existente?.placa_carreta as string) ?? null,
+        motorista: (motoristaPlano?.existente?.nome_completo as string) ?? (motoristaPlano?.dados.nome_completo as string) ?? null,
+        cliente: cliente ?? null,
+        origem: '',
+        destino: '',
+        status: '',
+        data_programacao: (dados.data_programacao as string) ?? null,
+        documentos: [],
+        pesquisa_ok: pesquisa,
+        checklist_ok: checklist,
+        smp_ok: smp,
+        fontes: [fonte],
+      },
+    };
+    extrasDe.set(pv, { cargasAntes, motoristaNovo: !!motoristaPlano && !motoristaPlano.existente, fonte });
+    assinaturas.set(pv, new Set([JSON.stringify([c, r.extras])]));
+    plano.viagens.push(pv);
+    if (chaveLocal) planoPorChave.set(chaveLocal, pv);
+  }
+
+  // ----- fecha cada viagem: diferença com o banco, padrões de viagem nova, prévia ----------
+  // `viagens.numero_crt` é único no banco, mas um CRT pode ser dividido entre vários caminhões:
+  // o CRT "principal" de cada viagem é um que nenhuma outra viagem usa (todos ficam em cargas).
+  const crtOcupado = new Map<string, unknown>();
+  for (const v of base.viagens) if (v.numero_crt) crtOcupado.set(String(v.numero_crt).toUpperCase(), v.id);
+  for (const pv of plano.viagens) {
+    const { cargasAntes, motoristaNovo, fonte } = extrasDe.get(pv)!;
+    const dados = pv.dados;
+    // Documento que está no banco e não na planilha é mantido; o que está nos dois fica com a planilha.
+    pv.cargas = mesclarCargas(cargasAntes, pv.cargas);
+    const pesos = pv.cargas.map((x) => x.peso_kg).filter((x): x is number => typeof x === 'number');
+    if (pesos.length > 0) dados.peso_kg = Math.round(pesos.reduce((a, b) => a + b, 0) * 1000) / 1000;
+    const dono = pv.existente?.id ?? pv;
+    const livre = (n: string) => !crtOcupado.has(n) || crtOcupado.get(n) === dono;
+    if (pv.existente?.numero_crt && pv.cargas.some((x) => x.numero_documento === String(pv.existente!.numero_crt).toUpperCase()))
+      dados.numero_crt = String(pv.existente.numero_crt).toUpperCase();
+    else {
+      const docs = [...pv.cargas].sort((a, b) => Number(b.tipo_documento === 'CRT') - Number(a.tipo_documento === 'CRT'));
+      dados.numero_crt = docs.map((x) => x.numero_documento).find(livre) ?? undefined;
+      if (dados.numero_crt === undefined) delete dados.numero_crt;
+    }
+    if (typeof dados.numero_crt === 'string') crtOcupado.set(dados.numero_crt, dono);
+    pv.cargasMudaram = !cargaIgual(pv.cargas, cargasAntes);
+    if (pv.existente) {
+      pv.dados = diferenca(dados, pv.existente);
+      pv.acao = Object.keys(pv.dados).length > 0 || pv.cargasMudaram || motoristaNovo ? 'atualizar' : 'igual';
     } else {
       if (!dados.origem) {
         dados.origem = 'Não informado';
@@ -652,39 +860,16 @@ export function consolidar(
       }
       dados.status ??= 'PROGRAMADA';
     }
-
-    const pv: PlanoViagem = {
-      acao,
-      ref: chaveLocal ?? `linha:${r.arquivo}:${r.aba}:${r.linha}`,
-      existente,
-      dados: dadosFinais,
-      motoristaRef: motoristaPlano?.ref ?? null,
-      cargas: cargasFinal,
-      cargasMudaram,
-      statusAnterior: (existente?.status as StatusViagem | undefined) ?? null,
-      motoristaAnteriorId: (existente?.motorista_id as string | undefined) ?? null,
-      fontes: [fonte],
-      previa: {
-        acao,
-        chave: codigo ?? String(dados.numero_crt ?? placa),
-        placa_cavalo: placa,
-        placa_carreta: (c.placa_carreta as string) ?? (existente?.placa_carreta as string) ?? null,
-        motorista: (motoristaPlano?.existente?.nome_completo as string) ?? (motoristaPlano?.dados.nome_completo as string) ?? null,
-        cliente: (c.cliente as string) ?? null,
-        origem: String(dados.origem ?? existente?.origem ?? ''),
-        destino: String(dados.destino ?? existente?.destino ?? ''),
-        status: String(status ?? existente?.status ?? 'PROGRAMADA'),
-        data_programacao: (dados.data_programacao as string) ?? null,
-        documentos: cargasFinal.map((x) => `${x.tipo_documento} ${x.numero_documento}`),
-        pesquisa_ok: pesquisa,
-        checklist_ok: checklist,
-        smp_ok: smp,
-        fontes: [fonte],
-      },
-    };
-    plano.viagens.push(pv);
-    if (chaveLocal) planoPorChave.set(chaveLocal, pv);
+    Object.assign(pv.previa, {
+      acao: pv.acao,
+      origem: String(dados.origem ?? pv.existente?.origem ?? ''),
+      destino: String(dados.destino ?? pv.existente?.destino ?? ''),
+      status: String(dados.status ?? pv.existente?.status ?? 'PROGRAMADA'),
+      documentos: pv.cargas.map((x) => `${x.tipo_documento} ${x.numero_documento}`),
+    });
   }
+  if (linhasDuplicadas > 0)
+    plano.avisos.push(`${linhasDuplicadas} linha(s) idêntica(s) a outra da mesma viagem foram ignoradas (duplicadas na planilha).`);
 
   // ----- totais de cruzamento + situação dos veículos com viagem em andamento -------
   for (const v of plano.viagens) {

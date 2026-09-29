@@ -13,6 +13,7 @@ import { useVeiculosList } from '../hooks/useVeiculos.js';
 import { useMotoristasList } from '../hooks/useMotoristas.js';
 import { api, ApiError } from '../lib/apiClient.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
+import { BotaoNovo, OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 const PAISES = ['AR', 'BO', 'CL', 'PY', 'UY', 'PE', 'BR'] as const;
 
@@ -147,8 +148,19 @@ export default function ViagemFormPage() {
   const editando = !!id;
   const navigate = useNavigate();
   const { create, submitting: criando, error: erroCriar } = useCreateViagem();
-  const { veiculos, state: veiculosState } = useVeiculosList();
-  const { motoristas } = useMotoristasList();
+  const { veiculos, state: veiculosState, reload: reloadVeiculos } = useVeiculosList();
+  const { motoristas, reload: reloadMotoristas } = useMotoristasList();
+  const novo = useCadastroRapido();
+  const novaCarreta = (campo: 'placa_carreta' | 'placa_carreta_2') =>
+    novo.abrir(
+      'veiculo',
+      (r) => {
+        void reloadVeiculos();
+        set(campo, String(r.placa));
+      },
+      {},
+      { tipo: 'CARRETA_OUTRO', placa: form[campo] },
+    );
   const [original, setOriginal] = useState<Viagem | null>(null);
   const [carregando, setCarregando] = useState(editando);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
@@ -411,7 +423,7 @@ export default function ViagemFormPage() {
                 required
                 className="input"
                 value={form.placa_cavalo}
-                onChange={(e) => set('placa_cavalo', e.target.value)}
+                onChange={novo.aoMudar('veiculo', (v) => set('placa_cavalo', v), reloadVeiculos, {}, (r) => String(r.placa))}
                 data-testid="viagem-placa-cavalo"
               >
                 <option value="">Selecione...</option>
@@ -431,6 +443,7 @@ export default function ViagemFormPage() {
                     ))}
                   </optgroup>
                 )}
+                <OpcaoAdicionarNovo />
               </select>
               {veiculosState === 'success' && ativos.length === 0 && (
                 <span className="mt-1 block text-xs text-amber-700">
@@ -439,24 +452,30 @@ export default function ViagemFormPage() {
               )}
             </Field>
             <Field label="Placa da carreta">
-              <input
-                className="input uppercase"
-                list="carretas"
-                maxLength={8}
-                value={form.placa_carreta}
-                onChange={(e) => set('placa_carreta', e.target.value.toUpperCase())}
-                placeholder="ABC1D23"
-                data-testid="viagem-placa-carreta"
-              />
+              <div className="flex gap-2">
+                <input
+                  className="input uppercase"
+                  list="carretas"
+                  maxLength={8}
+                  value={form.placa_carreta}
+                  onChange={(e) => set('placa_carreta', e.target.value.toUpperCase())}
+                  placeholder="ABC1D23"
+                  data-testid="viagem-placa-carreta"
+                />
+                <BotaoNovo onClick={() => novaCarreta('placa_carreta')} />
+              </div>
             </Field>
             <Field label="Placa da 2ª carreta (se houver)">
-              <input
-                className="input uppercase"
-                list="carretas"
-                maxLength={8}
-                value={form.placa_carreta_2}
-                onChange={(e) => set('placa_carreta_2', e.target.value.toUpperCase())}
-              />
+              <div className="flex gap-2">
+                <input
+                  className="input uppercase"
+                  list="carretas"
+                  maxLength={8}
+                  value={form.placa_carreta_2}
+                  onChange={(e) => set('placa_carreta_2', e.target.value.toUpperCase())}
+                />
+                <BotaoNovo onClick={() => novaCarreta('placa_carreta_2')} />
+              </div>
             </Field>
             <datalist id="carretas">
               {carretas.map((v) => (
@@ -470,7 +489,7 @@ export default function ViagemFormPage() {
                 required
                 className="input"
                 value={form.motorista_id}
-                onChange={(e) => set('motorista_id', e.target.value)}
+                onChange={novo.aoMudar('motorista', (v) => set('motorista_id', v), reloadMotoristas)}
                 data-testid="viagem-motorista"
               >
                 <option value="">Selecione...</option>
@@ -482,10 +501,8 @@ export default function ViagemFormPage() {
                       {m.nome_completo}
                     </option>
                   ))}
+                <OpcaoAdicionarNovo />
               </select>
-              <Link to="/motoristas/novo" className="mt-1 inline-block text-xs text-blue-600 hover:underline">
-                + Cadastrar motorista
-              </Link>
             </Field>
           </div>
           {trocouMotorista && (
@@ -615,6 +632,7 @@ export default function ViagemFormPage() {
                 : 'Criar viagem'}
         </button>
       </form>
+      {novo.modal}
     </div>
   );
 }

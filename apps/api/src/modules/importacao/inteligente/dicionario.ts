@@ -39,8 +39,8 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
       'n viagem', 'numero viagem', 'numero da viagem', 'viagem n', 'nro viagem', 'os', 'ordem de servico',
     ], { excluir: ['vigente', 'terceiro'] }),
     f('placa_cavalo', 'Placa do cavalo', 'plate', [
-      'placa cavalo', 'placa do cavalo', 'cavalo', 'placa', 'placa trator', 'placa veiculo',
-      'placa do veiculo', 'placa tracao', 'veiculo', 'caminhao', 'placa caminhao',
+      'placa cavalo', 'placa do cavalo', 'cavalo', 'placa', 'placas', 'placa trator', 'placa veiculo',
+      'placa do veiculo', 'placas do veiculo', 'placa tracao', 'veiculo', 'caminhao', 'placa caminhao', 'conjunto',
     ], { excluir: ['carreta', 'reboque', 'tipo', 'vinculo', 'validado', 'vigente', 'semi', 'habitual'] }),
     f('placa_carreta', 'Placa da carreta', 'plate', [
       'placa carreta', 'placa carreta 1', 'placa da carreta', 'carreta', 'carreta 1', 'placa reboque',
@@ -58,7 +58,11 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('cliente', 'Cliente', 'text', [
       'cliente', 'cliente embarcador', 'embarcador', 'remetente', 'exportador', 'importador',
       'tomador', 'destinatario', 'cliente destino', 'nome cliente',
-    ], { excluir: ['id', 'cnpj', 'contato'] }),
+    ], { excluir: ['id', 'cnpj', 'contato', 'ret', 'retorno', 'volta'] }),
+    // Perna de volta (planilhas de frota com "Cliente2 / Origem (Ret) / Destino (Ret)").
+    f('cliente_retorno', 'Cliente do retorno', 'text', ['cliente2', 'cliente 2', 'cliente retorno', 'cliente ret', 'cliente volta']),
+    f('origem_retorno', 'Origem do retorno', 'text', ['origem ret', 'origem retorno', 'origem volta']),
+    f('destino_retorno', 'Destino do retorno', 'text', ['destino ret', 'destino retorno', 'destino volta']),
     f('mercadoria', 'Mercadoria', 'text', [
       'mercadoria', 'produto', 'descricao da mercadoria', 'descricao mercadoria', 'descricao carga',
       'descricao da carga', 'carga', 'material',
@@ -82,11 +86,11 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('origem', 'Origem', 'text', [
       'origem', 'cidade origem', 'cidade de origem', 'local carregamento', 'local de carregamento',
       'procedencia', 'saida de',
-    ], { excluir: ['regra', 'data', 'hora'] }),
+    ], { excluir: ['regra', 'data', 'hora', 'ret', 'retorno', 'volta'] }),
     f('destino', 'Destino', 'text', [
       'destino', 'cidade destino', 'cidade de destino', 'local entrega', 'local de entrega',
       'destino final', 'entrega',
-    ], { excluir: ['pais', 'eta', 'chegada', 'espelhado', 'qtde', 'aduana', 'data', 'hora', 'tipo'] }),
+    ], { excluir: ['pais', 'eta', 'chegada', 'espelhado', 'qtde', 'aduana', 'data', 'hora', 'tipo', 'ret', 'retorno', 'volta'] }),
     f('pais_destino', 'País de destino', 'text', ['pais destino', 'pais de destino', 'pais'], {
       excluir: ['transito'],
     }),
@@ -114,11 +118,24 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('data_programacao', 'Data de início / carregamento', 'datetime', [
       'data de carregamento', 'data carregamento', 'data de inicio', 'data inicio', 'inicio previsto',
       'data prevista', 'data programada', 'data programacao', 'previsao carregamento', 'previsao de carregamento',
-      'data saida', 'data de saida', 'data abertura', 'data',
-    ], { excluir: ['real', 'chegada', 'validade', 'atualizacao', 'descarga'] }),
-    f('data_coleta', 'Carregamento real', 'datetime', ['data hora carregamento real', 'carregamento real', 'data carregamento real']),
+      'data saida', 'data de saida', 'data abertura', 'data solicitacao', 'data da solicitacao', 'data',
+    ], { excluir: ['real', 'chegada', 'validade', 'atualizacao', 'descarga', 'fim', 'final', 'termino', 'emissao', 'vencimento', 'nascimento'] }),
+    f('data_coleta', 'Carregamento real', 'datetime', [
+      'data hora carregamento real', 'carregamento real', 'data carregamento real', 'data coleta', 'data da coleta',
+      'data de coleta', 'coleta',
+    ]),
+    f('hora_coleta', 'Hora da coleta', 'text', ['hora coleta', 'hora da coleta', 'hora carregamento', 'hora', 'horario'], {
+      excluir: ['fim', 'final', 'chegada', 'entrega', 'termino', 'descarga', 'solicitacao'],
+    }),
     f('data_inicio_viagem', 'Início real da viagem', 'datetime', ['inicio viagem macro inicio', 'inicio viagem', 'inicio real', 'data inicio real']),
-    f('data_entrega', 'Chegada no destino', 'datetime', ['data hora chegada destino', 'chegada destino', 'data chegada destino', 'data entrega', 'data de entrega']),
+    f('data_entrega', 'Chegada no destino', 'datetime', [
+      'data hora chegada destino', 'chegada destino', 'data chegada destino', 'data entrega', 'data de entrega',
+      'data fim do transporte', 'data fim transporte', 'fim do transporte', 'data fim', 'data final', 'data termino',
+      'data descarga', 'data de descarga',
+    ]),
+    f('hora_entrega', 'Hora da chegada', 'text', [
+      'hora fim do transporte', 'hora fim transporte', 'hora fim', 'hora entrega', 'hora chegada', 'hora descarga',
+    ]),
     f('pesquisa_gr', 'Pesquisa GR', 'bool', [
       'motorista validado gr', 'pesquisa', 'pesquisa ok', 'pesquisa gr', 'consulta gr', 'consulta ok',
       'liberacao gr ok', 'gr ok', 'cadastro gr',
@@ -233,6 +250,21 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
   ],
 };
 
+/**
+ * Colunas que a operação usa mas o sistema não tem campo próprio (faturamento,
+ * lote, nº de transporte do cliente — que se repete em várias viagens). Vão
+ * direto para as informações extras, sem passar pela IA: assim ela não as
+ * confunde com o ID da viagem ou outro campo parecido.
+ */
+const EXTRAS_CONHECIDOS = [
+  /\bfatura\b/, /^lote\b/, /\bemissao\b/, /\bvencimento\b/, /^n transporte$/, /^numero (do )?transporte$/,
+  /^transporte$/, /^tipo (de )?veiculo$/,
+];
+export const ehExtraConhecido = (cabecalho: string) => {
+  const n = normTexto(cabecalho);
+  return EXTRAS_CONHECIDOS.some((r) => r.test(n));
+};
+
 /** Palavras no NOME da aba que indicam o tipo (planilhas costumam nomear bem as abas). */
 export const DICAS_NOME_ABA: Array<{ tipo: TipoAbaImportacao; termos: string[] }> = [
   { tipo: 'ignorada', termos: ['leia me', 'leiame', 'painel', 'parametro', 'lista', 'dicionario', 'faq', 'perfil empresa', 'instruc', 'grafico', 'dashboard', 'resumo', 'contato', 'pgr regra', 'apolice', 'sinistro', 'ocorrencia', 'posic', 'espelhamento', 'rastreador', 'ponto'] },
@@ -292,6 +324,7 @@ export function mapearColunas(
   const campos = CAMPOS_POR_TIPO[tipo];
   const candidatos: Array<{ col: string; campo: CampoImport; p: number }> = [];
   for (const col of cabecalhos) {
+    if (tipo === 'viagens' && ehExtraConhecido(col)) continue;
     const n = normTexto(col);
     for (const campo of campos) {
       const p = pontuar(n, campo);

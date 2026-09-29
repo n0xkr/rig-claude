@@ -742,6 +742,12 @@ export default function AcompanhamentoPage() {
                         {v.viagem_ativa && (
                           <div className="text-blue-600">
                             {v.viagem_ativa.origem} → {v.viagem_ativa.destino}
+                            {v.viagem_ativa.cavalo && (
+                              <span className="text-slate-500"> · engatada em {v.viagem_ativa.cavalo}</span>
+                            )}
+                            {v.viagem_ativa.cliente && (
+                              <span className="text-slate-500"> · {v.viagem_ativa.cliente}</span>
+                            )}
                           </div>
                         )}
                       </td>

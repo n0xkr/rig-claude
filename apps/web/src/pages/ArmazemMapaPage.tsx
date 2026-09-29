@@ -9,6 +9,7 @@ import {
 } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { EnderecoStatusBadge } from '../components/StatusBadge.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 /**
  * Mapa de ocupação do armazém (Módulo 5, WMS, critério #6 — "ocupação do
@@ -16,8 +17,13 @@ import { EnderecoStatusBadge } from '../components/StatusBadge.js';
  * LIVRE/OCUPADO/BLOQUEADO por endereço (bin).
  */
 export default function ArmazemMapaPage() {
-  const { armazens } = useArmazensList();
+  const { armazens, reload: reloadArmazens } = useArmazensList();
   const [armazemId, setArmazemId] = useState<string | undefined>(undefined);
+  const novo = useCadastroRapido();
+  const novoArmazem = () =>
+    novo.abrir('armazem', (r) => {
+      void reloadArmazens().then(() => setArmazemId(r.id));
+    });
   useEffect(() => {
     if (!armazemId && armazens.length > 0) setArmazemId(armazens[0]!.id);
   }, [armazens, armazemId]);
@@ -43,23 +49,37 @@ export default function ArmazemMapaPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            className="input"
-            value={armazemId ?? ''}
-            onChange={(e) => setArmazemId(e.target.value || undefined)}
-          >
-            {armazens.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nome}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowForm((v) => !v)}
-            className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
-          >
-            <Plus className="h-4 w-4" /> Novo endereço
-          </button>
+          {armazens.length > 0 && (
+            <select
+              className="input"
+              data-testid="armazem-select"
+              value={armazemId ?? ''}
+              onChange={novo.aoMudar('armazem', (id) => setArmazemId(id || undefined), reloadArmazens)}
+            >
+              {armazens.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome}
+                </option>
+              ))}
+              <OpcaoAdicionarNovo rotulo="+ Novo armazém..." />
+            </select>
+          )}
+          {armazens.length === 0 ? (
+            <button
+              onClick={novoArmazem}
+              className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
+              data-testid="novo-armazem"
+            >
+              <Plus className="h-4 w-4" /> Novo armazém
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
+            >
+              <Plus className="h-4 w-4" /> Novo endereço
+            </button>
+          )}
         </div>
       </div>
 
@@ -72,11 +92,20 @@ export default function ArmazemMapaPage() {
       )}
 
       {armazens.length === 0 && (
-        <EmptyState
-          title="Nenhum armazém cadastrado"
-          description="Cadastre um armazém (tabela `armazens`) para poder criar endereços e operar o WMS."
-        />
+        <div className="space-y-3 text-center">
+          <EmptyState
+            title="Nenhum armazém cadastrado"
+            description="Cadastre o armazém para poder criar endereços e operar o WMS."
+          />
+          <button
+            onClick={novoArmazem}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" /> Cadastrar armazém
+          </button>
+        </div>
       )}
+      {novo.modal}
 
       {showForm && armazemId && (
         <EnderecoForm

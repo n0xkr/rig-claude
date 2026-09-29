@@ -60,6 +60,7 @@ export async function wmsRoutes(app: FastifyInstance): Promise<void> {
   // Endereços do armazém (mapa/ocupação)
   // ------------------------------------------------------------------
   app.get('/armazens', { preHandler: LEITURA_TODOS }, EnderecosController.listArmazens);
+  app.post('/armazens', { preHandler: ESCRITA_ADMIN }, EnderecosController.createArmazem);
   app.get('/enderecos', { preHandler: LEITURA_TODOS }, EnderecosController.list);
   app.get('/enderecos/:id', { preHandler: LEITURA_TODOS }, EnderecosController.getById);
   app.post('/enderecos', { preHandler: ESCRITA_OPERACIONAL }, EnderecosController.create);

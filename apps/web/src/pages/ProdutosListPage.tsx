@@ -4,13 +4,14 @@ import { Package, Plus, ArrowLeft } from 'lucide-react';
 import { useProdutosList, useCreateProduto } from '../hooks/useProdutosArmazenados.js';
 import { useDepositantesList } from '../hooks/useDepositantes.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 /** Catálogo de produtos armazenados por depositante (Módulo 5, WMS — SKU). */
 export default function ProdutosListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const depositanteId = searchParams.get('depositanteId') ?? undefined;
   const { state, produtos, error, reload } = useProdutosList(depositanteId);
-  const { depositantes } = useDepositantesList();
+  const { depositantes, reload: reloadDepositantes } = useDepositantesList();
   const [showForm, setShowForm] = useState(false);
 
   return (
@@ -56,6 +57,7 @@ export default function ProdutosListPage() {
         <ProdutoForm
           depositantes={depositantes}
           defaultDepositanteId={depositanteId}
+          recarregarDepositantes={reloadDepositantes}
           onCreated={() => {
             setShowForm(false);
             reload();
@@ -100,12 +102,15 @@ function ProdutoForm({
   depositantes,
   defaultDepositanteId,
   onCreated,
+  recarregarDepositantes,
 }: {
   depositantes: Array<{ id: string; razao_social: string }>;
   defaultDepositanteId?: string;
   onCreated: () => void;
+  recarregarDepositantes?: () => unknown;
 }) {
   const { create, submitting, error } = useCreateProduto();
+  const novo = useCadastroRapido();
   const [form, setForm] = useState({
     depositante_id: defaultDepositanteId ?? '',
     sku: '',
@@ -137,7 +142,11 @@ function ProdutoForm({
         required
         className="input col-span-2 sm:col-span-1"
         value={form.depositante_id}
-        onChange={(e) => setForm((f) => ({ ...f, depositante_id: e.target.value }))}
+        onChange={novo.aoMudar(
+          'depositante',
+          (id) => setForm((f) => ({ ...f, depositante_id: id })),
+          recarregarDepositantes,
+        )}
       >
         <option value="">Depositante...</option>
         {depositantes.map((d) => (
@@ -145,7 +154,9 @@ function ProdutoForm({
             {d.razao_social}
           </option>
         ))}
+        <OpcaoAdicionarNovo />
       </select>
+      {novo.modal}
       <input
         required
         placeholder="SKU"

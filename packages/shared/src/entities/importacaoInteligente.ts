@@ -33,10 +33,13 @@ export const TIPO_ABA_IMPORTACAO_LABEL: Record<TipoAbaImportacao, string> = {
   ignorada: 'Sem dados para o sistema',
 };
 
+/** Célula como o navegador entrega: só valores primitivos (nunca objetos/arrays). */
+export const CelulaImportacaoSchema = z.union([z.string().max(20000), z.number(), z.boolean(), z.null()]);
+
 export const AbaImportacaoInputSchema = z.object({
   nome: z.string().min(1).max(200),
-  cabecalhos: z.array(z.string()).max(400),
-  linhas: z.array(z.record(z.unknown())).max(20000),
+  cabecalhos: z.array(z.string().max(500)).max(400),
+  linhas: z.array(z.record(z.string().max(500), CelulaImportacaoSchema)).max(20000),
 });
 export type AbaImportacaoInput = z.infer<typeof AbaImportacaoInputSchema>;
 
@@ -61,6 +64,17 @@ export interface ColunaInterpretada {
   campo: string | null;
   rotulo: string | null;
   origem: 'dicionario' | 'ia' | 'extra' | 'ignorada';
+  /** Resultado da padronização (etapa 1): tipo detectado olhando a coluna inteira. */
+  tipo?: 'vazio' | 'booleano' | 'hora' | 'data' | 'datahora' | 'placa' | 'placas' | 'numero' | 'codigo' | 'texto';
+  formato?: string | null;
+  preenchidas?: number;
+  distintos?: number;
+  exemplos?: string[];
+  /** Células convertidas para a forma padrão ("10.781,00" -> 10781). */
+  convertidas?: number;
+  /** Células que não se encaixam no tipo da coluna (mantidas como texto). */
+  inconsistencias?: number;
+  exemplosInconsistencia?: Array<{ linha: number; valor: string }>;
 }
 
 export interface AbaInterpretada {
@@ -71,6 +85,10 @@ export interface AbaInterpretada {
   linhas: number;
   colunas: ColunaInterpretada[];
   observacao?: string;
+  /** Linhas removidas na padronização (vazias, cabeçalho repetido, total), com o motivo. */
+  descartadas?: Array<{ linha: number; motivo: string }>;
+  /** Linhas idênticas a outra da mesma aba. */
+  duplicadas?: number;
 }
 
 export interface ContagemEntidade {

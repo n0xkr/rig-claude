@@ -4,14 +4,16 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useCreateRecebimento } from '../hooks/useRecebimentos.js';
 import { useDepositantesList } from '../hooks/useDepositantes.js';
 import { useProdutosList } from '../hooks/useProdutosArmazenados.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 /** Formulário de registro da expectativa de recebimento (Módulo 5, WMS — Recebimento e Conferência). */
 export default function RecebimentoFormPage() {
   const navigate = useNavigate();
   const { create, submitting, error } = useCreateRecebimento();
-  const { depositantes } = useDepositantesList();
+  const { depositantes, reload: reloadDepositantes } = useDepositantesList();
   const [depositanteId, setDepositanteId] = useState('');
-  const { produtos } = useProdutosList(depositanteId || undefined);
+  const { produtos, reload: reloadProdutos } = useProdutosList(depositanteId || undefined);
+  const novo = useCadastroRapido();
   const [referencia, setReferencia] = useState('');
   const [dataPrevista, setDataPrevista] = useState('');
   const [itens, setItens] = useState<Array<{ produto_id: string; quantidade_esperada: string }>>([
@@ -61,10 +63,14 @@ export default function RecebimentoFormPage() {
             required
             className="input"
             value={depositanteId}
-            onChange={(e) => {
-              setDepositanteId(e.target.value);
-              setItens([{ produto_id: '', quantidade_esperada: '' }]);
-            }}
+            onChange={novo.aoMudar(
+              'depositante',
+              (id) => {
+                setDepositanteId(id);
+                setItens([{ produto_id: '', quantidade_esperada: '' }]);
+              },
+              reloadDepositantes,
+            )}
           >
             <option value="">Selecione...</option>
             {depositantes.map((d) => (
@@ -72,6 +78,7 @@ export default function RecebimentoFormPage() {
                 {d.razao_social}
               </option>
             ))}
+            <OpcaoAdicionarNovo />
           </select>
         </label>
 
@@ -106,13 +113,15 @@ export default function RecebimentoFormPage() {
                   required
                   className="input flex-1"
                   value={item.produto_id}
-                  onChange={(e) =>
-                    setItens((prev) =>
-                      prev.map((it, i) =>
-                        i === index ? { ...it, produto_id: e.target.value } : it,
+                  onChange={novo.aoMudar(
+                    'produto',
+                    (id) =>
+                      setItens((prev) =>
+                        prev.map((it, i) => (i === index ? { ...it, produto_id: id } : it)),
                       ),
-                    )
-                  }
+                    reloadProdutos,
+                    { depositante_id: depositanteId || undefined },
+                  )}
                 >
                   <option value="">Produto...</option>
                   {produtos.map((p) => (
@@ -120,6 +129,7 @@ export default function RecebimentoFormPage() {
                       {p.sku} — {p.descricao}
                     </option>
                   ))}
+                  <OpcaoAdicionarNovo />
                 </select>
                 <input
                   required
@@ -166,6 +176,7 @@ export default function RecebimentoFormPage() {
           {submitting ? 'Salvando...' : 'Registrar recebimento'}
         </button>
       </form>
+      {novo.modal}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from '../hooks/useJornadaEventos.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { EventoJornadaBadge } from '../components/StatusBadge.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 const TIPOS_EVENTO: TipoEventoJornada[] = [
   'INICIO_JORNADA',
@@ -29,7 +30,8 @@ const TIPOS_EVENTO: TipoEventoJornada[] = [
  * `INICIO_DIRECAO` em aberto).
  */
 export default function JornadaRegistroPage() {
-  const { motoristas, state: motoristasState } = useMotoristasList();
+  const { motoristas, state: motoristasState, reload: reloadMotoristas } = useMotoristasList();
+  const novo = useCadastroRapido();
   const [motoristaId, setMotoristaId] = useState('');
   const [tipoEvento, setTipoEvento] = useState<TipoEventoJornada>('INICIO_JORNADA');
   const [viagemId, setViagemId] = useState('');
@@ -94,6 +96,7 @@ export default function JornadaRegistroPage() {
         )}
       </div>
 
+      {novo.modal}
       <form
         onSubmit={handleSubmit}
         className="mb-8 space-y-4 rounded-xl border border-slate-200 p-6 bg-white shadow-sm"
@@ -106,7 +109,7 @@ export default function JornadaRegistroPage() {
               required
               disabled={motoristasState === 'loading'}
               value={motoristaId}
-              onChange={(e) => setMotoristaId(e.target.value)}
+              onChange={novo.aoMudar('motorista', setMotoristaId, reloadMotoristas)}
               className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900"
             >
               <option value="">Selecione...</option>
@@ -115,6 +118,7 @@ export default function JornadaRegistroPage() {
                   {m.nome_completo}
                 </option>
               ))}
+              <OpcaoAdicionarNovo />
             </select>
           </label>
           <label className="text-xs text-slate-500">

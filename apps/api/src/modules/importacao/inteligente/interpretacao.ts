@@ -1,28 +1,57 @@
+import { statusViagemDeTexto } from '@rigabras/shared';
 import type {
-  AbaImportacaoInput,
   AbaInterpretada,
   ColunaInterpretada,
   TipoAbaImportacao,
 } from '@rigabras/shared';
 import { normTexto } from '../../iaSolicitacoes/leitura.js';
 
-/**
- * Placa brasileira (ABC1234 / ABC1D23) ou de outro país do Mercosul (AB123CD,
- * AAA123...): 6 a 8 letras/números, com letras E números. Espaço e hífen são
- * ignorados ("IYB-5C34" -> "IYB5C34").
- */
-export function comoPlaca(v: unknown): string | null {
-  if (typeof v !== 'string' && typeof v !== 'number') return null;
-  const p = String(v).replace(/[\s.-]+/g, '').toUpperCase();
-  if (!/^[A-Z0-9]{6,8}$/.test(p)) return null;
-  const letras = p.replace(/[^A-Z]/g, '').length;
-  const digitos = p.replace(/[^0-9]/g, '').length;
-  return letras >= 2 && digitos >= 2 ? p : null;
+// Placas: uma só implementação, a da padronização (usada também pela consolidação).
+import { comoPlaca, extrairPlacas } from './padronizacao.js';
+export { comoPlaca, extrairPlacas };
+
+/** Aba já padronizada (etapa 1) — é o que a interpretação lê. */
+export interface AbaLeitura {
+  nome: string;
+  cabecalhos: string[];
+  linhas: Array<Record<string, unknown>>;
+}
+
+/** "09:00", "9h30", "1899-12-30T09:00" (hora do Excel) ou fração do dia (0.375) -> [H, M]. */
+export function lerHora(raw: unknown): [number, number] | null {
+  if (typeof raw === 'number') {
+    if (raw < 0 || raw >= 1) return null;
+    const min = Math.round(raw * 1440);
+    return [Math.floor(min / 60) % 24, min % 60];
+  }
+  if (typeof raw !== 'string') return null;
+  const r = raw.trim().match(/(?:^|T)(\d{1,2})[:h](\d{2})/);
+  if (!r) return null;
+  const H = Number(r[1]);
+  const M = Number(r[2]);
+  return H < 24 && M < 60 ? [H, M] : null;
+}
+
+/** Junta a coluna de hora separada ("Data Coleta" + "Hora") na data/hora do campo. */
+function aplicarHora(campos: Record<string, unknown>, campoData: string, campoHora: string) {
+  const hora = campos[campoHora];
+  delete campos[campoHora];
+  const data = campos[campoData];
+  if (typeof data !== 'string' || hora === undefined) return;
+  const hm = lerHora(hora);
+  if (!hm) return;
+  // A data já está em ISO (UTC); pega o dia em horário de Brasília e aplica a hora da planilha.
+  const local = new Date(Date.parse(data) - 3 * 3600000);
+  if (Number.isNaN(local.getTime())) return;
+  const dia = local.toISOString().slice(0, 10);
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  campos[campoData] = new Date(`${dia}T${pad2(hm[0])}:${pad2(hm[1])}:00-03:00`).toISOString();
 }
 import {
   CAMPOS_POR_TIPO,
   campoDef,
   dicaPeloNome,
+  ehExtraConhecido,
   mapearColunas,
   type Mapeamento,
   type TipoValor,
@@ -80,6 +109,30 @@ function aceita(tipo: TipoDados, m: Mapeamento): boolean {
   }
 }
 
+/**
+ * Sem coluna de cliente, uma coluna de observações (ou sem nome conhecido) cujo conteúdo é
+ * uma lista curta de nomes que se repetem ("GONVARRI", "FERROSIDER"...) em muitas linhas é,
+ * na prática, o cliente da viagem.
+ */
+function promoverColunaDeCliente(aba: AbaLeitura, m: Mapeamento) {
+  if (m.campos.has('cliente')) return;
+  for (const col of aba.cabecalhos) {
+    const campo = m.porColuna.get(col);
+    if (campo && campo !== 'observacoes') continue;
+    if (ehExtraConhecido(col)) continue; // "Tipo de veículo", fatura, lote...
+    const valores = aba.linhas.map((l) => l[col]).filter((v) => typeof v === 'string' && !vazio(v)) as string[];
+    if (valores.length < 20) continue;
+    const distintos = [...new Set(valores.map((v) => normTexto(v)))];
+    if (distintos.length > Math.max(8, valores.length * 0.05)) continue;
+    if (distintos.some((d) => d.length > 40 || /^\d+$/.test(d) || !/[a-z]{3}/.test(d))) continue;
+    if (distintos.filter((d) => statusViagemDeTexto(d)).length > distintos.length * 0.2) continue;
+    m.porColuna.set(col, 'cliente');
+    m.campos.add('cliente');
+    if (campo === 'observacoes' && ![...m.porColuna.values()].includes('observacoes')) m.campos.delete('observacoes');
+    return;
+  }
+}
+
 const TIPOS: TipoDados[] = [
   'viagens', 'veiculos', 'motoristas', 'clientes', 'cargas', 'checklists', 'smp', 'consultas',
 ];
@@ -91,10 +144,11 @@ const TIPOS: TipoDados[] = [
  * (a IA ainda pode opinar).
  */
 export function classificarAba(
-  aba: AbaImportacaoInput,
+  aba: AbaLeitura,
 ): { tipo: TipoAbaImportacao; mapa: Mapeamento | null; origem: 'dicionario' | 'nome' } | null {
   const dica = dicaPeloNome(aba.nome);
   const mapas = new Map(TIPOS.map((t) => [t, mapearColunas(t, aba.cabecalhos)]));
+  promoverColunaDeCliente(aba, mapas.get('viagens')!);
   if (dica === 'ignorada') return { tipo: 'ignorada', mapa: null, origem: 'nome' };
   if (dica && aceita(dica, mapas.get(dica)!))
     return { tipo: dica, mapa: mapas.get(dica)!, origem: 'nome' };
@@ -130,6 +184,12 @@ export function lerNumero(raw: unknown): number | null {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+/** Abreviações de mês em português e espanhol (as planilhas da operação misturam os dois). */
+const MESES: Record<string, number> = {
+  jan: 1, ene: 1, fev: 2, feb: 2, mar: 3, abr: 4, apr: 4, mai: 5, may: 5, jun: 6, jul: 7, ago: 8, aug: 8,
+  set: 9, sep: 9, out: 10, oct: 10, nov: 11, dez: 12, dic: 12, dec: 12,
+};
+
 /** Data/hora da planilha -> ISO. Datas sem fuso são tratadas como horário de Brasília (-03:00). */
 export function lerDataHora(raw: unknown, soData = false): string | null {
   let y: number, m: number, d: number, H = 0, M = 0;
@@ -150,6 +210,13 @@ export function lerDataHora(raw: unknown, soData = false): string | null {
       }
     } else {
       r = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?:\s+(\d{1,2})[:h](\d{2}))?/);
+      // "22.mai.2024", "24-Out-2024", "3 de março de 2025"
+      const nome = r ? null : s.match(/^(\d{1,2})(?:[\s./-]+de)?[\s./-]*([A-Za-zçÇ]{3,9})\.?(?:[\s./-]+de)?[\s./-]*(\d{2,4})(?:\s+(\d{1,2})[:h](\d{2}))?/);
+      if (nome) {
+        const mes = MESES[normTexto(nome[2]).slice(0, 3)];
+        if (!mes) return null;
+        r = [nome[0], nome[1], String(mes), nome[3], nome[4], nome[5]] as unknown as RegExpMatchArray;
+      }
       if (!r) return null;
       [d, m, y] = [Number(r[1]), Number(r[2]), Number(r[3])];
       if (y < 100) y += 2000;
@@ -199,7 +266,7 @@ export function lerValorTipado(raw: unknown, tipo: TipoValor): unknown {
 /** Converte as linhas de uma aba em registros, segundo o mapeamento coluna -> campo. */
 export function lerRegistros(
   arquivo: string,
-  aba: AbaImportacaoInput,
+  aba: AbaLeitura,
   tipo: TipoDados,
   porColuna: Map<string, string>,
 ): Registro[] {
@@ -218,6 +285,20 @@ export function lerRegistros(
         extras[col] = typeof raw === 'string' ? raw.trim() : raw;
         continue;
       }
+      // Placas do conjunto na mesma célula: a primeira é a do campo, as demais completam as carretas.
+      if (def.tipo === 'plate' && tipo === 'viagens' && !comoPlaca(raw)) {
+        const placas = extrairPlacas(raw);
+        if (placas.length > 0) {
+          const ordem = ['placa_cavalo', 'placa_carreta', 'placa_carreta_2'];
+          const livres = ordem.slice(Math.max(0, ordem.indexOf(campo!)));
+          for (const p of placas) {
+            const alvo = livres.shift();
+            if (!alvo) break;
+            if (campos[alvo] === undefined) campos[alvo] = p;
+          }
+          continue;
+        }
+      }
       const v = lerValorTipado(raw, def.tipo);
       if (v === undefined) {
         // Valor que não entendemos (ex.: "IYB 5C3" onde se espera placa): guarda o original.
@@ -229,11 +310,31 @@ export function lerRegistros(
       } else if (campos[campo!] === undefined) campos[campo!] = v;
     }
     if (!algum) return;
+    if (tipo === 'viagens') {
+      aplicarHora(campos, 'data_coleta', 'hora_coleta');
+      aplicarHora(campos, 'data_entrega', 'hora_entrega');
+    }
     const numeroLinha = typeof linha.__linha === 'number' ? (linha.__linha as number) : i + 2;
     delete extras.__linha;
     out.push({ arquivo, aba: aba.nome, linha: numeroLinha, campos, extras });
   });
+  corrigirEscalaDePeso(out);
   return out;
+}
+
+/**
+ * Coluna de peso em kg que mistura "10.781,00" com "9,026" (vírgula usada como milhar) ou
+ * toneladas: se a coluna é de milhares de kg, um valor abaixo de 100 está na escala errada.
+ */
+function corrigirEscalaDePeso(regs: Registro[]) {
+  const pesos = regs.map((r) => r.campos.peso_kg).filter((x): x is number => typeof x === 'number' && x > 0);
+  if (pesos.length < 5) return;
+  const ordenados = [...pesos].sort((a, b) => a - b);
+  if (ordenados[Math.floor(ordenados.length / 2)]! < 1000) return;
+  for (const r of regs) {
+    const p = r.campos.peso_kg;
+    if (typeof p === 'number' && p > 0 && p < 100) r.campos.peso_kg = Math.round(p * 1000 * 1000) / 1000;
+  }
 }
 
 export function descreverColunas(

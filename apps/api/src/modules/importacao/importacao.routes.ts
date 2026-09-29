@@ -13,7 +13,12 @@ export async function importacaoRoutes(app: FastifyInstance): Promise<void> {
   // Planilhas inteiras (várias abas, milhares de linhas): limite bem acima do padrão de 1 MB.
   app.post(
     '/inteligente',
-    { preHandler: ESCRITA_OPERACIONAL, bodyLimit: 80 * 1024 * 1024 },
+    {
+      preHandler: ESCRITA_OPERACIONAL,
+      bodyLimit: 80 * 1024 * 1024,
+      // Rota pesada (CPU + muitas escritas): limita repetição por usuário/IP.
+      config: { rateLimit: { max: 12, timeWindow: '1 minute' } },
+    },
     ImportacaoController.inteligente,
   );
   app.post('/ia/analisar', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.analisar);

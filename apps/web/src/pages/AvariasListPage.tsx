@@ -6,6 +6,7 @@ import { useProdutosList } from '../hooks/useProdutosArmazenados.js';
 import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { AvariaSeveridadeBadge } from '../components/StatusBadge.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 const SEVERIDADES: SeveridadeAvaria[] = ['LEVE', 'MODERADA', 'GRAVE', 'PERDA_TOTAL'];
 
@@ -68,9 +69,10 @@ export default function AvariasListPage() {
 
 function AvariaForm({ onCreated }: { onCreated: () => void }) {
   const { create, submitting, error } = useCreateAvaria();
-  const { produtos } = useProdutosList();
+  const { produtos, reload: reloadProdutos } = useProdutosList();
   const { armazens } = useArmazensList();
-  const { enderecos } = useEnderecosList(armazens[0]?.id);
+  const { enderecos, reload: reloadEnderecos } = useEnderecosList(armazens[0]?.id);
+  const novo = useCadastroRapido();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [form, setForm] = useState({
     produto_id: '',
@@ -106,7 +108,7 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
         required
         className="input"
         value={form.produto_id}
-        onChange={(e) => setForm((f) => ({ ...f, produto_id: e.target.value }))}
+        onChange={novo.aoMudar('produto', (id) => setForm((f) => ({ ...f, produto_id: id })), reloadProdutos)}
       >
         <option value="">Produto...</option>
         {produtos.map((p) => (
@@ -114,11 +116,14 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
             {p.sku} — {p.descricao}
           </option>
         ))}
+        <OpcaoAdicionarNovo />
       </select>
       <select
         className="input"
         value={form.endereco_id}
-        onChange={(e) => setForm((f) => ({ ...f, endereco_id: e.target.value }))}
+        onChange={novo.aoMudar('endereco', (id) => setForm((f) => ({ ...f, endereco_id: id })), reloadEnderecos, {
+          armazem_id: armazens[0]?.id,
+        })}
       >
         <option value="">Endereço (opcional)...</option>
         {enderecos.map((en) => (
@@ -126,6 +131,7 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
             {en.area}-{en.rua}-{en.prateleira}-{en.posicao}
           </option>
         ))}
+        <OpcaoAdicionarNovo />
       </select>
       <select
         className="input"
@@ -168,6 +174,7 @@ function AvariaForm({ onCreated }: { onCreated: () => void }) {
         </p>
       )}
       {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
+      {novo.modal}
     </form>
   );
 }
