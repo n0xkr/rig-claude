@@ -43,8 +43,9 @@ import AuditoriaListPage from './pages/AuditoriaListPage.js';
 import UsuariosPage from './pages/UsuariosPage.js';
 import PerfilPage from './pages/PerfilPage.js';
 import SolicitacoesIaPage from './pages/SolicitacoesIaPage.js';
-import ImportarPlanilhaIaPage from './pages/ImportarPlanilhaIaPage.js';
 import AcompanhamentoPage from './pages/AcompanhamentoPage.js';
+import MotoristasListPage from './pages/MotoristasListPage.js';
+import MotoristaFormPage from './pages/MotoristaFormPage.js';
 
 export default function App() {
   const location = useLocation();
@@ -84,6 +85,38 @@ export default function App() {
         element={
           <AuthGate modulo="viagens">
             <ViagemDetailPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/viagens/:id/editar"
+        element={
+          <AuthGate modulo="viagens">
+            <ViagemFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/motoristas"
+        element={
+          <AuthGate modulo="motoristas">
+            <MotoristasListPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/motoristas/novo"
+        element={
+          <AuthGate modulo="motoristas">
+            <MotoristaFormPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/motoristas/:id"
+        element={
+          <AuthGate modulo="motoristas">
+            <MotoristaFormPage />
           </AuthGate>
         }
       />
@@ -339,7 +372,7 @@ export default function App() {
         path="/importar-ia"
         element={
           <AuthGate modulo="importacao">
-            <ImportarPlanilhaIaPage />
+            <ImportarDadosPage />
           </AuthGate>
         }
       />

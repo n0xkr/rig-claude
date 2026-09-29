@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, novaPlaca } from './helpers.js';
+import { loginAs, preencherNovaViagem } from './helpers.js';
 
 /**
  * Fila offline-first (IndexedDB, `apps/web/src/offline/syncManager.ts`):
@@ -16,16 +16,9 @@ test('cria uma viagem offline e sincroniza automaticamente ao voltar online', as
 }) => {
   await loginAs(page, 'OPERADOR');
 
-  const placa = await novaPlaca(page);
-  // A lista de veículos do formulário precisa carregar ANTES de ficar offline.
-  await page.getByRole('link', { name: 'Nova viagem' }).click();
-  await expect(
-    page.getByLabel('Placa do cavalo *').locator('option', { hasText: placa }),
-  ).toHaveCount(1);
+  // Veículos e motoristas do formulário carregam ANTES de ficar offline.
+  const placa = await preencherNovaViagem(page, 'Ciudad del Este/PY');
   await context.setOffline(true);
-  await page.getByLabel('Placa do cavalo *').selectOption(placa);
-  await page.getByLabel('Origem *').fill('Uruguaiana/RS');
-  await page.getByLabel('Destino *', { exact: true }).fill('Ciudad del Este/PY');
   await page.getByRole('button', { name: 'Criar viagem' }).click();
 
   await expect(

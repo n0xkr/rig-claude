@@ -9,6 +9,27 @@ export async function motoristasRoutes(app: FastifyInstance): Promise<void> {
     { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },
     MotoristasController.list,
   );
+  // OCR: fotos de CNH/CRLV (até 3) em base64 — limite maior que o padrão de 1 MB.
+  app.post(
+    '/ocr',
+    { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR'), bodyLimit: 45 * 1024 * 1024 },
+    MotoristasController.ocr,
+  );
+  app.get(
+    '/:id/documentos',
+    { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },
+    MotoristasController.listarDocumentos,
+  );
+  app.post(
+    '/:id/documentos',
+    { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR'), bodyLimit: 45 * 1024 * 1024 },
+    MotoristasController.enviarDocumentos,
+  );
+  app.delete(
+    '/:id/documentos/:docId',
+    { preHandler: requireRole('SUPERADMIN', 'ADMIN') },
+    MotoristasController.excluirDocumento,
+  );
   app.get(
     '/:id',
     { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },

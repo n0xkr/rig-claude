@@ -1,32 +1,25 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, novaPlaca } from './helpers.js';
+import { loginAs, preencherNovaViagem } from './helpers.js';
 
 const TODOS_STATUS_ATE_ENTREGUE = [
-  'AGUARDANDO_COLETA',
-  'EM_COLETA',
-  'EM_DOCUMENTACAO',
-  'VEICULO_MOTORISTA_DEFINIDO',
-  'EM_VALIDACAO_PRE_EMBARQUE',
-  'EM_TRANSITO',
-  'NA_FRONTEIRA',
-  'EM_MONITORAMENTO',
-  'ENTREGUE',
+  'EM_TRANSITO_CLIENTE',
+  'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  'EM_TRANSITO_FRONTEIRA',
+  'SAIDA_ADUANA_COTECAR',
+  'CHEGADA_CLIENTE',
+  'VAZIO_NO_CLIENTE',
 ];
 
 test('registra o frete de uma viagem entregue, roda o fechamento e confere o saldo', async ({
   page,
 }) => {
   await loginAs(page, 'OPERADOR');
-  const placa = await novaPlaca(page);
-  await page.getByRole('link', { name: 'Nova viagem' }).click();
-  await page.getByLabel('Placa do cavalo *').selectOption(placa);
-  await page.getByLabel('Origem *').fill('Uruguaiana/RS');
-  await page.getByLabel('Destino *', { exact: true }).fill('Buenos Aires/AR');
+  const placa = await preencherNovaViagem(page, 'Buenos Aires/AR');
   await page.getByRole('button', { name: 'Criar viagem' }).click();
-  await page.getByText(placa).click();
+  await page.getByText(placa).first().click();
 
   // Avança a viagem pela UI (controle adicionado nesta sessão — ver
-  // 03-modulo2-ciclo-vida-fronteira.spec.ts) até ENTREGUE: só então o
+  // 03-modulo2-ciclo-vida-fronteira.spec.ts) até "Vazio no cliente" (carga entregue): só então o
   // registro do frete contratado é permitido (regra de negócio do Módulo 3).
   for (const status of TODOS_STATUS_ATE_ENTREGUE) {
     // O botão fica desabilitado de novo logo após cada clique (o select

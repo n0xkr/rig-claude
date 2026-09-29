@@ -1,4 +1,5 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Fuel,
@@ -26,7 +27,7 @@ import { GlassCard, accentChip, type GlassAccent } from '../components/ui/GlassC
 import { AnimatedCounter } from '../components/ui/Telemetry.js';
 import { BarList, DonutChart } from '../components/charts/Charts.js';
 import { InsightsPanel } from '../components/InsightsPanel.js';
-import { AiImportWizard } from '../components/AiImportWizard.js';
+import { ImportacaoInteligente } from '../components/ImportacaoInteligente.js';
 import { haptic } from '../lib/haptics.js';
 
 const STATUS_LABEL: Record<StatusOperacionalVeiculo, string> = {
@@ -111,18 +112,34 @@ function Modal({
   titulo,
   onClose,
   children,
+  largo = false,
 }: {
   titulo: string;
   onClose: () => void;
   children: ReactNode;
+  largo?: boolean;
 }) {
-  return (
+  // Fecha com Esc e trava a rolagem do fundo enquanto aberto.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [onClose]);
+  // Portal no <body>: um ancestral com transform/filtro (animação de página,
+  // cartões com efeito 3D) prendia o `position: fixed` dentro dele e o modal
+  // abria fora da tela — por isso "Editar veículo" parecia não abrir nada.
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:rounded-xl"
+        className={`max-h-[92vh] w-full ${largo ? 'max-w-5xl' : 'max-w-2xl'} overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:rounded-xl`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={titulo}
@@ -140,7 +157,8 @@ function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -654,7 +672,12 @@ export default function AcompanhamentoPage() {
                 {filtrados.map((v) => {
                   const dias = diasAte(v.proxima_manutencao_data);
                   return (
-                    <tr key={v.id} className="border-t border-slate-200" data-testid="acomp-linha">
+                    <tr
+                      key={v.id}
+                      className={`border-t border-slate-200 ${podeEditar ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                      data-testid="acomp-linha"
+                      onClick={() => podeEditar && setModal(v)}
+                    >
                       <td className="p-2 font-mono font-semibold text-slate-900">{v.placa}</td>
                       <td className="p-2">
                         <div>{v.modelo ?? '—'}</div>
@@ -728,7 +751,10 @@ export default function AcompanhamentoPage() {
                             type="button"
                             title="Editar"
                             className="mr-2 text-slate-600 hover:text-slate-900 transition-all duration-200"
-                            onClick={() => setModal(v)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModal(v);
+                            }}
                             data-testid="acomp-editar"
                           >
                             <Pencil className="inline h-4 w-4" />
@@ -738,7 +764,10 @@ export default function AcompanhamentoPage() {
                               type="button"
                               title="Excluir"
                               className="text-red-600 hover:text-red-700 transition-all duration-200"
-                              onClick={() => void excluir(v)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void excluir(v);
+                              }}
                               data-testid="acomp-excluir"
                             >
                               <Trash2 className="inline h-4 w-4" />
@@ -757,13 +786,14 @@ export default function AcompanhamentoPage() {
 
       {modal === 'importar' && (
         <Modal
-          titulo="Importar planilha com IA"
+          titulo="Importar planilhas (IA)"
+          largo
           onClose={() => {
             setModal(null);
             void reload();
           }}
         >
-          <AiImportWizard onImported={() => void reload()} />
+          <ImportacaoInteligente onImported={() => void reload()} />
         </Modal>
       )}
       {modal === 'novo' && (

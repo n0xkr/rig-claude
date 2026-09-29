@@ -115,3 +115,23 @@ export async function novaPlaca(page: Page): Promise<string> {
   expect(response.ok(), await response.text()).toBeTruthy();
   return placa;
 }
+
+/**
+ * Abre /viagens/nova e preenche o mínimo obrigatório: cavalo (cadastrado via
+ * API), motorista (obrigatório; também criado via API), origem e destino.
+ * Não clica em salvar — o teste decide (online/offline).
+ */
+export async function preencherNovaViagem(page: Page, destino: string): Promise<string> {
+  const token = await apiLogin(page.request, 'OPERADOR');
+  const placa = await novaPlaca(page);
+  const nome = `Motorista PW ${Date.now().toString().slice(-6)}`;
+  await apiCreateMotorista(page.request, token, { nome_completo: nome });
+  await page.goto('/viagens/nova');
+  await expect(page.getByLabel('Placa do cavalo *').locator('option', { hasText: placa })).toHaveCount(1);
+  await expect(page.getByLabel('Motorista *').locator('option', { hasText: nome })).toHaveCount(1);
+  await page.getByLabel('Placa do cavalo *').selectOption(placa);
+  await page.getByLabel('Motorista *').selectOption({ label: nome });
+  await page.getByLabel('Origem *').fill('Uruguaiana/RS');
+  await page.getByLabel('Destino *', { exact: true }).fill(destino);
+  return placa;
+}

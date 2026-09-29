@@ -4,37 +4,35 @@ import { loginAs } from './helpers.js';
 
 const PLANILHA = path.resolve(__dirname, '../../RIGABRAS_Controle_GR.xlsx');
 
-test.describe('Importação: varredura de todas as abas', () => {
-  test('lê as 25 abas, acha cabeçalho/linhas reais e só oferece importar as abas com destino', async ({
+test.describe('Importação inteligente: planilha completa, sem mapear colunas', () => {
+  test('entende as abas, cruza viagens/motoristas/veículos/CRT/checklist/SMP e grava', async ({
     page,
   }) => {
     await loginAs(page, 'OPERADOR');
     await page.goto('/importar-dados');
+    await page.getByTestId('importacao-inteligente-arquivo').setInputFiles(PLANILHA);
 
-    await page.getByTestId('ai-import-file').setInputFiles(PLANILHA);
-    const varredura = page.getByTestId('ai-import-varredura');
-    await expect(varredura).toContainText('25 abas lidas', { timeout: 30_000 });
-    await expect(varredura).toContainText('21 tabelas');
+    await expect(page.getByTestId('importacao-totais')).toBeVisible({ timeout: 60_000 });
 
-    // FOLLOWUP (viagens) e VEICULOS (veículos) — as demais são cadastros de referência.
-    const abas = page.getByTestId('ai-import-aba');
-    await expect(abas.filter({ hasText: 'FOLLOWUP' })).toContainText('5 linhas · 94 colunas');
-    // Título "VEICULOS N linhas" (o `\b` evita abas como "CHECKLIST_VEICULOS").
-    await expect(abas.filter({ hasText: /\bVEICULOS\s*\d+ linhas/ })).toContainText('10 linhas');
-    await expect(
-      abas.filter({ hasText: 'MOTORISTAS' }).getByTestId('ai-import-target-manual'),
-    ).toBeVisible();
+    await page.getByRole('button', { name: /Como cada aba foi entendida/ }).click();
+    const abas = page.getByTestId('importacao-abas');
+    await expect(abas).toContainText('FOLLOWUP → Viagens');
+    await expect(abas).toContainText('MOTORISTAS → Motoristas');
+    await expect(abas).toContainText('VEICULOS → Veículos');
+    await expect(abas).toContainText('CHECKLISTS → Checklists');
 
-    // Busca em todas as abas.
-    await page.getByTestId('ai-import-busca').fill('Uruguaiana');
-    await expect(page.getByTestId('ai-import-busca-resultado')).toContainText('FOLLOWUP');
+    const viagens = page.getByTestId('importacao-viagens');
+    await expect(viagens).toContainText('RGB-2026-0412');
+    await expect(viagens).toContainText('IYA3B21 + IRS1B10');
+    await expect(viagens).toContainText('Na fronteira aguardando descarga');
 
-    // Importação manual: aba certa pré-selecionada (antes lia só a 1ª aba, LEIA_ME) e colunas mapeadas.
-    await page.locator('input[type=file]').nth(1).setInputFiles(PLANILHA);
-    await expect(page.getByTestId('manual-aba')).toContainText('25 abas lidas');
-    await expect(page.getByTestId('manual-aba').locator('select')).toHaveValue('FOLLOWUP');
-    await expect(page.getByRole('heading', { name: /^Mapeamento de colunas/ })).toBeVisible();
-    const selects = page.locator('section', { hasText: 'Mapeamento de colunas' }).locator('select');
-    await expect(selects.first()).not.toHaveValue('');
+    await page.getByTestId('importacao-gravar').click();
+    await expect(page.getByTestId('importacao-concluida')).toBeVisible({ timeout: 60_000 });
+
+    await page.goto('/viagens');
+    await page.getByTestId('viagens-busca').fill('RGB-2026-0412');
+    await page.getByTestId('viagens-lista').getByRole('link').first().click();
+    await expect(page.getByTestId('viagem-cargas')).toContainText('BR.1234.00456');
+    await expect(page.getByTestId('check-checklist_ok')).toHaveClass(/emerald/);
   });
 });

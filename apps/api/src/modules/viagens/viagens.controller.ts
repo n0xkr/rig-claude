@@ -1,5 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { ChangeStatusViagemSchema, CreateViagemSchema, UpdateViagemSchema } from '@rigabras/shared';
+import {
+  ChangeStatusViagemSchema,
+  CreateViagemSchema,
+  TrocarMotoristaViagemSchema,
+  UpdateViagemSchema,
+} from '@rigabras/shared';
 import { ViagensService } from './viagens.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
 import { sendProblem } from '../../lib/problemDetails.js';
@@ -46,7 +51,7 @@ export const ViagensController = {
   async getById(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     try {
-      const viagem = await service.getById(id);
+      const viagem = await service.getDetalhe(id);
       return reply.send(viagem);
     } catch (error) {
       if (handleDomainError(error, reply)) return;
@@ -90,8 +95,39 @@ export const ViagensController = {
         request.user?.sub ?? null,
         request.ip,
         body.observacoes,
+        request.user?.role,
       );
       return reply.send(updated);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  /** Troca de motorista com motivo obrigatório (fica no histórico da viagem). */
+  async trocarMotorista(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const body = parseOrProblem(TrocarMotoristaViagemSchema, request.body, reply);
+    if (!body) return;
+    try {
+      const updated = await service.trocarMotorista(
+        id,
+        body.motorista_id,
+        body.motivo,
+        request.user?.sub ?? null,
+        request.ip,
+      );
+      return reply.send(updated);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async getMotoristaHistorico(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    try {
+      return reply.send(await service.listMotoristaHistorico(id));
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

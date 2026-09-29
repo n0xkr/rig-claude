@@ -27,7 +27,7 @@ test.describe('Acompanhamento de veículos', () => {
     await expect(linha).toContainText('130.500');
   });
 
-  test('importa planilha CSV: IA/heurística mapeia colunas, valida e grava; reimportar atualiza', async ({
+  test('importa planilha CSV sem mapear colunas; reimportar atualiza (não duplica)', async ({
     page,
   }) => {
     await loginAs(page, 'OPERADOR');
@@ -36,22 +36,20 @@ test.describe('Acompanhamento de veículos', () => {
     const p2 = randomPlaca();
     const csv = (km: string) =>
       [
-        'Placa,Modelo,Situação,Quilometragem,Combustível %,Próxima Manutenção',
-        `${p1},Volvo FH 460,Em Trânsito,"${km}",55%,10/11/2030`,
-        `${p2},Scania R 500,Em Manutenção,"310.000",18%,20/09/2020`,
+        'Placa,Tipo,Modelo,Situação,Quilometragem,Combustível %,Próxima Manutenção',
+        `${p1},Cavalo,Volvo FH 460,Em Trânsito,"${km}",55%,10/11/2030`,
+        `${p2},Cavalo,Scania R 500,Em Manutenção,"310.000",18%,20/09/2020`,
       ].join('\n');
 
     await page.getByTestId('btn-importar-ia').click();
-    await page.getByTestId('ai-import-file').setInputFiles({
+    await page.getByTestId('importacao-inteligente-arquivo').setInputFiles({
       name: 'frota.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(csv('120.300')),
     });
-    await expect(page.getByTestId('ai-import-target')).toHaveValue('veiculos', { timeout: 30_000 });
-    await page.getByTestId('ai-import-validar').click();
-    await expect(page.getByText('2 válidas · 0 com erro')).toBeVisible();
-    await page.getByTestId('ai-import-importar').click();
-    await expect(page.getByTestId('ai-import-resultado')).toContainText('2 de 2 linhas importadas');
+    await expect(page.getByTestId('importacao-totais')).toContainText('+2', { timeout: 30_000 });
+    await page.getByTestId('importacao-gravar').click();
+    await expect(page.getByTestId('importacao-concluida')).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: 'Fechar' }).click();
 
     const linha1 = page.getByTestId('acomp-linha').filter({ hasText: p1 });
@@ -62,16 +60,17 @@ test.describe('Acompanhamento de veículos', () => {
       '(vencida)',
     );
 
-    // Reimportar a mesma placa ATUALIZA (não duplica).
     await page.getByTestId('btn-importar-ia').click();
-    await page.getByTestId('ai-import-file').setInputFiles({
+    await page.getByTestId('importacao-inteligente-arquivo').setInputFiles({
       name: 'frota2.csv',
       mimeType: 'text/csv',
       buffer: Buffer.from(csv('150.000')),
     });
-    await expect(page.getByTestId('ai-import-target')).toHaveValue('veiculos', { timeout: 30_000 });
-    await page.getByTestId('ai-import-importar').click();
-    await expect(page.getByTestId('ai-import-resultado')).toContainText('2 de 2');
+    await expect(page.getByTestId('importacao-totais')).toContainText('1 atualiz.', {
+      timeout: 30_000,
+    });
+    await page.getByTestId('importacao-gravar').click();
+    await expect(page.getByTestId('importacao-concluida')).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: 'Fechar' }).click();
     await expect(page.getByTestId('acomp-linha').filter({ hasText: p1 })).toHaveCount(1);
     await expect(page.getByTestId('acomp-linha').filter({ hasText: p1 })).toContainText('150.000');

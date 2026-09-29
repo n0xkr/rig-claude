@@ -12,26 +12,58 @@ import type {
   StatusPortariaEntrada,
   StatusOrdemServico,
 } from '@rigabras/shared';
+import { STATUS_VIAGEM_LABEL } from '@rigabras/shared';
 
-const STATUS_STYLES: Record<StatusViagem, string> = {
-  PROGRAMADA: 'bg-slate-200 text-slate-700',
-  AGUARDANDO_COLETA: 'bg-amber-50 text-amber-700',
-  EM_COLETA: 'bg-amber-50 text-amber-700',
-  EM_DOCUMENTACAO: 'bg-cyan-50 text-cyan-700',
-  VEICULO_MOTORISTA_DEFINIDO: 'bg-teal-50 text-teal-700',
-  EM_VALIDACAO_PRE_EMBARQUE: 'bg-indigo-50 text-indigo-700',
-  EM_TRANSITO: 'bg-blue-50 text-blue-700',
-  NA_FRONTEIRA: 'bg-purple-50 text-purple-700',
-  EM_MONITORAMENTO: 'bg-sky-50 text-sky-700',
-  ENTREGUE: 'bg-emerald-50 text-emerald-700',
-  ENCERRADA: 'bg-slate-100 text-slate-500',
-  CANCELADA: 'bg-red-50 text-red-700',
+const cor = {
+  cinza: 'bg-slate-100 text-slate-700',
+  ambar: 'bg-amber-50 text-amber-700',
+  azul: 'bg-blue-50 text-blue-700',
+  roxo: 'bg-purple-50 text-purple-700',
+  indigo: 'bg-indigo-50 text-indigo-700',
+  ciano: 'bg-cyan-50 text-cyan-700',
+  verde: 'bg-emerald-50 text-emerald-700',
+  vermelho: 'bg-red-50 text-red-700',
+  apagado: 'bg-slate-100 text-slate-500',
 };
 
-export function StatusBadge({ status }: { status: StatusViagem }) {
+const STATUS_STYLES: Record<StatusViagem, string> = {
+  PROGRAMADA: cor.cinza,
+  EM_TRANSITO_CLIENTE: cor.ambar,
+  NO_CLIENTE_AGUARDANDO_CARREGAMENTO: cor.ambar,
+  CARREGADO_AGUARDANDO_DOCUMENTOS: cor.ambar,
+  EM_TRANSITO_FRONTEIRA: cor.azul,
+  NA_FRONTEIRA: cor.roxo,
+  NA_FRONTEIRA_AGUARDANDO_CRUZE: cor.roxo,
+  PROGRAMADO_CARREGAR: cor.roxo,
+  CARREGADO: cor.roxo,
+  ENTRADA_ADUANA_MULTILOG: cor.indigo,
+  SAIDA_ADUANA_MULTILOG: cor.indigo,
+  ENTRADA_ADUANA_COTECAR: cor.indigo,
+  SAIDA_ADUANA_COTECAR: cor.indigo,
+  CHEGADA_ADUANA_DESTINO: cor.ciano,
+  SAIDA_ADUANA_DESTINO: cor.ciano,
+  CHEGADA_CLIENTE: cor.verde,
+  VAZIO_NO_CLIENTE: cor.verde,
+  SAIDA_CLIENTE: cor.verde,
+  RETORNANDO_VAZIO: cor.cinza,
+  ENCERRADA: cor.apagado,
+  CANCELADA: cor.vermelho,
+  AGUARDANDO_COLETA: cor.apagado,
+  EM_COLETA: cor.apagado,
+  EM_DOCUMENTACAO: cor.apagado,
+  VEICULO_MOTORISTA_DEFINIDO: cor.apagado,
+  EM_VALIDACAO_PRE_EMBARQUE: cor.apagado,
+  EM_TRANSITO: cor.apagado,
+  EM_MONITORAMENTO: cor.apagado,
+  ENTREGUE: cor.apagado,
+};
+
+export function StatusBadge({ status, agendada }: { status: StatusViagem; agendada?: boolean }) {
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[status]}`}>
-      {status.replaceAll('_', ' ')}
+    <span
+      className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${agendada ? 'bg-sky-50 text-sky-700' : (STATUS_STYLES[status] ?? cor.cinza)}`}
+    >
+      {agendada ? 'Agendada' : (STATUS_VIAGEM_LABEL[status] ?? status.replaceAll('_', ' '))}
     </span>
   );
 }

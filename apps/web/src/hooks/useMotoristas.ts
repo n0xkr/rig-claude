@@ -18,7 +18,7 @@ export function useMotoristasList() {
     setState('loading');
     setError(null);
     try {
-      const result = await api.get<ListResponse>('/motoristas?limit=100');
+      const result = await api.get<ListResponse>('/motoristas?limit=1000');
       setMotoristas(result.data);
       setState('success');
     } catch (err) {

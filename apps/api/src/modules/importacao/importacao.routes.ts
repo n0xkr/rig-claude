@@ -10,6 +10,12 @@ export async function importacaoRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('onRequest', authenticate);
 
   app.get('/', { preHandler: LEITURA_TODOS }, ImportacaoController.listDatasets);
+  // Planilhas inteiras (várias abas, milhares de linhas): limite bem acima do padrão de 1 MB.
+  app.post(
+    '/inteligente',
+    { preHandler: ESCRITA_OPERACIONAL, bodyLimit: 80 * 1024 * 1024 },
+    ImportacaoController.inteligente,
+  );
   app.post('/ia/analisar', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.analisar);
   app.post('/validar', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.validar);
   app.post('/', { preHandler: ESCRITA_OPERACIONAL }, ImportacaoController.importar);

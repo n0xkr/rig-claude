@@ -24,7 +24,8 @@ function handleDomainError(error: unknown, reply: FastifyReply): boolean {
 export const VeiculosController = {
   async list(request: FastifyRequest, reply: FastifyReply) {
     const query = request.query as { cursor?: string; limit?: string };
-    const result = await service.list(query.limit ? Number(query.limit) : 20, query.cursor);
+    const limite = Math.min(Math.max(Number(query.limit) || 20, 1), 1000);
+    const result = await service.list(limite, query.cursor);
     return reply.send(result);
   },
   async getById(request: FastifyRequest, reply: FastifyReply) {

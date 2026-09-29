@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, apiLogin, API_BASE_URL, randomPlaca } from './helpers.js';
+import { loginAs, apiLogin, apiCreateMotorista, API_BASE_URL, randomPlaca } from './helpers.js';
 
 /**
  * Módulo 6 — Integração TMS+WMS. Pré-requisito honesto: não existe NENHUM
@@ -13,9 +13,15 @@ import { loginAs, apiLogin, API_BASE_URL, randomPlaca } from './helpers.js';
 test('a seção WMS da viagem mostra a expedição vinculada a ela', async ({ page, request }) => {
   const token = await apiLogin(request, 'OPERADOR');
 
+  const motoristaId = await apiCreateMotorista(request, token);
   const viagemRes = await request.post(`${API_BASE_URL}/viagens`, {
     headers: { Authorization: `Bearer ${token}` },
-    data: { placa_cavalo: randomPlaca(), origem: 'Uruguaiana/RS', destino: 'Encarnación/PY' },
+    data: {
+      placa_cavalo: randomPlaca(),
+      motorista_id: motoristaId,
+      origem: 'Uruguaiana/RS',
+      destino: 'Encarnación/PY',
+    },
   });
   expect(viagemRes.ok()).toBeTruthy();
   const viagem = (await viagemRes.json()) as { id: string };

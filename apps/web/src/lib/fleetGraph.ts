@@ -1,3 +1,4 @@
+import { STATUS_VIAGEM_EM_ANDAMENTO } from '@rigabras/shared';
 import * as THREE from 'three';
 import type { Viagem } from '@rigabras/shared';
 
@@ -27,7 +28,7 @@ export interface FleetGraph {
 }
 
 /** Status em que o caminhão está efetivamente na estrada. */
-export const MOVING_STATUS = ['EM_COLETA', 'EM_TRANSITO', 'NA_FRONTEIRA', 'EM_MONITORAMENTO'];
+export const MOVING_STATUS: string[] = [...STATUS_VIAGEM_EM_ANDAMENTO, 'EM_COLETA', 'EM_TRANSITO', 'EM_MONITORAMENTO'];
 
 export const MAX_NODES = 40;
 export const MAX_EDGES = 80;

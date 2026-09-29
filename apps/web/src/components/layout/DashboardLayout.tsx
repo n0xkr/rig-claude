@@ -5,7 +5,7 @@ import {
   Bot,
   ClipboardCheck,
   Clock,
-  FileSpreadsheet,
+  IdCard,
   Gauge,
   LayoutDashboard,
   LogOut,
@@ -48,6 +48,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/dashboard', label: 'Painel', icon: LayoutDashboard, modulo: 'painel' },
   { to: '/viagens', label: 'Viagens', icon: Truck, modulo: 'viagens' },
+  { to: '/motoristas', label: 'Motoristas', icon: IdCard, modulo: 'motoristas' },
   { to: '/rigabras-ai', label: 'RIGABRAS AI', icon: Bot, modulo: 'rigabras_ai' },
   { to: '/portaria', label: 'Portaria', icon: ClipboardCheck, modulo: 'portaria' },
   { to: '/fronteira/kpis', label: 'KPIs de fronteira', icon: Gauge, modulo: 'fronteira' },
@@ -58,13 +59,6 @@ const NAV: NavItem[] = [
   { to: '/wms', label: 'WMS', icon: Warehouse, modulo: 'wms' },
   { to: '/exportacoes', label: 'Exportações', icon: UploadCloud, modulo: 'exportacoes' },
   { to: '/importar-dados', label: 'Importar dados', icon: UploadCloud, modulo: 'importacao' },
-  {
-    to: '/importar-ia',
-    label: 'Importar com IA',
-    icon: FileSpreadsheet,
-    roles: ['SUPERADMIN', 'ADMIN', 'OPERADOR'],
-    modulo: 'importacao',
-  },
   {
     to: '/solicitacoes-ia',
     label: 'Solicitações da IA',

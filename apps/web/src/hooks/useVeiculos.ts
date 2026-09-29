@@ -18,7 +18,7 @@ export function useVeiculosList() {
     setState('loading');
     setError(null);
     try {
-      const result = await api.get<ListResponse>('/veiculos?limit=100');
+      const result = await api.get<ListResponse>('/veiculos?limit=1000');
       setVeiculos(result.data);
       setState('success');
     } catch (err) {

@@ -4,43 +4,247 @@ export const UserRoleSchema = z.enum(['SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITA
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 /**
- * Ciclo de vida operacional da viagem (Módulo 2 — TMS Operacional), estendendo o
- * fluxo original do Módulo 1 (Gerenciamento de Risco) em etapas mais granulares:
- * Programação -> Coleta -> Documentação -> Veículo/Motorista -> Validação ->
- * Viagem -> (Monitoramento/Eventos são transversais, ver módulo eventos_risco) ->
- * Entrega -> Encerramento.
+ * Ciclo de vida operacional da viagem — fluxo real da operação Rigabras
+ * (Brasil ↔ Mercosul via Uruguaiana/Paso de los Libres):
+ *
+ * Programada/agendada -> em trânsito para o cliente -> no cliente aguardando
+ * carregamento -> carregado aguardando documentos -> em trânsito para a
+ * fronteira -> na fronteira (aguardando descarga OU só aguardando o pedido de
+ * cruze — nem todo veículo é descarregado na fronteira) -> programado para
+ * carregar -> carregado -> aduanas Multilog / Cotecar (entrada e saída) ->
+ * aduana de destino (chegada e saída) -> chegada no cliente -> vazio no
+ * cliente -> saída do cliente -> retornando vazio -> fim de viagem.
+ *
+ * Os valores antigos (AGUARDANDO_COLETA, EM_COLETA, EM_DOCUMENTACAO, ...)
+ * continuam no enum só para ler linhas antigas do histórico: não fazem parte
+ * do fluxo e a migration 0014 converte as viagens que ainda estavam neles.
  */
 export const StatusViagemSchema = z.enum([
-  'PROGRAMADA', // Programação
-  'AGUARDANDO_COLETA', // Coleta (agendada, ainda não iniciada)
-  'EM_COLETA', // Coleta (em execução)
-  'EM_DOCUMENTACAO', // Documentação (CRT/MIC-DTA/Fatura em elaboração/conferência)
-  'VEICULO_MOTORISTA_DEFINIDO', // Veículo/Motorista alocados e confirmados
-  'EM_VALIDACAO_PRE_EMBARQUE', // Validação (cross-check documental pré-embarque)
-  'EM_TRANSITO', // Viagem em rota
-  'NA_FRONTEIRA', // Sub-fluxo de travessia de fronteira
-  'EM_MONITORAMENTO', // Monitoramento pós-fronteira até a entrega
-  'ENTREGUE', // Entrega
-  'ENCERRADA', // Encerramento
+  'PROGRAMADA',
+  'EM_TRANSITO_CLIENTE',
+  'NO_CLIENTE_AGUARDANDO_CARREGAMENTO',
+  'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  'EM_TRANSITO_FRONTEIRA',
+  'NA_FRONTEIRA',
+  'NA_FRONTEIRA_AGUARDANDO_CRUZE',
+  'PROGRAMADO_CARREGAR',
+  'CARREGADO',
+  'ENTRADA_ADUANA_MULTILOG',
+  'SAIDA_ADUANA_MULTILOG',
+  'ENTRADA_ADUANA_COTECAR',
+  'SAIDA_ADUANA_COTECAR',
+  'CHEGADA_ADUANA_DESTINO',
+  'SAIDA_ADUANA_DESTINO',
+  'CHEGADA_CLIENTE',
+  'VAZIO_NO_CLIENTE',
+  'SAIDA_CLIENTE',
+  'RETORNANDO_VAZIO',
+  'ENCERRADA',
   'CANCELADA',
+  // Legados (fluxo anterior) — só leitura.
+  'AGUARDANDO_COLETA',
+  'EM_COLETA',
+  'EM_DOCUMENTACAO',
+  'VEICULO_MOTORISTA_DEFINIDO',
+  'EM_VALIDACAO_PRE_EMBARQUE',
+  'EM_TRANSITO',
+  'EM_MONITORAMENTO',
+  'ENTREGUE',
 ]);
 export type StatusViagem = z.infer<typeof StatusViagemSchema>;
 
-/** Transições válidas da máquina de estados de uma viagem (critério #1). */
-export const TRANSICOES_STATUS_VIAGEM: Record<StatusViagem, StatusViagem[]> = {
-  PROGRAMADA: ['AGUARDANDO_COLETA', 'CANCELADA'],
-  AGUARDANDO_COLETA: ['EM_COLETA', 'CANCELADA'],
-  EM_COLETA: ['EM_DOCUMENTACAO', 'CANCELADA'],
-  EM_DOCUMENTACAO: ['VEICULO_MOTORISTA_DEFINIDO', 'CANCELADA'],
-  VEICULO_MOTORISTA_DEFINIDO: ['EM_VALIDACAO_PRE_EMBARQUE', 'CANCELADA'],
-  EM_VALIDACAO_PRE_EMBARQUE: ['EM_TRANSITO', 'EM_DOCUMENTACAO', 'CANCELADA'],
-  EM_TRANSITO: ['NA_FRONTEIRA', 'EM_MONITORAMENTO', 'CANCELADA'],
-  NA_FRONTEIRA: ['EM_MONITORAMENTO', 'EM_TRANSITO', 'CANCELADA'],
-  EM_MONITORAMENTO: ['ENTREGUE', 'NA_FRONTEIRA', 'CANCELADA'],
-  ENTREGUE: ['ENCERRADA'],
-  ENCERRADA: [],
-  CANCELADA: [],
+/** Etapas do fluxo, na ordem em que acontecem (sem CANCELADA e sem os legados). */
+export const FLUXO_STATUS_VIAGEM: StatusViagem[] = [
+  'PROGRAMADA',
+  'EM_TRANSITO_CLIENTE',
+  'NO_CLIENTE_AGUARDANDO_CARREGAMENTO',
+  'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  'EM_TRANSITO_FRONTEIRA',
+  'NA_FRONTEIRA',
+  'NA_FRONTEIRA_AGUARDANDO_CRUZE',
+  'PROGRAMADO_CARREGAR',
+  'CARREGADO',
+  'ENTRADA_ADUANA_MULTILOG',
+  'SAIDA_ADUANA_MULTILOG',
+  'ENTRADA_ADUANA_COTECAR',
+  'SAIDA_ADUANA_COTECAR',
+  'CHEGADA_ADUANA_DESTINO',
+  'SAIDA_ADUANA_DESTINO',
+  'CHEGADA_CLIENTE',
+  'VAZIO_NO_CLIENTE',
+  'SAIDA_CLIENTE',
+  'RETORNANDO_VAZIO',
+  'ENCERRADA',
+];
+
+export const STATUS_VIAGEM_LEGADOS: StatusViagem[] = [
+  'AGUARDANDO_COLETA',
+  'EM_COLETA',
+  'EM_DOCUMENTACAO',
+  'VEICULO_MOTORISTA_DEFINIDO',
+  'EM_VALIDACAO_PRE_EMBARQUE',
+  'EM_TRANSITO',
+  'EM_MONITORAMENTO',
+  'ENTREGUE',
+];
+
+export const STATUS_VIAGEM_LABEL: Record<StatusViagem, string> = {
+  PROGRAMADA: 'Programada / agendada',
+  EM_TRANSITO_CLIENTE: 'Veículo em trânsito para o cliente',
+  NO_CLIENTE_AGUARDANDO_CARREGAMENTO: 'Veículo no cliente aguardando carregamento',
+  CARREGADO_AGUARDANDO_DOCUMENTOS: 'Veículo carregado aguardando documentos',
+  EM_TRANSITO_FRONTEIRA: 'Carregado em trânsito para a fronteira',
+  NA_FRONTEIRA: 'Na fronteira aguardando descarga',
+  NA_FRONTEIRA_AGUARDANDO_CRUZE: 'Na fronteira aguardando pedido de cruze',
+  PROGRAMADO_CARREGAR: 'Veículo programado para carregar',
+  CARREGADO: 'Veículo carregado',
+  ENTRADA_ADUANA_MULTILOG: 'Entrada aduana Multilog',
+  SAIDA_ADUANA_MULTILOG: 'Saída aduana Multilog',
+  ENTRADA_ADUANA_COTECAR: 'Entrada aduana Cotecar',
+  SAIDA_ADUANA_COTECAR: 'Saída aduana Cotecar',
+  CHEGADA_ADUANA_DESTINO: 'Chegada aduana de destino',
+  SAIDA_ADUANA_DESTINO: 'Saída aduana de destino',
+  CHEGADA_CLIENTE: 'Chegada no cliente',
+  VAZIO_NO_CLIENTE: 'Vazio no cliente',
+  SAIDA_CLIENTE: 'Saída do cliente',
+  RETORNANDO_VAZIO: 'Retornando vazio',
+  ENCERRADA: 'Fim de viagem',
+  CANCELADA: 'Cancelada',
+  AGUARDANDO_COLETA: 'Aguardando coleta (antigo)',
+  EM_COLETA: 'Em coleta (antigo)',
+  EM_DOCUMENTACAO: 'Em documentação (antigo)',
+  VEICULO_MOTORISTA_DEFINIDO: 'Veículo/motorista definido (antigo)',
+  EM_VALIDACAO_PRE_EMBARQUE: 'Em validação pré-embarque (antigo)',
+  EM_TRANSITO: 'Em trânsito (antigo)',
+  EM_MONITORAMENTO: 'Em monitoramento (antigo)',
+  ENTREGUE: 'Entregue (antigo)',
 };
+
+/** Status antigo -> etapa equivalente do fluxo atual (usado pela migration 0014 e pela importação). */
+export const STATUS_VIAGEM_LEGADO_PARA_ATUAL: Partial<Record<StatusViagem, StatusViagem>> = {
+  AGUARDANDO_COLETA: 'EM_TRANSITO_CLIENTE',
+  EM_COLETA: 'NO_CLIENTE_AGUARDANDO_CARREGAMENTO',
+  EM_DOCUMENTACAO: 'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  VEICULO_MOTORISTA_DEFINIDO: 'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  EM_VALIDACAO_PRE_EMBARQUE: 'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  EM_TRANSITO: 'EM_TRANSITO_FRONTEIRA',
+  EM_MONITORAMENTO: 'SAIDA_ADUANA_DESTINO',
+  ENTREGUE: 'VAZIO_NO_CLIENTE',
+};
+
+/**
+ * Transições da máquina de estados. A operação real pula etapas (nem todo
+ * veículo passa por Multilog e Cotecar, nem todo é descarregado na fronteira),
+ * então a partir de uma etapa é possível ir para QUALQUER etapa posterior,
+ * voltar uma etapa (correção de lançamento) ou cancelar. Status antigos
+ * entram no fluxo em qualquer etapa. Administradores podem forçar qualquer
+ * status (ver ViagensService.changeStatus).
+ */
+export const TRANSICOES_STATUS_VIAGEM: Record<StatusViagem, StatusViagem[]> = (() => {
+  const t = {} as Record<StatusViagem, StatusViagem[]>;
+  for (const s of StatusViagemSchema.options) t[s] = [];
+  FLUXO_STATUS_VIAGEM.forEach((s, i) => {
+    if (s === 'ENCERRADA') return;
+    const anterior = i > 0 ? [FLUXO_STATUS_VIAGEM[i - 1]!] : [];
+    t[s] = [...FLUXO_STATUS_VIAGEM.slice(i + 1), ...anterior, 'CANCELADA'];
+  });
+  t.ENCERRADA = ['RETORNANDO_VAZIO'];
+  for (const s of STATUS_VIAGEM_LEGADOS) t[s] = [...FLUXO_STATUS_VIAGEM.slice(1), 'CANCELADA'];
+  return t;
+})();
+
+/** Viagem já teve a carga entregue (base para abrir o fechamento do frete). */
+export const STATUS_VIAGEM_CARGA_ENTREGUE: StatusViagem[] = [
+  'VAZIO_NO_CLIENTE',
+  'SAIDA_CLIENTE',
+  'RETORNANDO_VAZIO',
+  'ENCERRADA',
+  'ENTREGUE',
+];
+
+/** Viagem terminada (não ocupa mais veículo nem motorista). */
+export const STATUS_VIAGEM_TERMINAIS: StatusViagem[] = ['ENCERRADA', 'CANCELADA', 'ENTREGUE'];
+
+/** Veículo parado na fronteira/aduanas (destacado no painel e no mapa 3D). */
+export const STATUS_VIAGEM_EM_FRONTEIRA: StatusViagem[] = [
+  'NA_FRONTEIRA',
+  'NA_FRONTEIRA_AGUARDANDO_CRUZE',
+  'PROGRAMADO_CARREGAR',
+  'CARREGADO',
+  'ENTRADA_ADUANA_MULTILOG',
+  'SAIDA_ADUANA_MULTILOG',
+  'ENTRADA_ADUANA_COTECAR',
+  'SAIDA_ADUANA_COTECAR',
+];
+
+/** Viagem com o veículo rodando/operando (nem agendada, nem terminada). */
+export const STATUS_VIAGEM_EM_ANDAMENTO: StatusViagem[] = FLUXO_STATUS_VIAGEM.filter(
+  (s) => s !== 'PROGRAMADA' && s !== 'ENCERRADA',
+);
+
+const semAcento = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/**
+ * Deduz a etapa da viagem a partir de um texto livre de planilha
+ * ("VEICULO NA MULTILOG AGUARD. LIBERAÇÃO", "20 Finalizado", "Em trânsito p/
+ * fronteira"...). Devolve `null` quando o texto não indica nenhuma etapa com
+ * segurança — nesse caso a importação pergunta à IA ou mantém o status atual.
+ */
+export function statusViagemDeTexto(texto: unknown): StatusViagem | null {
+  if (texto === null || texto === undefined) return null;
+  const bruto = String(texto).trim();
+  if (bruto === '') return null;
+  const direto = bruto.toUpperCase().replace(/[^A-Z_]/g, '');
+  if ((StatusViagemSchema.options as string[]).includes(direto)) {
+    const s = direto as StatusViagem;
+    return STATUS_VIAGEM_LEGADO_PARA_ATUAL[s] ?? s;
+  }
+  const t = ` ${semAcento(bruto)} `;
+  const tem = (...ps: string[]) => ps.some((p) => t.includes(p));
+  const aguardando = tem(' aguard', ' esperando', ' aguarda ');
+  const saiu = !aguardando && tem(' saida', ' saiu', ' liberad', ' liberou', ' despachad');
+
+  if (tem(' cancelad')) return 'CANCELADA';
+  if (tem(' fim de viagem', ' finalizad', ' encerrad', ' concluid')) return 'ENCERRADA';
+  if (tem(' retornando', ' retorno vazio', ' voltando', ' regressando')) return 'RETORNANDO_VAZIO';
+  if (tem(' vazio no cliente', ' descarregad', ' descarregou', ' descarga concluida'))
+    return 'VAZIO_NO_CLIENTE';
+  if (tem(' cliente') && saiu && !tem(' aduana')) return 'SAIDA_CLIENTE';
+  if (tem(' multilog')) return saiu ? 'SAIDA_ADUANA_MULTILOG' : 'ENTRADA_ADUANA_MULTILOG';
+  if (tem(' cotecar', ' libres', ' paso de los'))
+    return saiu ? 'SAIDA_ADUANA_COTECAR' : 'ENTRADA_ADUANA_COTECAR';
+  if (tem(' aduana destino', ' aduana de destino', ' aduana no destino', ' aduana final'))
+    return saiu ? 'SAIDA_ADUANA_DESTINO' : 'CHEGADA_ADUANA_DESTINO';
+  if (tem(' programado para carregar', ' programado p carregar', ' programado pra carregar'))
+    return 'PROGRAMADO_CARREGAR';
+  if (tem(' cruze', ' cruce', ' cruzar')) return 'NA_FRONTEIRA_AGUARDANDO_CRUZE';
+  if (tem(' fronteira')) {
+    if (tem(' transito', ' rumo', ' indo', ' a caminho', ' em viagem'))
+      return 'EM_TRANSITO_FRONTEIRA';
+    return 'NA_FRONTEIRA';
+  }
+  if (tem(' no cliente', ' chegada cliente', ' chegou no cliente', ' chegou ao cliente')) {
+    if (tem(' descarreg', ' descarga', ' entrega')) return 'CHEGADA_CLIENTE';
+    if (tem(' carreg')) return 'NO_CLIENTE_AGUARDANDO_CARREGAMENTO';
+    return 'CHEGADA_CLIENTE';
+  }
+  if (tem(' aguardando documento', ' aguard doc', ' aguardando doc', ' aguardando crt'))
+    return 'CARREGADO_AGUARDANDO_DOCUMENTOS';
+  if (tem(' aguardando carregamento', ' aguard carreg', ' carregando', ' para carregar'))
+    return 'NO_CLIENTE_AGUARDANDO_CARREGAMENTO';
+  if (tem(' transito para o cliente', ' transito p cliente', ' indo para o cliente', ' indo carregar'))
+    return 'EM_TRANSITO_CLIENTE';
+  if (tem(' em viagem', ' em transito', ' em rota', ' rodando')) return 'EM_TRANSITO_FRONTEIRA';
+  if (tem(' carregado', ' carregou')) return 'CARREGADO_AGUARDANDO_DOCUMENTOS';
+  if (tem(' programad', ' agendad', ' aberta', ' planejad')) return 'PROGRAMADA';
+  return null;
+}
 
 export const SeveridadeRiscoSchema = z.enum(['BAIXA', 'MEDIA', 'ALTA', 'CRITICA']);
 export type SeveridadeRisco = z.infer<typeof SeveridadeRiscoSchema>;
@@ -344,6 +548,8 @@ export type OrigemEventoViagem = z.infer<typeof OrigemEventoViagemSchema>;
  */
 export const STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA: StatusViagem[] = [
   'PROGRAMADA',
+  'EM_TRANSITO_CLIENTE',
+  'NO_CLIENTE_AGUARDANDO_CARREGAMENTO',
   'AGUARDANDO_COLETA',
   'EM_COLETA',
 ];

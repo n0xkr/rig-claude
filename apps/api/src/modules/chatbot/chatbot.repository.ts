@@ -70,7 +70,7 @@ export class ChatbotRepository {
     const { data, error } = await supabaseAdmin
       .from('viagens')
       .select('id')
-      .eq('status', 'EM_DOCUMENTACAO')
+      .in('status', ['CARREGADO_AGUARDANDO_DOCUMENTOS', 'EM_DOCUMENTACAO'])
       .is('deleted_at', null);
     if (error) throw error;
     return (data ?? []).length;

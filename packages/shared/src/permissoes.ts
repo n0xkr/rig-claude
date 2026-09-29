@@ -19,6 +19,7 @@ export const MODULOS = [
   { key: 'fretes', label: 'Financeiro do frete' },
   { key: 'acompanhamento', label: 'Acompanhamento de veículos' },
   { key: 'frota', label: 'Frota e manutenções' },
+  { key: 'motoristas', label: 'Motoristas' },
   { key: 'jornada', label: 'Jornada de motoristas' },
   { key: 'wms', label: 'WMS — Armazém' },
   { key: 'exportacoes', label: 'Exportações (ERP)' },

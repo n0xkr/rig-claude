@@ -66,6 +66,8 @@ const EnvSchema = z.object({
   // de texto de propósito geral atualmente disponível na conta usada por
   // este projeto (verificado via GET /openai/v1/models da Groq).
   GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
+  /** Modelo com visão (lê fotos de CNH/CRLV no OCR de motoristas). */
+  GROQ_VISION_MODEL: z.string().default('meta-llama/llama-4-scout-17b-16e-instruct'),
 
   /**
    * E-mails (separados por vírgula) autorizados a ver a trilha de Auditoria.

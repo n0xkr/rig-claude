@@ -1,3 +1,4 @@
+import { STATUS_VIAGEM_EM_FRONTEIRA, STATUS_VIAGEM_LABEL } from '@rigabras/shared';
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, QuadraticBezierLine } from '@react-three/drei';
@@ -24,10 +25,11 @@ const KIND_COLOR: Record<NodeKind, string> = {
 };
 const KIND_LABEL: Record<NodeKind, string> = { ORIGEM: 'Origem', DESTINO: 'Destino', HUB: 'Hub' };
 const PARTICLES_PER_EDGE = 6;
+const EM_FRONTEIRA = new Set<string>(STATUS_VIAGEM_EM_FRONTEIRA);
 const HOME_POS = new THREE.Vector3(0, 8.5, 13);
 const HOME_TARGET = new THREE.Vector3(0, 0, 0);
 
-const statusLabel = (s: string) => s.replace(/_/g, ' ').toLowerCase();
+const statusLabel = (s: string) => (STATUS_VIAGEM_LABEL as Record<string, string>)[s] ?? s.replace(/_/g, ' ').toLowerCase();
 
 interface Props {
   viagens: Viagem[];
@@ -134,7 +136,7 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
     if (!m) return;
     const c = new THREE.Color();
     graph.moving.forEach((t, i) => {
-      m.setColorAt(i, c.set(t.viagem.status === 'NA_FRONTEIRA' ? '#f59e0b' : '#334155'));
+      m.setColorAt(i, c.set(EM_FRONTEIRA.has(t.viagem.status) ? '#f59e0b' : '#334155'));
     });
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [graph]);
@@ -144,7 +146,7 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
     const tm = trucks.current;
     if (tm) {
       graph.moving.forEach((t, i) => {
-        const halted = t.viagem.status === 'NA_FRONTEIRA';
+        const halted = EM_FRONTEIRA.has(t.viagem.status);
         const u = halted ? 0.5 : (time * 0.06 + t.phase) % 1;
         bezierAt(p, t.edge.from.position, t.edge.control, t.edge.to.position, u);
         bezierAt(
@@ -203,7 +205,7 @@ function Edge({ edge, dim }: { edge: GraphEdge; dim: boolean }) {
       start={edge.from.position}
       end={edge.to.position}
       mid={edge.control}
-      color={edge.viagens.some((v) => v.status === 'NA_FRONTEIRA') ? '#f59e0b' : '#2563eb'}
+      color={edge.viagens.some((v) => EM_FRONTEIRA.has(v.status)) ? '#f59e0b' : '#2563eb'}
       lineWidth={dim ? 0.6 : 1.8}
       transparent
       opacity={dim ? 0.15 : 0.7}

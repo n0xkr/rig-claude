@@ -176,3 +176,67 @@ export class GroqNotConfiguredError extends Error {
     this.name = 'GroqNotConfiguredError';
   }
 }
+
+/**
+ * Chamada com imagens (modelo de visão) em modo JSON — usada pelo OCR de
+ * documentos (CNH/CRLV). `imagens` são data URLs (`data:image/jpeg;base64,...`).
+ * Quem chama valida o conteúdo com Zod.
+ */
+const MODELOS_VISAO = [
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+];
+
+export async function completeJsonComImagens(
+  system: string,
+  texto: string,
+  imagens: string[],
+  maxTokens = 1200,
+): Promise<unknown> {
+  if (!isGroqConfigured) {
+    throw new GroqNotConfiguredError();
+  }
+  const conteudo = [
+    { type: 'text' as const, text: texto },
+    ...imagens.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
+  ];
+  // Modelos de visão da Groq são trocados com frequência: tenta o configurado e, se ele
+  // não existir mais (404 model_not_found / descontinuado), os demais conhecidos.
+  const modelos = [...new Set([env.GROQ_VISION_MODEL, ...MODELOS_VISAO])];
+  let completion: Awaited<ReturnType<ReturnType<typeof getClient>['chat']['completions']['create']>> | null = null;
+  let ultimoErro: unknown = null;
+  for (const model of modelos) {
+    try {
+      completion = await getClient().chat.completions.create({
+        model,
+        temperature: 0,
+        max_tokens: maxTokens,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: conteudo },
+        ],
+      });
+      break;
+    } catch (err) {
+      ultimoErro = err;
+      const status = (err as { status?: number }).status;
+      const texto = String((err as { message?: string }).message ?? '');
+      if (status === 404 || /model_not_found|decommission|does not exist|not support/i.test(texto)) {
+        logger.warn({ model }, 'Modelo de visão indisponível na Groq; tentando o próximo');
+        continue;
+      }
+      throw err;
+    }
+  }
+  if (!completion) throw ultimoErro ?? new Error('Nenhum modelo de visão disponível na Groq');
+  const raw = completion.choices[0]?.message?.content;
+  if (!raw) throw new Error('Resposta vazia da Groq');
+  const json = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
+  try {
+    return JSON.parse(json);
+  } catch (parseError) {
+    logger.error({ raw, parseError }, 'Groq (visão) devolveu JSON inválido');
+    throw new Error('Resposta da Groq não é um JSON válido');
+  }
+}

@@ -1,7 +1,7 @@
 import {
   CreateManutencaoVeiculoSchema,
   CreateVeiculoSchema,
-  CreateViagemSchema,
+  ImportViagemSchema,
 } from '@rigabras/shared';
 import type {
   CommitImportacaoResult,
@@ -16,7 +16,7 @@ import { ImportacaoRepository } from './importacao.repository.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 const TARGET_SCHEMA = {
-  viagens: CreateViagemSchema,
+  viagens: ImportViagemSchema,
   manutencoes_veiculo: CreateManutencaoVeiculoSchema,
   veiculos: CreateVeiculoSchema,
 } as const;

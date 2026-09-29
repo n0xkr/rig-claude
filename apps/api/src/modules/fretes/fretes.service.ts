@@ -25,9 +25,10 @@ import {
   NotFoundError,
 } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
+import { STATUS_VIAGEM_CARGA_ENTREGUE, STATUS_VIAGEM_LABEL } from '@rigabras/shared';
 
 /** Status de viagem que habilitam a abertura do fechamento financeiro do frete (critério: "tied to the existing viagens entity"). */
-const STATUS_VIAGEM_ELEGIVEIS_PARA_FRETE = new Set(['ENTREGUE', 'ENCERRADA']);
+const STATUS_VIAGEM_ELEGIVEIS_PARA_FRETE = new Set<string>(STATUS_VIAGEM_CARGA_ENTREGUE);
 
 /** Status de frete em que o cabeçalho comercial ainda pode ser editado. */
 const STATUS_FRETE_EDITAVEIS = new Set<StatusFechamentoFrete>([
@@ -72,7 +73,7 @@ export class FretesService {
       throw new DomainError(
         'Viagem não elegível para fechamento financeiro',
         422,
-        `A viagem precisa estar ENTREGUE ou ENCERRADA para abrir o fechamento do frete (status atual: ${viagem.status})`,
+        `A carga precisa ter sido entregue (vazio no cliente, saída do cliente, retornando vazio ou fim de viagem) para abrir o fechamento do frete (status atual: ${STATUS_VIAGEM_LABEL[viagem.status] ?? viagem.status})`,
       );
     }
     const existing = await this.repo.findByViagemId(input.viagem_id);

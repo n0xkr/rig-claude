@@ -82,11 +82,17 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/** Datas viram YYYY-MM-DD (componentes locais) para não "voltar um dia" ao serializar em UTC. */
+/**
+ * Datas viram YYYY-MM-DD (componentes locais) para não "voltar um dia" ao serializar em UTC;
+ * quando a célula tem hora, YYYY-MM-DDTHH:mm (sem fuso — hora local da planilha).
+ */
 export function normalizarCelula(v: unknown): unknown {
   if (v instanceof Date) {
     if (Number.isNaN(v.getTime())) return null;
-    return `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+    const dia = `${v.getFullYear()}-${pad(v.getMonth() + 1)}-${pad(v.getDate())}`;
+    return v.getHours() === 0 && v.getMinutes() === 0
+      ? dia
+      : `${dia}T${pad(v.getHours())}:${pad(v.getMinutes())}`;
   }
   if (typeof v === 'string') {
     const t = v.trim();

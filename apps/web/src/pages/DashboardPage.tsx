@@ -1,3 +1,4 @@
+import { MOVING_STATUS } from '../lib/fleetGraph.js';
 import { lazy, Suspense, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Truck, Fuel, Wrench, Network } from 'lucide-react';
@@ -23,9 +24,7 @@ export default function DashboardPage() {
   const { state, kpis, error, reload } = useFrotaKpis({});
   const { state: viagensState, viagens } = useViagensList();
 
-  const emTransito = viagens.filter((v) =>
-    ['EM_TRANSITO', 'NA_FRONTEIRA', 'EM_MONITORAMENTO'].includes(v.status),
-  ).length;
+  const emTransito = viagens.filter((v) => MOVING_STATUS.includes(v.status)).length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">

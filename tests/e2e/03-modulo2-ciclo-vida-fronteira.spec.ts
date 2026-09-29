@@ -1,54 +1,39 @@
 import { test, expect } from '@playwright/test';
-import { loginAs, novaPlaca } from './helpers.js';
+import { loginAs, preencherNovaViagem } from './helpers.js';
 
-/**
- * Módulo 2 (TMS Operacional). Nota sobre um gap real encontrado nesta
- * sessão: `ViagemDetailPage` já lia o histórico de status
- * (`useViagemStatusHistory`), mas nenhuma tela tinha um controle para de
- * fato mudar o status (`PATCH /viagens/:id/status` só era chamado pelo
- * fluxo do Módulo 6/testes de API, nunca pela UI). Foi adicionado um
- * controle mínimo "Avançar status da viagem" em `ViagemDetailPage.tsx`
- * (select + botão, usando a mesma `TRANSICOES_STATUS_VIAGEM` do backend)
- * para fechar esse gap e permitir testar esse fluxo pela UI de verdade.
- */
+/** Fluxo operacional da viagem pela UI (etapas reais, com saltos permitidos). */
 test('transiciona o status de uma viagem pela UI e vê a linha do tempo atualizar', async ({
   page,
 }) => {
   await loginAs(page, 'OPERADOR');
-  const placa = await novaPlaca(page);
-  await page.getByRole('link', { name: 'Nova viagem' }).click();
-  await page.getByLabel('Placa do cavalo *').selectOption(placa);
-  await page.getByLabel('Origem *').fill('Uruguaiana/RS');
-  await page.getByLabel('Destino *', { exact: true }).fill('Santiago/CL');
+  const placa = await preencherNovaViagem(page, 'Santiago/CL');
   await page.getByRole('button', { name: 'Criar viagem' }).click();
-  await page.getByText(placa).click();
+  await page.getByText(placa).first().click();
 
-  await expect(page.getByText('Nenhuma transição de status registrada ainda.')).toBeVisible();
+  await expect(page.getByText('Nenhuma mudança de etapa registrada ainda.')).toBeVisible();
 
-  await page.getByTestId('viagem-proximo-status').selectOption('AGUARDANDO_COLETA');
+  await page.getByTestId('viagem-proximo-status').selectOption('EM_TRANSITO_CLIENTE');
   await page.getByTestId('viagem-confirmar-status').click();
+  await expect(page.getByText('Programada / agendada →')).toBeVisible();
 
-  await expect(page.getByText('PROGRAMADA →')).toBeVisible();
-  await expect(page.getByText('AGUARDANDO COLETA').first()).toBeVisible();
-
-  // Uma segunda transição confirma que a máquina de estados avança de novo
-  // (e não fica presa mostrando sempre a primeira linha do histórico).
-  await page.getByTestId('viagem-proximo-status').selectOption('EM_COLETA');
+  // Pula etapas (nem todo veículo passa por todas): direto para "aguardando pedido de cruze".
+  await expect(
+    page
+      .getByTestId('viagem-proximo-status')
+      .locator('option[value="NA_FRONTEIRA_AGUARDANDO_CRUZE"]'),
+  ).toHaveCount(1);
+  await page.getByTestId('viagem-proximo-status').selectOption('NA_FRONTEIRA_AGUARDANDO_CRUZE');
   await page.getByTestId('viagem-confirmar-status').click();
-  await expect(page.getByText('AGUARDANDO COLETA →')).toBeVisible();
+  await expect(page.getByText('Veículo em trânsito para o cliente →')).toBeVisible();
 });
 
 test('KPIs de fronteira: registra uma etapa e vê o painel agregado por rota/viagem', async ({
   page,
 }) => {
   await loginAs(page, 'OPERADOR');
-  const placa = await novaPlaca(page);
-  await page.getByRole('link', { name: 'Nova viagem' }).click();
-  await page.getByLabel('Placa do cavalo *').selectOption(placa);
-  await page.getByLabel('Origem *').fill('Uruguaiana/RS');
-  await page.getByLabel('Destino *', { exact: true }).fill('Montevidéu/UY');
+  const placa = await preencherNovaViagem(page, 'Montevidéu/UY');
   await page.getByRole('button', { name: 'Criar viagem' }).click();
-  await page.getByText(placa).click();
+  await page.getByText(placa).first().click();
 
   await page.getByRole('link', { name: 'Travessia de fronteira' }).click();
   await expect(page.getByText('Nenhuma etapa registrada')).toBeVisible();
