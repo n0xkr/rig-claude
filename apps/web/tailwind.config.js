@@ -1,3 +1,6 @@
+import plugin from 'tailwindcss/plugin';
+import temas from './themes.cjs';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -6,13 +9,18 @@ export default {
       fontFamily: {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
+      // Escalas (slate, blue, red, ...) vêm de variáveis CSS: cada tema em
+      // themes.cjs redefine as variáveis, sem tocar nas classes das páginas.
       colors: {
+        ...temas.coresTailwind(),
+        canvas: 'rgb(var(--canvas) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
         rigabras: {
           950: '#0f172a',
           900: '#111c34',
           700: '#1e3a5f',
-          500: '#2563eb',
-          100: '#dbeafe',
+          500: 'rgb(var(--c-blue-600) / <alpha-value>)',
+          100: 'rgb(var(--c-blue-100) / <alpha-value>)',
         },
         tms: {
           cyan: '#00f2fe',
@@ -27,6 +35,12 @@ export default {
           yellowdark: '#eab308',
         },
       },
+      // `white` como fundo/borda/anel é a superfície dos cards (muda com o
+      // tema); `text-white` continua branco de verdade (texto sobre botões).
+      backgroundColor: { white: 'rgb(var(--surface) / <alpha-value>)' },
+      borderColor: { white: 'rgb(var(--surface) / <alpha-value>)' },
+      ringColor: { white: 'rgb(var(--surface) / <alpha-value>)' },
+      divideColor: { white: 'rgb(var(--surface) / <alpha-value>)' },
       boxShadow: {
         'glow-green': '0 0 20px rgba(34, 197, 94, 0.35), 0 0 60px rgba(34, 197, 94, 0.15)',
         'glow-yellow': '0 0 20px rgba(250, 204, 21, 0.35), 0 0 60px rgba(250, 204, 21, 0.15)',
@@ -58,5 +72,9 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    plugin(({ addBase }) => {
+      addBase(temas.cssDosTemas());
+    }),
+  ],
 };

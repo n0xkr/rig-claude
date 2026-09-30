@@ -299,7 +299,7 @@ function ModalCadastro({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-900/40 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <form

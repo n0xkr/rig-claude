@@ -29,7 +29,7 @@ export function DonutChart({ data, size = 170 }: { data: Slice[]; size?: number 
             cy={size / 2}
             r={r}
             fill="none"
-            stroke="#F1F5F9"
+            style={{ stroke: 'rgb(var(--c-slate-100))' }}
             strokeWidth={stroke}
           />
           {total > 0 &&

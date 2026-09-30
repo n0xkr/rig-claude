@@ -85,7 +85,7 @@ export function CircularProgress({
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="#F1F5F9"
+          style={{ stroke: 'rgb(var(--c-slate-100))' }}
           strokeWidth={stroke}
           fill="none"
         />

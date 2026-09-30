@@ -9,8 +9,8 @@ body,
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: rgb(var(--canvas));
+  color: rgb(var(--c-slate-900));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

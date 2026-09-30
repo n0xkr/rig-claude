@@ -18,6 +18,7 @@ import {
   Truck,
   UploadCloud,
   Users,
+  Database,
   Wallet,
   Warehouse,
   Wrench,
@@ -31,6 +32,7 @@ import { api, getCurrentUserRole } from '../../lib/apiClient.js';
 import { useResumoSolicitacoesIa } from '../../hooks/useSolicitacoesIa.js';
 import { haptic } from '../../lib/haptics.js';
 import { podeAcessar } from '../../lib/permissoes.js';
+import { ThemeToggle } from '../theme/ThemeToggle.js';
 
 interface NavItem {
   to: string;
@@ -69,6 +71,7 @@ const NAV: NavItem[] = [
   },
   { to: '/auditoria', label: 'Auditoria', icon: ShieldCheck, exigeAuditoria: true },
   { to: '/usuarios', label: 'Usuários', icon: Users, roles: ['SUPERADMIN'] },
+  { to: '/gerenciar-dados', label: 'Gerenciar dados', icon: Database, roles: ['SUPERADMIN'] },
 ];
 
 function isActive(pathname: string, to: string): boolean {
@@ -201,7 +204,7 @@ export function DashboardLayout({
 
   return (
     <div className="relative min-h-screen overflow-x-clip text-slate-900">
-      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-slate-50" />
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-canvas" />
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
         <div
@@ -230,6 +233,7 @@ export function DashboardLayout({
             {current?.label ?? 'Rigabras TMS'}
           </p>
           <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
             <Link
               to="/perfil"
               data-testid="perfil-link"
@@ -309,7 +313,7 @@ export function DashboardLayout({
         {drawer && (
           <>
             <motion.div
-              className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
