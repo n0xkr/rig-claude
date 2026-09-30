@@ -1,8 +1,8 @@
-import { AlertTriangle, Inbox, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Inbox, RefreshCw } from 'lucide-react';
 
 export function LoadingSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-3" role="status" aria-label="Carregando">
+    <div className="space-y-3" role="status">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="h-16 w-full animate-pulse rounded-xl bg-slate-100" />
       ))}
@@ -41,7 +41,10 @@ export function EmptyState({
 
 export function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-red-200 bg-red-50 py-12 text-center">
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-red-200 bg-red-50 py-12 text-center"
+    >
       <AlertTriangle className="h-8 w-8 text-red-600" />
       <p className="font-medium text-red-700">Não foi possível carregar os dados</p>
       <p className="max-w-sm text-sm text-red-600">{message}</p>
@@ -55,10 +58,3 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-export function Spinner({ label = 'Carregando...' }: { label?: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-sm text-slate-500">
-      <Loader2 className="h-4 w-4 animate-spin" /> {label}
-    </span>
-  );
-}

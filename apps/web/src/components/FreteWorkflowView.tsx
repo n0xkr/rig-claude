@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ClipboardList,
   History,
-  PackageX,
   Receipt,
   XCircle,
 } from 'lucide-react';
@@ -418,19 +417,6 @@ export function FreteWorkflowView({ freteId }: { freteId: string }) {
         </ol>
       )}
     </div>
-  );
-}
-
-/** Empty-state chip usado quando a viagem não tem carga de retorno (frete de retorno vazio, critério #4). */
-export function RetornoVazioChip({ vazio }: { vazio: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-        vazio ? 'bg-slate-200 text-slate-700' : 'bg-teal-50 text-teal-700'
-      }`}
-    >
-      <PackageX className="h-3 w-3" /> {vazio ? 'Retorno vazio' : 'Retorno com carga'}
-    </span>
   );
 }
 

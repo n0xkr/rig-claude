@@ -40,6 +40,7 @@ export default function ProdutosListPage() {
 
       <div className="mb-4">
         <select
+          aria-label="Filtrar por depositante"
           className="input max-w-xs"
           value={depositanteId ?? ''}
           onChange={(e) => setSearchParams(e.target.value ? { depositanteId: e.target.value } : {})}
@@ -140,6 +141,7 @@ function ProdutoForm({
     >
       <select
         required
+        aria-label="Depositante"
         className="input col-span-2 sm:col-span-1"
         value={form.depositante_id}
         onChange={novo.aoMudar(
@@ -160,6 +162,7 @@ function ProdutoForm({
       <input
         required
         placeholder="SKU"
+        aria-label="SKU"
         className="input"
         value={form.sku}
         onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
@@ -167,12 +170,14 @@ function ProdutoForm({
       <input
         required
         placeholder="Descrição"
+        aria-label="Descrição"
         className="input col-span-2 sm:col-span-1"
         value={form.descricao}
         onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
       />
       <input
         placeholder="Peso (kg)"
+        aria-label="Peso (kg)"
         type="number"
         min={0}
         step="0.01"
@@ -182,6 +187,7 @@ function ProdutoForm({
       />
       <input
         placeholder="Volume (m³)"
+        aria-label="Volume (m³)"
         type="number"
         min={0}
         step="0.001"

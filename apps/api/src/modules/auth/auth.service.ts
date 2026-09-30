@@ -29,6 +29,13 @@ export class AuthService {
    * promoção a OPERADOR/ADMIN é feita manualmente por um admin depois).
    */
   async register(email: string, password: string, nomeCompleto: string): Promise<Session> {
+    if (!env.ALLOW_PUBLIC_REGISTRATION) {
+      throw new DomainError(
+        'Cadastro desativado',
+        403,
+        'O cadastro é feito por um administrador. Solicite seu acesso.',
+      );
+    }
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -152,9 +159,13 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string): Promise<Session> {
-    let payload: { sub: string };
+    let payload: { sub: string; type?: string };
     try {
-      payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as { sub: string };
+      payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] }) as {
+        sub: string;
+        type?: string;
+      };
+      if (payload.type !== 'refresh') throw new Error('tipo de token inválido');
     } catch {
       throw new DomainError('Refresh token inválido', 401, 'Faça login novamente');
     }

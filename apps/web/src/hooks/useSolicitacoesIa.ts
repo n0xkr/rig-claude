@@ -119,7 +119,10 @@ export function useResumoSolicitacoesIa(opcoes: { pollMs?: number } = {}) {
 
   useEffect(() => {
     if (!pollMs || pollMs <= 0) return undefined;
-    const timer = window.setInterval(() => void recarregar(), pollMs);
+    // Não consulta com a aba em segundo plano (economiza rede e requisições à API).
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void recarregar();
+    }, pollMs);
     return () => window.clearInterval(timer);
   }, [pollMs, recarregar]);
 

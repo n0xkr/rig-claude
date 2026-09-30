@@ -11,19 +11,24 @@ export interface GpuProfile {
   envResolution: number;
   antialias: boolean;
   prefersReducedMotion: boolean;
+  /** `false` quando o navegador não consegue criar contexto WebGL (mostrar fallback em texto). */
+  hasWebgl: boolean;
 }
 
 let cached: GpuProfile | null = null;
 
-function detectWebglRenderer(): string {
+/** Sonda única: devolve o nome do renderer (`null` = sem WebGL) e libera o contexto na hora. */
+function probeWebgl(): string | null {
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
-    if (!gl) return '';
+    if (!gl) return null;
     const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+    const name = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return name;
   } catch {
-    return '';
+    return null;
   }
 }
 
@@ -32,7 +37,8 @@ export function getGpuProfile(): GpuProfile {
   const ua = navigator.userAgent;
   const isMobile =
     /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || window.matchMedia('(pointer: coarse)').matches;
-  const renderer = detectWebglRenderer();
+  const probe = probeWebgl();
+  const renderer = probe ?? '';
   const softwareRenderer = /swiftshader|llvmpipe|software|basic render/i.test(renderer);
   const weakMobileGpu = /Mali-[GT]?[0-9]{1,3}\b|Adreno \(TM\) [1-5][0-9]{2}\b|PowerVR/i.test(
     renderer,
@@ -47,6 +53,7 @@ export function getGpuProfile(): GpuProfile {
     envResolution: lowPower ? 32 : isMobile ? 64 : 256,
     antialias: !isMobile && !lowPower,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    hasWebgl: probe !== null,
   };
   return cached;
 }

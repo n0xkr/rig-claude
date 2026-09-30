@@ -1,6 +1,6 @@
-import { STATUS_VIAGEM_EM_ANDAMENTO } from '@rigabras/shared';
 import * as THREE from 'three';
 import type { Viagem } from '@rigabras/shared';
+import { MOVING_STATUS } from './viagemGrupos.js';
 
 export type NodeKind = 'ORIGEM' | 'DESTINO' | 'HUB';
 
@@ -25,13 +25,12 @@ export interface FleetGraph {
   edges: GraphEdge[];
   /** Viagens em deslocamento (aparecem como caminhões instanciados). */
   moving: { viagem: Viagem; edge: GraphEdge; phase: number }[];
+  /** Quantos nós, viagens sem rota (teto de rotas) e caminhões ficaram de fora por causa dos tetos (MAX_*), para avisar o usuário. */
+  omitted: { nodes: number; edges: number; trucks: number };
 }
 
-/** Status em que o caminhão está efetivamente na estrada. */
-export const MOVING_STATUS: string[] = [...STATUS_VIAGEM_EM_ANDAMENTO, 'EM_COLETA', 'EM_TRANSITO', 'EM_MONITORAMENTO'];
-
-export const MAX_NODES = 40;
-export const MAX_EDGES = 80;
+const MAX_NODES = 40;
+const MAX_EDGES = 80;
 export const MAX_TRUCKS = 300;
 
 function hash(s: string): number {
@@ -91,13 +90,14 @@ export function buildFleetGraph(viagens: Viagem[]): FleetGraph {
   for (const v of ativas) {
     asOrigin.add(norm(v.origem));
     asDest.add(norm(v.destino));
-    ensure(v.origem).viagens.push(v);
-    ensure(v.destino).viagens.push(v);
+    const origem = ensure(v.origem);
+    const destino = ensure(v.destino);
+    origem.viagens.push(v);
+    if (destino !== origem) destino.viagens.push(v); // origem = destino: conta uma vez só
   }
 
-  const nodes = [...byKey.values()]
-    .sort((a, b) => b.viagens.length - a.viagens.length)
-    .slice(0, MAX_NODES);
+  const sorted = [...byKey.values()].sort((a, b) => b.viagens.length - a.viagens.length);
+  const nodes = sorted.slice(0, MAX_NODES);
   const keep = new Set(nodes.map((n) => n.id));
 
   nodes.forEach((n, i) => {
@@ -110,6 +110,7 @@ export function buildFleetGraph(viagens: Viagem[]): FleetGraph {
   });
 
   const edgeMap = new Map<string, GraphEdge>();
+  let edgesOmitted = 0;
   for (const v of ativas) {
     const a = byKey.get(norm(v.origem));
     const b = byKey.get(norm(v.destino));
@@ -117,7 +118,10 @@ export function buildFleetGraph(viagens: Viagem[]): FleetGraph {
     const id = `${a.id}>${b.id}`;
     let e = edgeMap.get(id);
     if (!e) {
-      if (edgeMap.size >= MAX_EDGES) continue;
+      if (edgeMap.size >= MAX_EDGES) {
+        edgesOmitted += 1;
+        continue;
+      }
       const mid = a.position.clone().add(b.position).multiplyScalar(0.5);
       mid.y += 0.4 + 0.18 * a.position.distanceTo(b.position);
       e = { id, from: a, to: b, control: mid, viagens: [] };
@@ -128,12 +132,22 @@ export function buildFleetGraph(viagens: Viagem[]): FleetGraph {
 
   const edges = [...edgeMap.values()];
   const moving: FleetGraph['moving'] = [];
+  let trucksOmitted = 0;
   for (const e of edges) {
     for (const v of e.viagens) {
-      if (MOVING_STATUS.includes(v.status) && moving.length < MAX_TRUCKS) {
-        moving.push({ viagem: v, edge: e, phase: hash(v.id) });
-      }
+      if (!MOVING_STATUS.has(v.status)) continue;
+      if (moving.length < MAX_TRUCKS) moving.push({ viagem: v, edge: e, phase: hash(v.id) });
+      else trucksOmitted += 1;
     }
   }
-  return { nodes, edges, moving };
+  return {
+    nodes,
+    edges,
+    moving,
+    omitted: {
+      nodes: sorted.length - nodes.length,
+      edges: edgesOmitted,
+      trucks: trucksOmitted,
+    },
+  };
 }

@@ -1,24 +1,15 @@
-import { Component, Suspense, useEffect, type ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Environment, Lightformer } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface HDRIEnvironmentProps {
-  /**
-   * URL de um mapa `.hdr` (RGBE) ou `.exr` ultra-compacto (ex: 1k). Opcional:
-   * sem ele (ou se o download falhar) usa-se um estúdio procedural com
-   * Lightformers — zero bytes de rede, ideal para PWA offline.
-   */
-  hdrUrl?: string;
   /** Exposição do tone mapping ACES Filmic. */
   exposure?: number;
   /** Intensidade dos reflexos do ambiente nos materiais PBR. */
   intensity?: number;
   /** Resolução do cubemap (use `getGpuProfile().envResolution`). */
   resolution?: number;
-  /** Cor de fundo de fallback (aplicada se `opaque`). */
-  fallbackColor?: string;
-  opaque?: boolean;
 }
 
 /** Aplica ACESFilmic + exposição no renderer e agenda um re-render (demand). */
@@ -67,46 +58,19 @@ function ProceduralStudio({ resolution, intensity }: { resolution: number; inten
   );
 }
 
-class HdriBoundary extends Component<
-  { fallback: ReactNode; children: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
-}
-
 /**
- * Iluminação HDRI otimizada para web/PWA: carrega `.hdr`/`.exr` via
- * RGBELoader/EXRLoader (drei) quando `hdrUrl` é informado, cai para o estúdio
- * procedural em caso de erro/carregamento, e controla exposição (ACES Filmic).
+ * Iluminação de estúdio procedural para web/PWA (zero bytes de rede, funciona offline)
+ * com tone mapping ACES Filmic e exposição controlada.
  */
 export function HDRIEnvironment({
-  hdrUrl,
   exposure = 1.1,
   intensity = 1,
   resolution = 128,
-  fallbackColor = '#f8fafc',
-  opaque = false,
 }: HDRIEnvironmentProps) {
-  const procedural = <ProceduralStudio resolution={resolution} intensity={intensity} />;
   return (
     <>
       <ToneMapping exposure={exposure} />
-      {opaque && <color attach="background" args={[fallbackColor]} />}
-      {hdrUrl ? (
-        <HdriBoundary fallback={procedural}>
-          <Suspense fallback={procedural}>
-            <Environment files={hdrUrl} environmentIntensity={intensity} />
-          </Suspense>
-        </HdriBoundary>
-      ) : (
-        procedural
-      )}
+      <ProceduralStudio resolution={resolution} intensity={intensity} />
     </>
   );
 }

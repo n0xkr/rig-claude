@@ -31,7 +31,9 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   }
   const token = authHeader.slice('Bearer '.length);
   try {
-    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as AccessTokenPayload;
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, {
+      algorithms: ['HS256'],
+    }) as AccessTokenPayload;
     request.user = payload;
   } catch {
     await Problems.unauthorized(reply, 'Token de acesso inválido ou expirado');

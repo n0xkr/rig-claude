@@ -1,9 +1,18 @@
 import type { FastifyInstance } from 'fastify';
-import { authenticate, requireRole } from '../../middleware/auth.js';
+import { authenticate, requireModulo, requireRole } from '../../middleware/auth.js';
 import { MotoristasController } from './motoristas.controller.js';
 
 export async function motoristasRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('onRequest', authenticate);
+  // Dados pessoais (CPF, CNH, documentos): exige o módulo Motoristas ou Viagens (o cadastro rápido
+  // da viagem grava motoristas); as demais telas que só consultam o cadastro leem via GET.
+  app.addHook(
+    'preHandler',
+    requireModulo({
+      modulos: ['motoristas', 'viagens'],
+      leitura: ['jornada', 'fronteira', 'portaria', 'painel', 'fretes', 'wms'],
+    }),
+  );
   app.get(
     '/',
     { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE') },

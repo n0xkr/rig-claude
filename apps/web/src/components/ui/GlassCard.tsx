@@ -53,10 +53,6 @@ export function GlassCard({
   );
 }
 
-export function accentText(accent: GlassAccent): string {
-  return ACCENT[accent].text;
-}
-
 /** Classes do "chip" de ícone (fundo suave + cor do acento). */
 export function accentChip(accent: GlassAccent): string {
   return ACCENT[accent].chip;

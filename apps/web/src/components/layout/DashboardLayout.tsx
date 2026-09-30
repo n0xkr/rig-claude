@@ -100,13 +100,15 @@ function NavList({
             key={to}
             to={to}
             title={label}
+            aria-label={collapsed ? label : undefined}
+            aria-current={active ? 'page' : undefined}
             onClick={() => {
               haptic('tap');
               onNavigate?.();
             }}
             className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
               active ? 'text-blue-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-            }`}
+            } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
           >
             {active && (
               <motion.span
@@ -122,6 +124,7 @@ function NavList({
             {contagem > 0 && (
               <span
                 data-testid="nav-badge-solicitacoes"
+                role="status"
                 aria-label={`${contagem} pendentes`}
                 className={`relative rounded-full bg-blue-600 px-1.5 text-[10px] font-bold leading-4 text-white ${
                   collapsed ? 'absolute right-1 top-1' : 'ml-auto'
@@ -162,6 +165,16 @@ export function DashboardLayout({
 
   useEffect(() => setDrawer(false), [pathname]);
 
+  // Esc fecha o menu lateral (mobile).
+  useEffect(() => {
+    if (!drawer) return undefined;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawer(false);
+    };
+    document.addEventListener('keydown', aoTeclar);
+    return () => document.removeEventListener('keydown', aoTeclar);
+  }, [drawer]);
+
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   useEffect(() => {
     let ativo = true;
@@ -197,6 +210,16 @@ export function DashboardLayout({
   function logout() {
     haptic('warning');
     localStorage.removeItem('rigabras_access_token');
+    // Descarta respostas da API guardadas pelo service worker: o próximo usuário deste
+    // navegador não pode enxergar dados do anterior (ex.: motoristas, fretes) offline.
+    if ('caches' in window) {
+      void caches
+        .keys()
+        .then((keys) =>
+          Promise.all(keys.filter((k) => k.includes('api')).map((k) => caches.delete(k))),
+        )
+        .catch(() => undefined);
+    }
     // Apaga o cookie httpOnly do refresh token no servidor (senão a sessão seguia renovável).
     void api.post('/auth/logout').catch(() => undefined);
     navigate('/login');
@@ -204,6 +227,12 @@ export function DashboardLayout({
 
   return (
     <div className="relative min-h-screen overflow-x-clip text-slate-900">
+      <a
+        href="#conteudo"
+        className="sr-only z-[60] rounded-lg bg-white px-3 py-2 text-sm font-medium text-blue-700 shadow focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        Pular para o conteúdo
+      </a>
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-canvas" />
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
@@ -261,7 +290,6 @@ export function DashboardLayout({
               data-testid="logout-button"
               onClick={logout}
               className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
-              title={`Papel atual: ${role ?? '-'}`}
             >
               <LogOut className="h-4 w-4" /> Sair
               {role && <span className="hidden text-slate-400 sm:inline">({role})</span>}
@@ -298,6 +326,7 @@ export function DashboardLayout({
           onClick={() => setCollapsed((c) => !c)}
           className="mt-2 flex shrink-0 items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          aria-expanded={!collapsed}
         >
           {collapsed ? (
             <PanelLeftOpen className="h-[18px] w-[18px]" />
@@ -320,6 +349,9 @@ export function DashboardLayout({
               onClick={() => setDrawer(false)}
             />
             <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu de navegação"
               className="fixed bottom-3 left-3 top-3 z-50 flex w-64 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-xl lg:hidden"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
@@ -334,6 +366,7 @@ export function DashboardLayout({
                   type="button"
                   onClick={() => setDrawer(false)}
                   aria-label="Fechar menu"
+                  autoFocus
                   className="rounded-xl p-1 text-slate-500 transition-all duration-200 hover:bg-slate-50 hover:text-slate-900"
                 >
                   <X className="h-5 w-5" />
@@ -353,7 +386,9 @@ export function DashboardLayout({
       </AnimatePresence>
 
       <main
-        className="transition-[padding] duration-300 lg:pl-[calc(var(--sidebar-w)+2rem)]"
+        id="conteudo"
+        tabIndex={-1}
+        className="outline-none transition-[padding] duration-300 lg:pl-[calc(var(--sidebar-w)+2rem)]"
         style={{ ['--sidebar-w' as string]: collapsed ? '4.5rem' : '15rem' }}
       >
         {viewport && <section className="px-4 pt-4">{viewport}</section>}

@@ -13,10 +13,14 @@ let client: Groq | null = null;
 
 function getClient(): Groq {
   if (!client) {
-    client = new Groq({ apiKey: env.GROQ_API_KEY });
+    // Timeout/retry explícitos: sem eles o SDK espera até ~60s x 3 tentativas por requisição.
+    client = new Groq({ apiKey: env.GROQ_API_KEY, timeout: 25_000, maxRetries: 1 });
   }
   return client;
 }
+
+/** Trecho curto da resposta para diagnóstico; o texto completo pode conter dados pessoais (OCR de CNH). */
+const amostra = (texto: string) => texto.slice(0, 200);
 
 export interface ViagemRiskContext {
   numeroCrt: string | null;
@@ -72,14 +76,17 @@ export async function analyzeViagemRisk(context: ViagemRiskContext): Promise<Ris
   try {
     parsedJson = JSON.parse(raw);
   } catch (parseError) {
-    logger.error({ raw, parseError }, 'Falha ao fazer parse do JSON retornado pela Groq');
+    logger.error(
+      { raw: amostra(raw), parseError },
+      'Falha ao fazer parse do JSON retornado pela Groq',
+    );
     throw new Error('Resposta da Groq não é um JSON válido');
   }
 
   const result = RiskAnalysisResultSchema.safeParse(parsedJson);
   if (!result.success) {
     logger.error(
-      { raw, issues: result.error.issues },
+      { raw: amostra(raw), issues: result.error.issues },
       'Resposta da Groq não corresponde ao schema esperado',
     );
     throw new Error('Resposta da Groq não corresponde ao schema de RiskAnalysisResult');
@@ -163,7 +170,7 @@ export async function completeJson(
   try {
     return JSON.parse(raw);
   } catch (parseError) {
-    logger.error({ raw, parseError }, 'Groq devolveu JSON inválido');
+    logger.error({ raw: amostra(raw), parseError }, 'Groq devolveu JSON inválido');
     throw new Error('Resposta da Groq não é um JSON válido');
   }
 }
@@ -203,7 +210,9 @@ export async function completeJsonComImagens(
   // Modelos de visão da Groq são trocados com frequência: tenta o configurado e, se ele
   // não existir mais (404 model_not_found / descontinuado), os demais conhecidos.
   const modelos = [...new Set([env.GROQ_VISION_MODEL, ...MODELOS_VISAO])];
-  let completion: Awaited<ReturnType<ReturnType<typeof getClient>['chat']['completions']['create']>> | null = null;
+  let completion: Awaited<
+    ReturnType<ReturnType<typeof getClient>['chat']['completions']['create']>
+  > | null = null;
   let ultimoErro: unknown = null;
   for (const model of modelos) {
     try {
@@ -222,7 +231,10 @@ export async function completeJsonComImagens(
       ultimoErro = err;
       const status = (err as { status?: number }).status;
       const texto = String((err as { message?: string }).message ?? '');
-      if (status === 404 || /model_not_found|decommission|does not exist|not support/i.test(texto)) {
+      if (
+        status === 404 ||
+        /model_not_found|decommission|does not exist|not support/i.test(texto)
+      ) {
         logger.warn({ model }, 'Modelo de visão indisponível na Groq; tentando o próximo');
         continue;
       }
@@ -236,7 +248,7 @@ export async function completeJsonComImagens(
   try {
     return JSON.parse(json);
   } catch (parseError) {
-    logger.error({ raw, parseError }, 'Groq (visão) devolveu JSON inválido');
+    logger.error({ raw: amostra(raw), parseError }, 'Groq (visão) devolveu JSON inválido');
     throw new Error('Resposta da Groq não é um JSON válido');
   }
 }

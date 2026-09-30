@@ -14,8 +14,16 @@ import { pgErrorToProblem } from '../../lib/pgErrors.js';
 export const TABELAS: Array<{ tabela: string; rotulo: string; grupo: string }> = [
   { tabela: 'viagens', rotulo: 'Viagens', grupo: 'Operação' },
   { tabela: 'viagem_cargas', rotulo: 'Cargas das viagens (CRT/DANFE)', grupo: 'Operação' },
-  { tabela: 'status_viagem_historico', rotulo: 'Histórico de status das viagens', grupo: 'Operação' },
-  { tabela: 'viagem_motorista_historico', rotulo: 'Histórico de motorista das viagens', grupo: 'Operação' },
+  {
+    tabela: 'status_viagem_historico',
+    rotulo: 'Histórico de status das viagens',
+    grupo: 'Operação',
+  },
+  {
+    tabela: 'viagem_motorista_historico',
+    rotulo: 'Histórico de motorista das viagens',
+    grupo: 'Operação',
+  },
   { tabela: 'eventos_risco', rotulo: 'Eventos de risco', grupo: 'Operação' },
   { tabela: 'documentos_embarque', rotulo: 'Documentos de embarque', grupo: 'Operação' },
   { tabela: 'eventos_fronteira', rotulo: 'Eventos de fronteira', grupo: 'Operação' },
@@ -30,7 +38,11 @@ export const TABELAS: Array<{ tabela: string; rotulo: string; grupo: string }> =
   { tabela: 'fretes', rotulo: 'Fretes', grupo: 'Financeiro' },
   { tabela: 'frete_lancamentos', rotulo: 'Lançamentos de frete', grupo: 'Financeiro' },
   { tabela: 'pagamentos_frete', rotulo: 'Pagamentos de frete', grupo: 'Financeiro' },
-  { tabela: 'status_frete_historico', rotulo: 'Histórico de status dos fretes', grupo: 'Financeiro' },
+  {
+    tabela: 'status_frete_historico',
+    rotulo: 'Histórico de status dos fretes',
+    grupo: 'Financeiro',
+  },
   { tabela: 'manutencoes_veiculo', rotulo: 'Manutenções', grupo: 'Frota e jornada' },
   { tabela: 'registros_jornada', rotulo: 'Registros de jornada', grupo: 'Frota e jornada' },
   { tabela: 'armazens', rotulo: 'Armazéns', grupo: 'WMS' },
@@ -53,6 +65,11 @@ export const TABELAS: Array<{ tabela: string; rotulo: string; grupo: string }> =
   { tabela: 'import_datasets', rotulo: 'Lotes de importação', grupo: 'Importação e IA' },
   { tabela: 'ia_solicitacoes', rotulo: 'Solicitações da IA', grupo: 'Importação e IA' },
   { tabela: 'ia_conhecimento', rotulo: 'Respostas aprendidas pela IA', grupo: 'Importação e IA' },
+  {
+    tabela: 'campos_personalizados',
+    rotulo: 'Campos criados pelas planilhas',
+    grupo: 'Importação e IA',
+  },
 ];
 const PERMITIDAS = new Set(TABELAS.map((t) => t.tabela));
 
@@ -72,7 +89,8 @@ export interface ColunaMeta {
 type Row = Record<string, unknown>;
 
 function exigirTabela(tabela: string) {
-  if (!PERMITIDAS.has(tabela)) throw new DomainError('Tabela não permitida', 404, `"${tabela}" não é gerenciável aqui.`);
+  if (!PERMITIDAS.has(tabela))
+    throw new DomainError('Tabela não permitida', 404, `"${tabela}" não é gerenciável aqui.`);
 }
 
 function falha(err: unknown): never {
@@ -95,6 +113,7 @@ async function metadadosDoBanco(): Promise<Record<string, ColunaMeta[]> | null> 
         Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
         Accept: 'application/openapi+json',
       },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!resp.ok) return null;
     const doc = (await resp.json()) as {
@@ -126,8 +145,23 @@ function colunasDasLinhas(linhas: Row[]): ColunaMeta[] {
   const nomes = [...new Set(linhas.flatMap((l) => Object.keys(l)))];
   return nomes.map((nome) => {
     const v = linhas.map((l) => l[nome]).find((x) => x !== null && x !== undefined);
-    const tipo = typeof v === 'number' ? 'number' : typeof v === 'boolean' ? 'boolean' : v && typeof v === 'object' ? 'object' : 'string';
-    return { nome, tipo, formato: tipo === 'object' ? 'jsonb' : null, obrigatoria: false, temPadrao: nome === 'id' || nome === 'created_at', opcoes: null, referencia: null };
+    const tipo =
+      typeof v === 'number'
+        ? 'number'
+        : typeof v === 'boolean'
+          ? 'boolean'
+          : v && typeof v === 'object'
+            ? 'object'
+            : 'string';
+    return {
+      nome,
+      tipo,
+      formato: tipo === 'object' ? 'jsonb' : null,
+      obrigatoria: false,
+      temPadrao: nome === 'id' || nome === 'created_at',
+      opcoes: null,
+      referencia: null,
+    };
   });
 }
 
@@ -136,7 +170,12 @@ export async function colunasDe(tabela: string): Promise<ColunaMeta[]> {
   const defs = await metadadosDoBanco();
   if (defs) {
     const c = defs[tabela];
-    if (!c) throw new DomainError('Tabela inexistente', 404, `A tabela "${tabela}" não existe neste banco (migration pendente?).`);
+    if (!c)
+      throw new DomainError(
+        'Tabela inexistente',
+        404,
+        `A tabela "${tabela}" não existe neste banco (migration pendente?).`,
+      );
     return c;
   }
   const { data } = await supabaseAdmin.from(tabela).select('*').limit(50);
@@ -152,8 +191,14 @@ function converter(valor: unknown, col: ColunaMeta | undefined): unknown {
   if (typeof valor === 'string') {
     const t = valor.trim();
     if (col.tipo === 'integer' || col.tipo === 'number') {
-      const n = Number(t.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
-      if (!Number.isFinite(n)) throw new DomainError('Valor inválido', 422, `"${col.nome}" precisa ser um número.`);
+      const n = Number(
+        t
+          .replace(/\s/g, '')
+          .replace(/\.(?=\d{3}(\D|$))/g, '')
+          .replace(',', '.'),
+      );
+      if (!Number.isFinite(n))
+        throw new DomainError('Valor inválido', 422, `"${col.nome}" precisa ser um número.`);
       return col.tipo === 'integer' ? Math.round(n) : n;
     }
     if (col.tipo === 'boolean') return /^(true|sim|s|1)$/i.test(t);
@@ -161,7 +206,11 @@ function converter(valor: unknown, col: ColunaMeta | undefined): unknown {
       try {
         return JSON.parse(t);
       } catch {
-        if (col.tipo === 'array') return t.split(',').map((x) => x.trim()).filter(Boolean);
+        if (col.tipo === 'array')
+          return t
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean);
         throw new DomainError('Valor inválido', 422, `"${col.nome}" precisa ser JSON válido.`);
       }
     }
@@ -174,7 +223,8 @@ function prepararDados(dados: Row, colunas: ColunaMeta[], criando: boolean): Row
   const out: Row = Object.create(null);
   for (const [k, v] of Object.entries(dados)) {
     if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
-    if (porNome.size > 0 && !porNome.has(k)) throw new DomainError('Coluna inexistente', 422, `A coluna "${k}" não existe.`);
+    if (porNome.size > 0 && !porNome.has(k))
+      throw new DomainError('Coluna inexistente', 422, `A coluna "${k}" não existe.`);
     if (!criando && (k === 'id' || k === 'created_at')) continue;
     const c = converter(v, porNome.get(k));
     if (c === undefined) continue;
@@ -193,17 +243,25 @@ export class AdminDadosService {
     return TABELAS.filter((t) => !defs || defs[t.tabela]);
   }
 
-  async listar(tabela: string, opts: { q?: string; pagina: number; porPagina: number; excluidos: boolean }) {
+  async listar(
+    tabela: string,
+    opts: { q?: string; pagina: number; porPagina: number; excluidos: boolean },
+  ) {
     const colunas = await colunasDe(tabela);
     const nomes = new Set(colunas.map((c) => c.nome));
     let query = supabaseAdmin.from(tabela).select('*', { count: 'exact' });
-    if (nomes.has('deleted_at')) query = opts.excluidos ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null);
+    if (nomes.has('deleted_at'))
+      query = opts.excluidos ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null);
     const q = escaparBusca(opts.q ?? '');
     if (q) {
       if (/^[0-9a-f-]{36}$/i.test(q)) query = query.eq('id', q);
       else {
-        const textos = colunas.filter((c) => c.tipo === 'string' && (!c.formato || /^(text|character varying)$/.test(c.formato)));
-        if (textos.length > 0) query = query.or(textos.map((c) => `${c.nome}.ilike.*${q}*`).join(','));
+        const textos = colunas.filter(
+          (c) =>
+            c.tipo === 'string' && (!c.formato || /^(text|character varying)$/.test(c.formato)),
+        );
+        if (textos.length > 0)
+          query = query.or(textos.map((c) => `${c.nome}.ilike.*${q}*`).join(','));
       }
     }
     const ordem = nomes.has('created_at') ? 'created_at' : nomes.has('id') ? 'id' : null;
@@ -212,7 +270,11 @@ export class AdminDadosService {
     const { data, error, count } = await query.range(ini, ini + opts.porPagina - 1);
     if (error) falha(error);
     const linhas = (data ?? []) as Row[];
-    return { data: linhas, total: count ?? linhas.length, colunas: colunas.length ? colunas : colunasDasLinhas(linhas) };
+    return {
+      data: linhas,
+      total: count ?? linhas.length,
+      colunas: colunas.length ? colunas : colunasDasLinhas(linhas),
+    };
   }
 
   async criar(tabela: string, dados: Row, userId: string, ip: string | null) {
@@ -221,31 +283,62 @@ export class AdminDadosService {
     const { data, error } = await supabaseAdmin.from(tabela).insert(row).select('*').single();
     if (error) falha(error);
     const criado = data as Row;
-    await writeAuditLog({ userId, action: 'CREATE', entity: tabela, entityId: String(criado.id ?? ''), changes: { via: 'gerenciador de dados', dados: row }, ip });
+    await writeAuditLog({
+      userId,
+      action: 'CREATE',
+      entity: tabela,
+      entityId: String(criado.id ?? ''),
+      changes: { via: 'gerenciador de dados', dados: row },
+      ip,
+    });
     return criado;
   }
 
   async atualizar(tabela: string, id: string, dados: Row, userId: string, ip: string | null) {
     const colunas = await colunasDe(tabela);
     const row = prepararDados(dados, colunas, false);
-    if (Object.keys(row).length === 0) throw new DomainError('Nada para salvar', 400, 'Nenhuma coluna alterada.');
+    if (Object.keys(row).length === 0)
+      throw new DomainError('Nada para salvar', 400, 'Nenhuma coluna alterada.');
     const { data: antes } = await supabaseAdmin.from(tabela).select('*').eq('id', id).maybeSingle();
-    if (!antes) throw new DomainError('Registro não encontrado', 404, `Nenhum registro ${id} em ${tabela}.`);
-    const { data, error } = await supabaseAdmin.from(tabela).update(row).eq('id', id).select('*').single();
+    if (!antes)
+      throw new DomainError('Registro não encontrado', 404, `Nenhum registro ${id} em ${tabela}.`);
+    const { data, error } = await supabaseAdmin
+      .from(tabela)
+      .update(row)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error) falha(error);
     const anterior = Object.fromEntries(Object.keys(row).map((k) => [k, (antes as Row)[k]]));
-    await writeAuditLog({ userId, action: 'UPDATE', entity: tabela, entityId: id, changes: { via: 'gerenciador de dados', antes: anterior, depois: row }, ip });
+    await writeAuditLog({
+      userId,
+      action: 'UPDATE',
+      entity: tabela,
+      entityId: id,
+      changes: { via: 'gerenciador de dados', antes: anterior, depois: row },
+      ip,
+    });
     return data as Row;
   }
 
   /** Exclui: tabela com `deleted_at` vai para a lixeira (restaurável); `definitivo` apaga de vez. */
-  async excluir(tabela: string, id: string, definitivo: boolean, userId: string, ip: string | null) {
+  async excluir(
+    tabela: string,
+    id: string,
+    definitivo: boolean,
+    userId: string,
+    ip: string | null,
+  ) {
     const colunas = await colunasDe(tabela);
     const { data: antes } = await supabaseAdmin.from(tabela).select('*').eq('id', id).maybeSingle();
-    if (!antes) throw new DomainError('Registro não encontrado', 404, `Nenhum registro ${id} em ${tabela}.`);
+    if (!antes)
+      throw new DomainError('Registro não encontrado', 404, `Nenhum registro ${id} em ${tabela}.`);
     const lixeira = !definitivo && colunas.some((c) => c.nome === 'deleted_at');
     const { error } = lixeira
-      ? await supabaseAdmin.from(tabela).update({ deleted_at: new Date().toISOString() }).eq('id', id)
+      ? await supabaseAdmin
+          .from(tabela)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id)
       : await supabaseAdmin.from(tabela).delete().eq('id', id);
     if (error) {
       if ((error as { code?: string }).code === '23503')
@@ -256,7 +349,14 @@ export class AdminDadosService {
         );
       falha(error);
     }
-    await writeAuditLog({ userId, action: 'DELETE', entity: tabela, entityId: id, changes: { via: 'gerenciador de dados', definitivo: !lixeira, registro: antes as Row }, ip });
+    await writeAuditLog({
+      userId,
+      action: 'DELETE',
+      entity: tabela,
+      entityId: id,
+      changes: { via: 'gerenciador de dados', definitivo: !lixeira, registro: antes as Row },
+      ip,
+    });
     return { lixeira };
   }
 }

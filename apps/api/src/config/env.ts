@@ -43,53 +43,76 @@ loadDotEnv();
  * obrigatória. GROQ_API_KEY é tratada como opcional em runtime (o wrapper de
  * IA faz graceful-degrade), mas ainda validada quanto ao formato se presente.
  */
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3333),
-  HOST: z.string().default('0.0.0.0'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3333),
+    HOST: z.string().default('0.0.0.0'),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-  SUPABASE_URL: z.string().min(1, 'SUPABASE_URL é obrigatório'),
-  SUPABASE_ANON_KEY: z.string().min(1, 'SUPABASE_ANON_KEY é obrigatório'),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY é obrigatório'),
+    SUPABASE_URL: z.string().min(1, 'SUPABASE_URL é obrigatório'),
+    SUPABASE_ANON_KEY: z.string().min(1, 'SUPABASE_ANON_KEY é obrigatório'),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY é obrigatório'),
 
-  JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET deve ter ao menos 16 caracteres'),
-  JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET deve ter ao menos 16 caracteres'),
-  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
-  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
-  COOKIE_SECRET: z.string().min(16, 'COOKIE_SECRET deve ter ao menos 16 caracteres'),
+    JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET deve ter ao menos 16 caracteres'),
+    JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET deve ter ao menos 16 caracteres'),
+    JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
+    JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+    COOKIE_SECRET: z.string().min(16, 'COOKIE_SECRET deve ter ao menos 16 caracteres'),
 
-  GROQ_API_KEY: z.string().optional(),
-  // `llama-3.3-70b-versatile` foi descontinuado pela Groq (a API passou a
-  // responder 404 "model_not_found" para ele) — encontrado ao testar o
-  // RIGABRAS AI (Módulo 10) nesta sessão. `openai/gpt-oss-120b` é o modelo
-  // de texto de propósito geral atualmente disponível na conta usada por
-  // este projeto (verificado via GET /openai/v1/models da Groq).
-  GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
-  /** Modelo com visão (lê fotos de CNH/CRLV no OCR de motoristas). */
-  GROQ_VISION_MODEL: z.string().default('meta-llama/llama-4-scout-17b-16e-instruct'),
+    GROQ_API_KEY: z.string().optional(),
+    // `llama-3.3-70b-versatile` foi descontinuado pela Groq (a API passou a
+    // responder 404 "model_not_found" para ele) — encontrado ao testar o
+    // RIGABRAS AI (Módulo 10) nesta sessão. `openai/gpt-oss-120b` é o modelo
+    // de texto de propósito geral atualmente disponível na conta usada por
+    // este projeto (verificado via GET /openai/v1/models da Groq).
+    GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
+    /** Modelo com visão (lê fotos de CNH/CRLV no OCR de motoristas). */
+    GROQ_VISION_MODEL: z.string().default('meta-llama/llama-4-scout-17b-16e-instruct'),
 
-  /**
-   * E-mails (separados por vírgula) autorizados a ver a trilha de Auditoria.
-   * A auditoria é restrita a pessoas específicas — nem o papel SUPERADMIN a vê.
-   */
-  AUDITORIA_EMAILS: z.string().default('otavio@otavio.com'),
+    /**
+     * E-mails (separados por vírgula) autorizados a ver a trilha de Auditoria.
+     * A auditoria é restrita a pessoas específicas — nem o papel SUPERADMIN a vê.
+     */
+    AUDITORIA_EMAILS: z.string().default('otavio@otavio.com'),
 
-  REDIS_URL: z.string().optional(),
-  WEB_ORIGIN: z.string().default('http://localhost:5173'),
+    /** Nº de proxies reversos à frente da API (ex.: 1 com Traefik). Vazio = confia em X-Forwarded-For. */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).optional(),
 
-  /**
-   * Quando `true`, `config/supabase.ts` usa um cliente Supabase falso em
-   * memória (`config/fakeSupabase.ts`) em vez do `@supabase/supabase-js`
-   * real. Existe exclusivamente para dev local/testes sem Docker disponível
-   * (ver docs/NOTES.md e README, seção "Testes") — nunca deve ser `true` em
-   * produção.
-   */
-  USE_FAKE_DB: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true'),
-});
+    /**
+     * Autocadastro em /auth/register. Recomendado `false` em produção: o SUPERADMIN cria os
+     * usuários em /usuarios. Padrão `true` mantém o comportamento anterior.
+     */
+    ALLOW_PUBLIC_REGISTRATION: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+
+    REDIS_URL: z.string().optional(),
+    WEB_ORIGIN: z.string().default('http://localhost:5173'),
+
+    /**
+     * Quando `true`, `config/supabase.ts` usa um cliente Supabase falso em
+     * memória (`config/fakeSupabase.ts`) em vez do `@supabase/supabase-js`
+     * real. Existe exclusivamente para dev local/testes sem Docker disponível
+     * (ver docs/NOTES.md e README, seção "Testes") — nunca deve ser `true` em
+     * produção.
+     */
+    USE_FAKE_DB: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+  })
+  .superRefine((cfg, ctx) => {
+    if (cfg.NODE_ENV === 'production' && cfg.USE_FAKE_DB) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['USE_FAKE_DB'],
+        message:
+          'USE_FAKE_DB=true não é permitido em produção (banco em memória, sem persistência)',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof EnvSchema>;
 

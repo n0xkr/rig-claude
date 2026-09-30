@@ -1,16 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  KeyRound,
-  Pencil,
-  Plus,
-  ShieldCheck,
-  Tags,
-  Trash2,
-  UserPlus,
-  Users,
-  X,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { KeyRound, Pencil, Plus, ShieldCheck, Tags, Trash2, UserPlus, Users } from 'lucide-react';
 import {
   MODULOS,
   resolverPermissoes,
@@ -20,6 +9,7 @@ import {
 } from '@rigabras/shared';
 import { api, ApiError, getCurrentUserEmail } from '../lib/apiClient.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
+import { Modal } from '../components/ui/Modal.js';
 
 interface Usuario {
   id: string;
@@ -51,45 +41,6 @@ const EMPTY_FORM = {
 
 function errMsg(err: unknown): string {
   return err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado';
-}
-
-function Modal({
-  titulo,
-  onClose,
-  children,
-}: {
-  titulo: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  // Portal no <body>: ancestrais animados (transform) prendem o `position: fixed`.
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:rounded-xl"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label={titulo}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">{titulo}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="rounded-xl p-1 text-slate-500 transition-all duration-200 hover:bg-slate-50"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>,
-    document.body,
-  );
 }
 
 /** Grade de checkboxes com os módulos do sistema. */

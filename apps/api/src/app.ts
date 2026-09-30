@@ -21,7 +21,10 @@ export async function buildApp(): Promise<FastifyInstance> {
           : undefined,
     },
     disableRequestLogging: false,
-    trustProxy: true,
+    // Atrás de proxy reverso (Coolify/Traefik) o IP real vem de X-Forwarded-For. Defina
+    // TRUST_PROXY_HOPS com o nº de proxies à frente da API para não aceitar IP forjado.
+    // (o Fastify aceita número de saltos em runtime, mas a tipagem só declara boolean/string)
+    trustProxy: (env.TRUST_PROXY_HOPS ?? true) as boolean,
     genReqId: () => crypto.randomUUID(),
   });
 
@@ -41,7 +44,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
-    allowList: ['127.0.0.1'],
+    // Só em dev/teste (a suíte e2e faz muitos logins em 127.0.0.1). Em produção nada é isento:
+    // com trustProxy, um `X-Forwarded-For: 127.0.0.1` forjado burlaria o limite do login.
+    allowList: env.NODE_ENV === 'production' ? [] : ['127.0.0.1', '::1'],
   });
 
   app.addHook('onRequest', async (request, reply) => {

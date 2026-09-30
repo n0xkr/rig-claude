@@ -44,9 +44,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // Só o framer-motion (usado em todo o app) ganha chunk próprio. `three`/r3f ficam de fora de
+        // propósito: declará-los em manualChunks arrastava helpers compartilhados para o chunk 3D e o
+        // index.html passava a pré-carregar ~1,2 MB de WebGL até na tela de login.
         manualChunks: {
-          three: ['three'],
-          r3f: ['@react-three/fiber', '@react-three/drei'],
           motion: ['framer-motion'],
         },
       },

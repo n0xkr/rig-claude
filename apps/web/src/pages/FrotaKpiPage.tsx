@@ -35,6 +35,7 @@ export default function FrotaKpiPage() {
         <div className="flex items-center gap-2">
           <input
             type="date"
+            aria-label="Período: data inicial"
             value={periodStart}
             onChange={(e) => setPeriodStart(e.target.value)}
             className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-rigabras-500 focus:outline-none"
@@ -42,6 +43,7 @@ export default function FrotaKpiPage() {
           <span className="text-slate-500">até</span>
           <input
             type="date"
+            aria-label="Período: data final"
             value={periodEnd}
             onChange={(e) => setPeriodEnd(e.target.value)}
             className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-rigabras-500 focus:outline-none"
@@ -207,6 +209,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
         <input
           required
           placeholder="ID da viagem"
+          aria-label="ID da viagem"
           value={viagemId}
           onChange={(e) => setViagemId(e.target.value)}
           className="input col-span-2 sm:col-span-1"
@@ -216,6 +219,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
           min={0}
           step="0.01"
           placeholder="Km rodado"
+          aria-label="Km rodado"
           value={kmRodado}
           onChange={(e) => setKmRodado(e.target.value)}
           className="input"
@@ -225,6 +229,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
           min={0}
           step="0.01"
           placeholder="Km vazio"
+          aria-label="Km vazio"
           value={kmVazio}
           onChange={(e) => setKmVazio(e.target.value)}
           className="input"
@@ -234,6 +239,7 @@ function QuilometragemForm({ onSaved }: { onSaved: () => void }) {
           min={0}
           step="0.01"
           placeholder="Consumo (litros)"
+          aria-label="Consumo (litros)"
           value={consumo}
           onChange={(e) => setConsumo(e.target.value)}
           className="input"

@@ -1,4 +1,4 @@
-import { STATUS_VIAGEM_EM_FRONTEIRA, STATUS_VIAGEM_LABEL } from '@rigabras/shared';
+import { STATUS_VIAGEM_LABEL } from '@rigabras/shared';
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, QuadraticBezierLine } from '@react-three/drei';
@@ -7,6 +7,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Viagem } from '@rigabras/shared';
 import { HDRIEnvironment } from './HDRIEnvironment.js';
 import { getGpuProfile } from '../../lib/gpu.js';
+import { FRONTEIRA_STATUS } from '../../lib/viagemGrupos.js';
 import { haptic } from '../../lib/haptics.js';
 import {
   bezierAt,
@@ -25,11 +26,12 @@ const KIND_COLOR: Record<NodeKind, string> = {
 };
 const KIND_LABEL: Record<NodeKind, string> = { ORIGEM: 'Origem', DESTINO: 'Destino', HUB: 'Hub' };
 const PARTICLES_PER_EDGE = 6;
-const EM_FRONTEIRA = new Set<string>(STATUS_VIAGEM_EM_FRONTEIRA);
+const EM_FRONTEIRA = FRONTEIRA_STATUS;
 const HOME_POS = new THREE.Vector3(0, 8.5, 13);
 const HOME_TARGET = new THREE.Vector3(0, 0, 0);
 
-const statusLabel = (s: string) => (STATUS_VIAGEM_LABEL as Record<string, string>)[s] ?? s.replace(/_/g, ' ').toLowerCase();
+const statusLabel = (s: string) =>
+  (STATUS_VIAGEM_LABEL as Record<string, string>)[s] ?? s.replace(/_/g, ' ').toLowerCase();
 
 interface Props {
   viagens: Viagem[];
@@ -106,8 +108,11 @@ function truckGeometry(): THREE.BufferGeometry {
       return w;
     }),
   );
-  const merged = mergeGeometries([cab, trailer, ...wheels].map((g) => g.toNonIndexed()));
-  return merged ?? cab;
+  const parts = [cab, trailer, ...wheels];
+  const merged = mergeGeometries(parts.map((g) => g.toNonIndexed()));
+  if (!merged) return cab;
+  parts.forEach((g) => g.dispose());
+  return merged;
 }
 
 /** Caminhões (uma única draw call via InstancedMesh) e partículas de fluxo (outra). */
@@ -115,6 +120,7 @@ function Traffic({ graph, animate }: { graph: FleetGraph; animate: boolean }) {
   const trucks = useRef<THREE.InstancedMesh>(null);
   const particles = useRef<THREE.InstancedMesh>(null);
   const geo = useMemo(truckGeometry, []);
+  useEffect(() => () => geo.dispose(), [geo]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const p = useMemo(() => new THREE.Vector3(), []);
   const q = useMemo(() => new THREE.Vector3(), []);
@@ -235,6 +241,14 @@ function NodeHologram({
     if (ring.current) ring.current.rotation.z += d * 0.8;
   });
 
+  // Se o nó sair da cena com o mouse em cima, não deixa o cursor preso em "pointer".
+  useEffect(
+    () => () => {
+      document.body.style.cursor = '';
+    },
+    [],
+  );
+
   const peso = node.viagens.reduce((acc, v) => acc + (v.peso_kg ?? 0), 0);
 
   return (
@@ -299,7 +313,8 @@ function NodeHologram({
                   <li key={v.id}>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-2 py-1 text-left hover:bg-slate-100 transition-all duration-200"
+                      aria-label={`Abrir viagem ${v.placa_cavalo}`}
+                      className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-2 py-1 text-left transition-all duration-200 hover:bg-slate-100"
                       onClick={() => {
                         haptic('success');
                         onOpenViagem?.(v.id);
@@ -319,35 +334,87 @@ function NodeHologram({
   );
 }
 
-class CanvasBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+class CanvasBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
   render() {
-    return this.state.failed ? (
-      <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
-        Não foi possível iniciar o visualizador 3D neste dispositivo (WebGL indisponível).
-      </div>
-    ) : (
-      this.props.children
-    );
+    return this.state.failed ? this.props.fallback : this.props.children;
   }
 }
+
+/** Alternativa em texto (sem WebGL / leitores de tela): mesmos nós e contagens do 3D. */
+function NodeListFallback({
+  graph,
+  onOpenViagem,
+}: {
+  graph: FleetGraph;
+  onOpenViagem?: (id: string) => void;
+}) {
+  return (
+    <div className="h-full overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+      <p className="mb-3 text-slate-500">
+        Visualizador 3D indisponível neste dispositivo. Locais e viagens:
+      </p>
+      <ul className="space-y-3">
+        {graph.nodes.map((n) => (
+          <li key={n.id}>
+            <span className="font-semibold text-slate-900">{n.label}</span>{' '}
+            <span className="text-slate-500">
+              ({KIND_LABEL[n.kind]} · {n.viagens.length} viagem(ns))
+            </span>
+            <ul className="mt-1 flex flex-wrap gap-2">
+              {n.viagens.slice(0, 8).map((v) => (
+                <li key={v.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenViagem?.(v.id)}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs hover:bg-slate-100"
+                  >
+                    {v.placa_cavalo} · {statusLabel(v.status)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const LEGEND: { color: string; label: string }[] = [
+  { color: KIND_COLOR.ORIGEM, label: 'Origem' },
+  { color: KIND_COLOR.DESTINO, label: 'Destino' },
+  { color: KIND_COLOR.HUB, label: 'Hub (origem e destino)' },
+];
 
 /**
  * Grafo 3D interativo: nós (origens/destinos/hubs reais das viagens) como
  * nós clicáveis, rotas como feixes com partículas fluindo no
  * sentido do frete e caminhões instanciados. Render sob demanda: fora da tela,
  * aba oculta, sem viagens em trânsito ou com "reduzir movimento" o loop para.
+ *
+ * Controles: arrastar/pinçar (girar/zoom), clicar ou escolher um local na lista
+ * (teclado), Esc ou "Reiniciar vista" para voltar ao enquadramento inicial.
  */
 export default function FleetNodeChart3D({ viagens, height = 460, onOpenViagem }: Props) {
   const gpu = useMemo(getGpuProfile, []);
   const graph = useMemo(() => buildFleetGraph(viagens), [viagens]);
-  const [selected, setSelected] = useState<GraphNode | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [visible, setVisible] = useState(true);
-  const [tabHidden, setTabHidden] = useState(document.hidden);
+  const [tabHidden, setTabHidden] = useState(() => document.hidden);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Seleção guardada por id: sobrevive à recarga dos dados e some sozinha se o nó sair do grafo.
+  const selected = useMemo(
+    () => graph.nodes.find((n) => n.id === selectedId) ?? null,
+    [graph, selectedId],
+  );
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -366,60 +433,132 @@ export default function FleetNodeChart3D({ viagens, height = 460, onOpenViagem }
 
   const animating = visible && !tabHidden && !gpu.prefersReducedMotion && graph.edges.length > 0;
   const focus = selected ? selected.position : null;
+  const { nodes: nodesOut, edges: edgesOut, trucks: trucksOut } = graph.omitted;
 
   return (
-    <div ref={wrapRef} style={{ height }} className="relative w-full" data-testid="fleet-3d">
-      {graph.nodes.length === 0 ? (
-        <div className="flex h-full items-center justify-center text-sm text-slate-500">
-          Cadastre viagens para ver a malha logística em 3D.
+    <div data-testid="fleet-3d" className="w-full">
+      {graph.nodes.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-600">
+          <ul className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Legenda">
+            {LEGEND.map((l) => (
+              <li key={l.label} className="flex items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ background: l.color }}
+                />
+                {l.label}
+              </li>
+            ))}
+            <li className="flex items-center gap-1.5">
+              <span
+                aria-hidden="true"
+                className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-500"
+              />
+              Parado em fronteira/aduana
+            </li>
+          </ul>
+          <div className="ml-auto flex items-center gap-2">
+            <select
+              value={selected?.id ?? ''}
+              onChange={(e) => setSelectedId(e.target.value || null)}
+              className="max-w-[11rem] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+              aria-label="Focar local no gráfico 3D"
+            >
+              <option value="">Todos os locais</option>
+              {graph.nodes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.label} ({n.viagens.length})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
+            >
+              Reiniciar vista
+            </button>
+          </div>
         </div>
-      ) : (
-        <CanvasBoundary>
-          <Canvas
-            frameloop="demand"
-            dpr={gpu.dpr}
-            camera={{ position: HOME_POS.toArray(), fov: 45, near: 0.1, far: 120 }}
-            gl={{
-              antialias: gpu.antialias,
-              alpha: true,
-              powerPreference: gpu.lowPower ? 'low-power' : 'high-performance',
-            }}
-            onPointerMissed={() => setSelected(null)}
-          >
-            <HDRIEnvironment resolution={gpu.envResolution} exposure={1.15} intensity={0.9} />
-            <ambientLight intensity={0.6} />
-            <fog attach="fog" args={['#f8fafc', 18, 46]} />
-            <gridHelper args={[60, 60, '#cbd5e1', '#e2e8f0']} position={[0, -1.6, 0]} />
-            <OrbitControls
-              makeDefault
-              enableDamping
-              dampingFactor={0.08}
-              minDistance={3}
-              maxDistance={30}
-              maxPolarAngle={Math.PI * 0.49}
-              enablePan={!gpu.isMobile}
-            />
-            <CameraRig focus={focus} />
-            <Pacer active={animating} fps={gpu.isMobile || gpu.lowPower ? 30 : 60} />
-            {graph.edges.map((e) => (
-              <Edge
-                key={e.id}
-                edge={e}
-                dim={!!selected && e.from.id !== selected.id && e.to.id !== selected.id}
+      )}
+      <div
+        ref={wrapRef}
+        style={{ height }}
+        className="relative w-full"
+        role="group"
+        aria-label={`Malha logística 3D: ${graph.nodes.length} locais, ${graph.edges.length} rotas, ${graph.moving.length} caminhões em movimento. Use a lista "Focar local" para navegar pelo teclado.`}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setSelectedId(null);
+        }}
+      >
+        {graph.nodes.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+            Nenhuma viagem para exibir na malha 3D com os filtros atuais.
+          </div>
+        ) : !gpu.hasWebgl ? (
+          <NodeListFallback graph={graph} onOpenViagem={onOpenViagem} />
+        ) : (
+          <CanvasBoundary fallback={<NodeListFallback graph={graph} onOpenViagem={onOpenViagem} />}>
+            <Canvas
+              frameloop="demand"
+              dpr={gpu.dpr}
+              camera={{ position: HOME_POS.toArray(), fov: 45, near: 0.1, far: 120 }}
+              gl={{
+                antialias: gpu.antialias,
+                alpha: true,
+                powerPreference: gpu.lowPower ? 'low-power' : 'high-performance',
+              }}
+              onPointerMissed={() => setSelectedId(null)}
+            >
+              <HDRIEnvironment resolution={gpu.envResolution} exposure={1.15} intensity={0.9} />
+              <ambientLight intensity={0.6} />
+              <fog attach="fog" args={['#f8fafc', 18, 46]} />
+              <gridHelper args={[60, 60, '#cbd5e1', '#e2e8f0']} position={[0, -1.6, 0]} />
+              <OrbitControls
+                makeDefault
+                enableDamping
+                dampingFactor={0.08}
+                minDistance={3}
+                maxDistance={30}
+                maxPolarAngle={Math.PI * 0.49}
+                enablePan={!gpu.isMobile}
               />
-            ))}
-            {graph.nodes.map((n) => (
-              <NodeHologram
-                key={n.id}
-                node={n}
-                selected={selected?.id === n.id}
-                onSelect={setSelected}
-                onOpenViagem={onOpenViagem}
-              />
-            ))}
-            <Traffic graph={graph} animate={animating} />
-          </Canvas>
-        </CanvasBoundary>
+              <CameraRig focus={focus} />
+              <Pacer active={animating} fps={gpu.isMobile || gpu.lowPower ? 30 : 60} />
+              {graph.edges.map((e) => (
+                <Edge
+                  key={e.id}
+                  edge={e}
+                  dim={!!selected && e.from.id !== selected.id && e.to.id !== selected.id}
+                />
+              ))}
+              {graph.nodes.map((n) => (
+                <NodeHologram
+                  key={n.id}
+                  node={n}
+                  selected={selected?.id === n.id}
+                  onSelect={(node) => setSelectedId(node.id)}
+                  onOpenViagem={onOpenViagem}
+                />
+              ))}
+              <Traffic graph={graph} animate={animating} />
+            </Canvas>
+          </CanvasBoundary>
+        )}
+      </div>
+      {nodesOut + edgesOut + trucksOut > 0 && (
+        <p className="mt-2 text-xs text-slate-500">
+          Para manter o 3D fluido,{' '}
+          {[
+            nodesOut > 0 && `${nodesOut} local(is) com menos viagens`,
+            edgesOut > 0 && `${edgesOut} viagem(ns) em rotas extras`,
+            trucksOut > 0 && `${trucksOut} caminhão(ões)`,
+          ]
+            .filter(Boolean)
+            .join(', ')}{' '}
+          não aparece(m) no gráfico — refine os filtros para vê-los.
+        </p>
       )}
     </div>
   );
