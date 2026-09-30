@@ -114,7 +114,7 @@ export const FretesController = {
     const body = parseOrProblem(UpdateFreteSchema, request.body, reply);
     if (!body) return;
     try {
-      const updated = await service.update(id, body, request.user?.sub ?? null, request.ip);
+      const updated = await service.update(id, body, request.user?.sub ?? null, request.ip, request.user?.role === 'SUPERADMIN');
       return reply.send(updated);
     } catch (error) {
       if (handleDomainError(error, reply)) return;

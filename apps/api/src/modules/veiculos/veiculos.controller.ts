@@ -63,7 +63,7 @@ export const VeiculosController = {
   async remove(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     try {
-      await service.softDelete(id, request.user?.sub ?? null, request.ip);
+      await service.softDelete(id, request.user?.sub ?? null, request.ip, request.user?.role === 'SUPERADMIN');
       return reply.status(204).send();
     } catch (error) {
       if (handleDomainError(error, reply)) return;

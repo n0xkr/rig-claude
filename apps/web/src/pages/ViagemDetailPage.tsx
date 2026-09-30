@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   CheckCircle2,
   Circle,
@@ -10,6 +10,7 @@ import {
   PackageSearch,
   Pencil,
   ShieldAlert,
+  Trash2,
   UserRound,
   Wallet,
 } from 'lucide-react';
@@ -48,6 +49,8 @@ export default function ViagemDetailPage() {
   const role = getCurrentUserRole();
   const admin = role === 'SUPERADMIN' || role === 'ADMIN';
   const podeEditar = admin || role === 'OPERADOR';
+  const navigate = useNavigate();
+  const [erroExcluir, setErroExcluir] = useState<string | null>(null);
   const { state, viagem, eventos, error, reload } = useViagemDetail(id);
   const { historico, state: historicoState, reload: reloadHistorico } = useViagemStatusHistory(id);
   const { status: wmsStatus, state: wmsState } = useViagemWmsStatus(id);
@@ -156,8 +159,31 @@ export default function ViagemDetailPage() {
               <Pencil className="h-4 w-4" /> Editar
             </Link>
           )}
+          {admin && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm('Excluir esta viagem? Ela sai das listas (fica na lixeira do Gerenciar dados).')) return;
+                try {
+                  await api.delete(`/viagens/${viagem.id}`);
+                  navigate('/viagens', { replace: true });
+                } catch (err) {
+                  setErroExcluir(msg(err));
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-white px-3 py-1.5 text-sm text-red-600 shadow-sm hover:bg-red-50"
+              data-testid="viagem-excluir"
+            >
+              <Trash2 className="h-4 w-4" /> Excluir
+            </button>
+          )}
         </div>
       </div>
+      {erroExcluir && (
+        <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {erroExcluir}
+        </p>
+      )}
 
       {agendada && (
         <p className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">

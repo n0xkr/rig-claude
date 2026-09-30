@@ -98,9 +98,11 @@ export class FretesService {
     input: UpdateFreteInput,
     userId: string | null,
     ip: string | null,
+    superadmin = false,
   ): Promise<Frete> {
     const before = await this.getById(id);
-    if (!STATUS_FRETE_EDITAVEIS.has(before.status_fechamento)) {
+    // SUPERADMIN corrige o cabeçalho em qualquer status (a alteração fica na auditoria).
+    if (!superadmin && !STATUS_FRETE_EDITAVEIS.has(before.status_fechamento)) {
       throw new ConflictError(
         `Frete no status "${before.status_fechamento}" não pode mais ser editado`,
       );

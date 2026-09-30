@@ -41,6 +41,7 @@ import ImportarDadosPage from './pages/ImportarDadosPage.js';
 import RigabrasAiPage from './pages/RigabrasAiPage.js';
 import AuditoriaListPage from './pages/AuditoriaListPage.js';
 import UsuariosPage from './pages/UsuariosPage.js';
+import GerenciarDadosPage from './pages/GerenciarDadosPage.js';
 import PerfilPage from './pages/PerfilPage.js';
 import SolicitacoesIaPage from './pages/SolicitacoesIaPage.js';
 import AcompanhamentoPage from './pages/AcompanhamentoPage.js';
@@ -421,6 +422,14 @@ export default function App() {
         element={
           <AuthGate>
             <UsuariosPage />
+          </AuthGate>
+        }
+      />
+      <Route
+        path="/gerenciar-dados"
+        element={
+          <AuthGate>
+            <GerenciarDadosPage />
           </AuthGate>
         }
       />

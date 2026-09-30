@@ -59,10 +59,11 @@ export class VeiculosService {
     return updated;
   }
 
-  async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
+  /** `superadmin`: o SUPERADMIN pode remover mesmo com viagem em andamento. */
+  async softDelete(id: string, userId: string | null, ip: string | null, superadmin = false): Promise<void> {
     const veiculo = await this.getById(id);
     const viagensAtivas = await this.repo.countViagensAtivas(id, veiculo.placa);
-    if (viagensAtivas > 0) {
+    if (viagensAtivas > 0 && !superadmin) {
       throw new ConflictError(
         `Veículo ${veiculo.placa} está em ${viagensAtivas} viagem(ns) em andamento; encerre ou cancele antes de removê-lo`,
       );

@@ -522,6 +522,24 @@ export default function MotoristaFormPage() {
             {salvando ? 'Salvando...' : editando ? 'Salvar alterações' : 'Cadastrar motorista'}
           </button>
         )}
+        {editando && podeExcluirDoc && (
+          <button
+            type="button"
+            onClick={async () => {
+              if (!window.confirm(`Excluir o motorista ${form.nome_completo || ''}? Ele sai das listas.`)) return;
+              try {
+                await api.delete(`/motoristas/${id}`);
+                navigate('/motoristas', { replace: true });
+              } catch (err) {
+                setErro(err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro ao excluir');
+              }
+            }}
+            className="w-full rounded-xl border border-red-200 bg-white px-4 py-3 font-medium text-red-600 hover:bg-red-50"
+            data-testid="mf-excluir"
+          >
+            Excluir motorista
+          </button>
+        )}
       </form>
     </div>
   );

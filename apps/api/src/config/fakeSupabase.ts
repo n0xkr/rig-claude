@@ -52,6 +52,11 @@ interface OrderSpec {
  * a fonte de cada valor.
  */
 const TABLE_COLUMN_DEFAULTS: Record<string, Row> = {
+  // Colunas que o banco real cria com NULL (o Gerenciar dados descobre as colunas pelos registros).
+  veiculos: { deleted_at: null },
+  motoristas: { deleted_at: null },
+  viagens: { deleted_at: null },
+  clientes: { deleted_at: null },
   eventos_risco: { severidade: 'BAIXA', status: 'ABERTO' },
   fretes: { status_fechamento: 'ABERTO' },
   pagamentos_frete: { status: 'PENDENTE' },
