@@ -14,7 +14,7 @@ import { isSchemaAusente } from '../../../lib/permissoes.js';
 import { erroMigration0014 } from '../../../lib/schemaPendente.js';
 import { pgErrorToProblem } from '../../../lib/pgErrors.js';
 import { normTexto } from '../../iaSolicitacoes/leitura.js';
-import { ehExtraConhecido, mapearColunas } from './dicionario.js';
+import { ehAuxiliar, ehExtraConhecido, mapearColunas } from './dicionario.js';
 import { padronizarAba, validarVolume } from './padronizacao.js';
 import { DomainError } from '../../../lib/errors.js';
 import {
@@ -70,6 +70,121 @@ async function carregarBase(): Promise<BaseExistente> {
 }
 
 /**
+ * Etapas 1 e 2 (sem banco): padroniza cada aba, descobre o que ela é, lê os registros e traduz
+ * os textos de status. Separado de `executar` para poder rodar offline (scripts/testes).
+ */
+export async function interpretarArquivos(
+  input: Pick<ImportacaoInteligenteInput, 'arquivos'>,
+): Promise<{ abas: AbaLida[]; avisos: string[]; statusIa: Map<string, StatusViagem> }> {
+  const abas: AbaLida[] = [];
+  const avisos: string[] = [];
+
+  // 1. O que é cada aba e o que significa cada coluna.
+  const excesso = validarVolume(input.arquivos);
+  if (excesso) throw new DomainError('Importação grande demais', 413, excesso);
+  for (const arq of input.arquivos) {
+    for (const abaBruta of arq.abas) {
+      // Etapa 1: tratamento e padronização de todas as células (ver padronizacao.ts).
+      const padr = padronizarAba(abaBruta);
+      const aba = { nome: padr.nome };
+      const cabecalhos = padr.cabecalhos;
+      const linhas = padr.linhas as Array<Record<string, unknown>>;
+      const base = { nome: padr.nome, cabecalhos, linhas };
+      let cls = classificarAba(base);
+      let origemTipo: 'dicionario' | 'ia' | 'nome' = cls?.origem ?? 'dicionario';
+      if (!cls && linhas.length > 0 && cabecalhos.length > 1) {
+        const tipoIa = await classificarAbaComIa(aba.nome, cabecalhos, linhas.slice(0, 3));
+        if (tipoIa) {
+          cls = { tipo: tipoIa, mapa: tipoIa === 'ignorada' ? null : mapearColunas(tipoIa, cabecalhos), origem: 'dicionario' };
+          origemTipo = 'ia';
+        }
+      }
+      const tipo: TipoAbaImportacao = cls?.tipo ?? 'ignorada';
+      const porColuna = new Map(cls?.mapa?.porColuna ?? []);
+      const daIa = new Set<string>();
+      if (tipo !== 'ignorada' && linhas.length > 0) {
+        const semCampo = cabecalhos.filter(
+          (col) =>
+            !porColuna.has(col) &&
+            !ehAuxiliar(col) &&
+            !(tipo === 'viagens' && ehExtraConhecido(col)) &&
+            linhas.some((l) => !vazio(l[col])),
+        );
+        if (semCampo.length > 0) {
+          const livres = camposLivres(tipo, new Set(porColuna.values()));
+          const sugestoes = await mapearColunasComIa(
+            aba.nome,
+            semCampo.map((coluna) => ({
+              coluna,
+              exemplos: [...new Set(linhas.map((l) => l[coluna]).filter((v) => !vazio(v)).map((v) => String(v).slice(0, 60)))].slice(0, 5),
+            })),
+            livres,
+          );
+          for (const [col, campo] of sugestoes) {
+            porColuna.set(col, campo);
+            daIa.add(col);
+          }
+        }
+      }
+      const registros = tipo === 'ignorada' ? [] : lerRegistros(arq.nome, base, tipo as TipoDados, porColuna);
+      abas.push({
+        tipo,
+        registros,
+        info: {
+          arquivo: arq.nome,
+          aba: aba.nome,
+          tipo,
+          origemTipo,
+          linhas: linhas.length,
+          colunas: descreverColunas(tipo, cabecalhos, porColuna, daIa).map((c) => {
+            const p = padr.colunas.find((x) => x.coluna === c.coluna);
+            return p
+              ? {
+                  ...c,
+                  tipo: p.tipo,
+                  formato: p.formato,
+                  preenchidas: p.preenchidas,
+                  distintos: p.distintos,
+                  exemplos: p.exemplos,
+                  convertidas: p.convertidas,
+                  inconsistencias: p.inconsistencias,
+                  exemplosInconsistencia: p.exemplosInconsistencia,
+                }
+              : c;
+          }),
+          descartadas: padr.descartadas.slice(0, 200),
+          duplicadas: padr.duplicadas,
+          observacao:
+            tipo === 'ignorada'
+              ? linhas.length === 0
+                ? 'Aba vazia.'
+                : 'Não contém registros operacionais (instruções, painel, listas ou dados sem uso no sistema).'
+              : undefined,
+        },
+      });
+    }
+  }
+
+  // 2. Textos de status que as regras não entendem: a IA traduz (uma chamada para todos).
+  const naoEntendidos = new Set<string>();
+  for (const a of abas)
+    if (a.tipo === 'viagens')
+      for (const r of a.registros) {
+        // Só vai para a IA o que nenhuma regra entende em nenhum dos textos da linha.
+        const ts = [r.campos.status_texto, r.campos.localizacao, r.campos.observacoes, r.campos.cliente];
+        if (ts.some((t) => typeof t === 'string' && statusViagemDeTexto(t))) continue;
+        for (const t of [r.campos.status_texto, r.campos.observacoes])
+          if (typeof t === 'string') naoEntendidos.add(t);
+      }
+  const statusIa: Map<string, StatusViagem> = await statusComIa([...naoEntendidos]);
+  if (naoEntendidos.size > 0 && statusIa.size < naoEntendidos.size)
+    avisos.push(
+      `${naoEntendidos.size - statusIa.size} texto(s) de status não puderam ser traduzidos para uma etapa: a viagem mantém o status atual (o texto fica nas informações extras).`,
+    );
+  return { abas, avisos, statusIa };
+}
+
+/**
  * Importação inteligente (ver `ImportacaoInteligenteInputSchema`): lê todas as
  * abas de todos os arquivos, entende cada uma sozinha, cruza as informações e
  * grava o resultado consolidado. Em `previa` nada é gravado.
@@ -80,110 +195,7 @@ export class ImportacaoInteligenteService {
     userId: string | null,
     ip: string | null,
   ): Promise<ImportacaoInteligenteResultado> {
-    const abas: AbaLida[] = [];
-    const avisos: string[] = [];
-
-    // 1. O que é cada aba e o que significa cada coluna.
-    const excesso = validarVolume(input.arquivos);
-    if (excesso) throw new DomainError('Importação grande demais', 413, excesso);
-    for (const arq of input.arquivos) {
-      for (const abaBruta of arq.abas) {
-        // Etapa 1: tratamento e padronização de todas as células (ver padronizacao.ts).
-        const padr = padronizarAba(abaBruta);
-        const aba = { nome: padr.nome };
-        const cabecalhos = padr.cabecalhos;
-        const linhas = padr.linhas as Array<Record<string, unknown>>;
-        const base = { nome: padr.nome, cabecalhos, linhas };
-        let cls = classificarAba(base);
-        let origemTipo: 'dicionario' | 'ia' | 'nome' = cls?.origem ?? 'dicionario';
-        if (!cls && linhas.length > 0 && cabecalhos.length > 1) {
-          const tipoIa = await classificarAbaComIa(aba.nome, cabecalhos, linhas.slice(0, 3));
-          if (tipoIa) {
-            cls = { tipo: tipoIa, mapa: tipoIa === 'ignorada' ? null : mapearColunas(tipoIa, cabecalhos), origem: 'dicionario' };
-            origemTipo = 'ia';
-          }
-        }
-        const tipo: TipoAbaImportacao = cls?.tipo ?? 'ignorada';
-        const porColuna = new Map(cls?.mapa?.porColuna ?? []);
-        const daIa = new Set<string>();
-        if (tipo !== 'ignorada' && linhas.length > 0) {
-          const semCampo = cabecalhos.filter(
-            (col) =>
-              !porColuna.has(col) &&
-              !(tipo === 'viagens' && ehExtraConhecido(col)) &&
-              linhas.some((l) => !vazio(l[col])),
-          );
-          if (semCampo.length > 0) {
-            const livres = camposLivres(tipo, new Set(porColuna.values()));
-            const sugestoes = await mapearColunasComIa(
-              aba.nome,
-              semCampo.map((coluna) => ({
-                coluna,
-                exemplos: [...new Set(linhas.map((l) => l[coluna]).filter((v) => !vazio(v)).map((v) => String(v).slice(0, 60)))].slice(0, 5),
-              })),
-              livres,
-            );
-            for (const [col, campo] of sugestoes) {
-              porColuna.set(col, campo);
-              daIa.add(col);
-            }
-          }
-        }
-        const registros = tipo === 'ignorada' ? [] : lerRegistros(arq.nome, base, tipo as TipoDados, porColuna);
-        abas.push({
-          tipo,
-          registros,
-          info: {
-            arquivo: arq.nome,
-            aba: aba.nome,
-            tipo,
-            origemTipo,
-            linhas: linhas.length,
-            colunas: descreverColunas(tipo, cabecalhos, porColuna, daIa).map((c) => {
-              const p = padr.colunas.find((x) => x.coluna === c.coluna);
-              return p
-                ? {
-                    ...c,
-                    tipo: p.tipo,
-                    formato: p.formato,
-                    preenchidas: p.preenchidas,
-                    distintos: p.distintos,
-                    exemplos: p.exemplos,
-                    convertidas: p.convertidas,
-                    inconsistencias: p.inconsistencias,
-                    exemplosInconsistencia: p.exemplosInconsistencia,
-                  }
-                : c;
-            }),
-            descartadas: padr.descartadas.slice(0, 200),
-            duplicadas: padr.duplicadas,
-            observacao:
-              tipo === 'ignorada'
-                ? linhas.length === 0
-                  ? 'Aba vazia.'
-                  : 'Não contém registros operacionais (instruções, painel, listas ou dados sem uso no sistema).'
-                : undefined,
-          },
-        });
-      }
-    }
-
-    // 2. Textos de status que as regras não entendem: a IA traduz (uma chamada para todos).
-    const naoEntendidos = new Set<string>();
-    for (const a of abas)
-      if (a.tipo === 'viagens')
-        for (const r of a.registros) {
-          // Só vai para a IA o que nenhuma regra entende em nenhum dos textos da linha.
-          const ts = [r.campos.status_texto, r.campos.localizacao, r.campos.observacoes, r.campos.cliente];
-          if (ts.some((t) => typeof t === 'string' && statusViagemDeTexto(t))) continue;
-          for (const t of [r.campos.status_texto, r.campos.observacoes])
-            if (typeof t === 'string') naoEntendidos.add(t);
-        }
-    const statusIa: Map<string, StatusViagem> = await statusComIa([...naoEntendidos]);
-    if (naoEntendidos.size > 0 && statusIa.size < naoEntendidos.size)
-      avisos.push(
-        `${naoEntendidos.size - statusIa.size} texto(s) de status não puderam ser traduzidos para uma etapa: a viagem mantém o status atual (o texto fica nas informações extras).`,
-      );
+    const { abas, avisos, statusIa } = await interpretarArquivos(input);
 
     // 3. Cruzamento com o banco.
     const base = await carregarBase();

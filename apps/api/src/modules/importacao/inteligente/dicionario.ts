@@ -156,21 +156,30 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('descarregou', 'Descarregou', 'bool', ['descarregou', 'descarregado']),
   ],
   veiculos: [
-    f('placa', 'Placa', 'plate', ['placa', 'placa veiculo', 'placa do veiculo', 'veiculo', 'placa cavalo'], {
-      excluir: ['habitual', 'vinculada'],
+    // Abas de frota costumam titular a coluna de placas com o próprio tipo ("CAVALOS", "CARRETAS").
+    f('placa', 'Placa', 'plate', [
+      'placa', 'placa veiculo', 'placa do veiculo', 'veiculo', 'placa cavalo', 'cavalos', 'carretas', 'cavalo',
+      'carreta', 'placa carreta', 'placa sr', 'placas',
+    ], {
+      excluir: ['habitual', 'vinculada', 'disponiveis', 'tipo'],
     }),
     f('tipo_unidade', 'Tipo de unidade', 'text', ['tipo unidade', 'tipo de unidade', 'unidade']),
     f('tipo_desc', 'Tipo de veículo', 'text', ['tipo de veiculo', 'tipo veiculo', 'tipo', 'categoria', 'especie', 'carroceria']),
-    f('marca', 'Marca', 'text', ['marca', 'fabricante', 'montadora']),
+    // "Marca do Cronotacógrafo" é do instrumento, não do veículo.
+    f('marca', 'Marca', 'text', ['marca', 'fabricante', 'montadora'], {
+      excluir: ['cronotacografo', 'tacografo', 'rastreador', 'pneu', 'bateria'],
+    }),
     f('modelo', 'Modelo', 'text', ['modelo', 'marca modelo']),
     f('ano_fabricacao', 'Ano', 'int', ['ano', 'ano fabricacao', 'ano de fabricacao', 'ano modelo', 'ano fab']),
     f('capacidade_t', 'Capacidade (t)', 'number', ['capacidade t', 'capacidade ton', 'lotacao t']),
-    f('capacidade_kg', 'Capacidade (kg)', 'number', ['capacidade kg', 'capacidade', 'lotacao', 'lotacao kg', 'pbt']),
+    f('capacidade_kg', 'Capacidade (kg)', 'number', ['capacidade kg', 'capacidade', 'lotacao', 'lotacao kg', 'pbt'], {
+      excluir: ['cronotacografo', 'tacografo'],
+    }),
     f('capacidade_m3', 'Capacidade (m³)', 'number', ['capacidade m3', 'm3', 'cubagem']),
     f('vinculo', 'Vínculo', 'text', ['vinculo', 'vinculo veiculo', 'frota', 'propriedade']),
     f('proprietario', 'Proprietário', 'text', ['proprietario', 'dono', 'arrendatario']),
     f('situacao', 'Situação', 'text', ['situacao', 'status', 'status operacional', 'situacao atual'], {
-      excluir: ['consulta', 'rastreador'],
+      excluir: ['consulta', 'rastreador', 'calibracao', 'revisao', 'inspecao', 'vistoria'],
     }),
     f('motorista_atual', 'Motorista atual', 'text', ['motorista atual', 'motorista', 'condutor']),
     f('km_atual', 'Quilometragem', 'number', ['km atual', 'km', 'quilometragem', 'hodometro', 'odometro', 'km rodado']),
@@ -181,8 +190,14 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('rntrc_numero', 'RNTRC', 'text', ['rntrc n', 'rntrc', 'antt']),
     f('rntrc_validade', 'RNTRC validade', 'date', ['rntrc validade', 'validade rntrc']),
     f('crlv_validade', 'CRLV validade', 'date', ['crlv validade', 'validade crlv', 'licenciamento']),
-    f('inspecao_tecnica_validade', 'Inspeção técnica', 'date', ['inspecao tecnica validade', 'inspecao tecnica', 'cit validade']),
-    f('tacografo_validade', 'Tacógrafo validade', 'date', ['tacografo validade', 'tacografo']),
+    f('inspecao_tecnica_validade', 'Inspeção técnica', 'date', [
+      'inspecao tecnica validade', 'inspecao tecnica', 'cit validade', 'validade revisao tecnica', 'validade da revisao tecnica',
+      'validade inspecao', 'validade da inspecao',
+    ]),
+    f('tacografo_validade', 'Tacógrafo validade', 'date', [
+      'tacografo validade', 'tacografo', 'data da validade calibracao', 'validade calibracao', 'validade da calibracao',
+      'validade cronotacografo', 'validade do cronotacografo',
+    ], { excluir: ['marca', 'serie', 'alerta', 'ultima', 'status', 'descricao'] }),
     f('observacoes_acompanhamento', 'Observações', 'text', ['observacao', 'observacoes', 'obs'], { multi: true }),
   ],
   motoristas: [
@@ -194,13 +209,20 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('cpf', 'CPF', 'text', ['cpf', 'cpf motorista', 'documento']),
     f('cnh', 'CNH', 'text', ['cnh', 'numero cnh', 'n cnh', 'registro cnh', 'cnh numero'], { excluir: ['categoria', 'validade', 'ear'] }),
     f('cnh_categoria', 'CNH categoria', 'text', ['cnh categoria', 'categoria cnh', 'categoria']),
-    f('cnh_validade', 'CNH validade', 'date', ['cnh validade', 'validade cnh', 'vencimento cnh']),
+    f('cnh_validade', 'CNH validade', 'date', [
+      'cnh validade', 'validade cnh', 'vencimento cnh', 'venc cnh', 'vencimento da cnh', 'validade da cnh', 'cnh vencimento',
+      'venc da cnh', 'vcto cnh',
+    ]),
+    f('rg', 'RG', 'text', ['rg', 'identidade', 'n rg', 'numero rg', 'carteira de identidade']),
+    f('data_nascimento', 'Nascimento', 'date', ['data de nascimento', 'data nascimento', 'nascimento']),
     f('telefone', 'Telefone', 'text', ['telefone', 'celular', 'fone', 'whatsapp', 'contato']),
     f('vinculo', 'Vínculo', 'text', ['vinculo', 'tipo de contrato', 'contrato']),
     f('nacionalidade', 'Nacionalidade', 'text', ['nacionalidade', 'pais']),
     f('data_admissao', 'Admissão', 'date', ['data admissao contrato', 'data admissao', 'admissao']),
     f('toxicologico_vencimento', 'Toxicológico vencimento', 'date', ['toxicologico vencimento', 'vencimento toxicologico']),
-    f('mopp_validade', 'MOPP validade', 'date', ['mopp validade']),
+    f('mopp_validade', 'MOPP validade', 'date', ['mopp validade', 'validade mopp', 'vencimento mopp']),
+    // "Possui - 18/07/2026", "Não possui", "Vencido": a consolidação separa sim/não e validade.
+    f('mopp_texto', 'MOPP', 'text', ['mopp', 'mop', 'curso mopp', 'curso mop'], { excluir: ['validade', 'vencimento'] }),
     f('doc_viagem_tipo', 'Doc. viagem tipo', 'text', ['doc viagem tipo']),
     f('doc_viagem_validade', 'Doc. viagem validade', 'date', ['doc viagem validade', 'passaporte validade']),
     f('placa_habitual', 'Placa habitual', 'plate', ['placa habitual', 'placa', 'veiculo habitual']),
@@ -256,6 +278,13 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
  * direto para as informações extras, sem passar pela IA: assim ela não as
  * confunde com o ID da viagem ou outro campo parecido.
  */
+/** Colunas auxiliares de fórmula ("HOJE" = data de hoje repetida em toda linha): não são dado. */
+const AUXILIARES = [/^hoje$/, /^data de hoje$/, /^data atual$/];
+export const ehAuxiliar = (cabecalho: string) => {
+  const n = normTexto(cabecalho);
+  return AUXILIARES.some((r) => r.test(n));
+};
+
 const EXTRAS_CONHECIDOS = [
   /\bfatura\b/, /^lote\b/, /\bemissao\b/, /\bvencimento\b/, /^n transporte$/, /^numero (do )?transporte$/,
   /^transporte$/, /^tipo (de )?veiculo$/,
@@ -269,7 +298,13 @@ export const ehExtraConhecido = (cabecalho: string) => {
 export const DICAS_NOME_ABA: Array<{ tipo: TipoAbaImportacao; termos: string[] }> = [
   { tipo: 'ignorada', termos: ['leia me', 'leiame', 'painel', 'parametro', 'lista', 'dicionario', 'faq', 'perfil empresa', 'instruc', 'grafico', 'dashboard', 'resumo', 'contato', 'pgr regra', 'apolice', 'sinistro', 'ocorrencia', 'posic', 'espelhamento', 'rastreador', 'ponto'] },
   { tipo: 'viagens', termos: ['viage', 'followup', 'follow up', 'programac', 'embarque', 'carregamento', 'operac', 'acompanhamento viag', 'controle'] },
-  { tipo: 'veiculos', termos: ['veicul', 'frota', 'cavalo', 'carreta', 'placas'] },
+  {
+    tipo: 'veiculos',
+    termos: [
+      'veicul', 'frota', 'cavalo', 'carreta', 'placas', 'cronotacografo', 'tacografo', 'revisao tecnica', 'inspecao',
+      'vistoria', 'licenciamento', 'crlv', 'opentec',
+    ],
+  },
   { tipo: 'motoristas', termos: ['motorist', 'condutor'] },
   { tipo: 'clientes', termos: ['client', 'embarcador'] },
   { tipo: 'cargas', termos: ['averba', 'crt', 'danfe', 'nota fisca', 'documento', 'carga'] },
@@ -281,6 +316,9 @@ export const DICAS_NOME_ABA: Array<{ tipo: TipoAbaImportacao; termos: string[] }
 export function dicaPeloNome(aba: string): TipoAbaImportacao | null {
   if (normTexto(aba) === 'fronteira') return 'ignorada';
   const n = ` ${normTexto(aba)} `;
+  // "HISTORICO DE POSIÇÕES": retrato diário da frota, dia a dia — é o histórico das viagens
+  // (a consolidação junta os dias de cada viagem). Já "Posição dos Frotas" é só um painel.
+  if (n.includes(' historico ')) return 'viagens';
   for (const d of DICAS_NOME_ABA) if (d.termos.some((t) => n.includes(t))) return d.tipo;
   return null;
 }
@@ -290,7 +328,7 @@ export function pontuar(cabecalho: string, campo: CampoImport): number {
   const h = cabecalho;
   if (!h) return 0;
   // Colunas auxiliares/calculadas ("Dias p/ vencer CNH", "Cód. status (oculta)") nunca são o dado em si.
-  if (/oculta/.test(h) || /^(dias|qtd dias|horas) p/.test(h) || h.startsWith('dias para')) return 0;
+  if (/bocultab/.test(h) || /^(dias|qtd dias|horas) pb/.test(h) || h.startsWith('dias para')) return 0;
   const palavras = ` ${h} `;
   if (campo.excluir?.some((x) => palavras.includes(` ${x} `) || (x.length > 3 && h.includes(x))))
     return 0;

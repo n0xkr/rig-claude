@@ -51,6 +51,7 @@ import {
   CAMPOS_POR_TIPO,
   campoDef,
   dicaPeloNome,
+  ehAuxiliar,
   ehExtraConhecido,
   mapearColunas,
   type Mapeamento,
@@ -67,6 +68,8 @@ export interface Registro {
   campos: Record<string, unknown>;
   /** Colunas sem campo próprio: guardadas como informação extra. */
   extras: Record<string, unknown>;
+  /** Viagem montada a partir do retrato diário da própria frota (ver retratos.ts). */
+  retrato?: boolean;
 }
 
 export interface AbaLida {
@@ -76,7 +79,7 @@ export interface AbaLida {
 }
 
 /** Requisitos mínimos para uma aba ser de cada tipo (evita confundir cadastros parecidos). */
-function aceita(tipo: TipoDados, m: Mapeamento): boolean {
+function aceita(tipo: TipoDados, m: Mapeamento, peloNome = false): boolean {
   const tem = (c: string) => m.campos.has(c);
   switch (tipo) {
     case 'viagens':
@@ -90,7 +93,11 @@ function aceita(tipo: TipoDados, m: Mapeamento): boolean {
     case 'veiculos':
       return (
         tem('placa') &&
-        ['tipo_desc', 'tipo_unidade', 'marca', 'modelo', 'ano_fabricacao', 'km_atual', 'situacao', 'crlv_validade', 'capacidade_kg'].filter(tem).length >= 2
+        [
+          'tipo_desc', 'tipo_unidade', 'marca', 'modelo', 'ano_fabricacao', 'km_atual', 'situacao', 'crlv_validade',
+          'capacidade_kg', 'tacografo_validade', 'inspecao_tecnica_validade', 'rntrc_validade', 'rntrc_numero',
+          'ultima_manutencao_data', 'proxima_manutencao_data',
+        ].filter(tem).length >= (peloNome ? 1 : 2)
       );
     case 'motoristas':
       return (
@@ -133,6 +140,54 @@ function promoverColunaDeCliente(aba: AbaLeitura, m: Mapeamento) {
   }
 }
 
+/**
+ * Aba de frota sem coluna chamada "placa" (ex.: a coluna das placas se chama "FROTA" ou está
+ * sem título): a coluna em que quase todo valor é uma placa é a placa.
+ */
+function promoverColunaDePlaca(aba: AbaLeitura, m: Mapeamento) {
+  if (m.campos.has('placa')) return;
+  for (const col of aba.cabecalhos) {
+    if (col === '__linha' || m.porColuna.has(col)) continue;
+    const valores = aba.linhas.map((l) => l[col]).filter((v) => !vazio(v));
+    if (valores.length < 3) continue;
+    const placas = valores.filter((v) => comoPlaca(v)).length;
+    if (placas / valores.length < 0.8) continue;
+    m.porColuna.set(col, 'placa');
+    m.campos.add('placa');
+    return;
+  }
+}
+
+/**
+ * Abas de um assunto só (revisão técnica, cronotacógrafo, licenciamento): "Data da Validade" e
+ * "Status" são DAQUELE documento, não do veículo nem da manutenção.
+ */
+function ajustarPeloAssuntoDaAba(nomeAba: string, aba: AbaLeitura, m: Mapeamento) {
+  const n = ` ${normTexto(nomeAba)} `;
+  const assunto = / revisao tecnica | inspecao | vistoria /.test(n)
+    ? 'inspecao_tecnica_validade'
+    : / cronotacografo | tacografo /.test(n)
+      ? 'tacografo_validade'
+      : / licenciamento | crlv /.test(n)
+        ? 'crlv_validade'
+        : null;
+  if (!assunto) return;
+  for (const col of aba.cabecalhos) {
+    const c = normTexto(col);
+    const campo = m.porColuna.get(col);
+    // Situação/manutenção lidas de uma aba de documento viram informação extra.
+    if (campo === 'situacao' || campo === 'ultima_manutencao_data' || campo === 'proxima_manutencao_data' || campo === 'capacidade_kg') {
+      m.porColuna.delete(col);
+      m.campos.delete(campo);
+    }
+    if (!m.campos.has(assunto) && /\b(validade|vencimento|vence)\b/.test(c) && !/\b(alerta|dias)\b/.test(c)) {
+      if (campo) m.campos.delete(campo);
+      m.porColuna.set(col, assunto);
+      m.campos.add(assunto);
+    }
+  }
+}
+
 const TIPOS: TipoDados[] = [
   'viagens', 'veiculos', 'motoristas', 'clientes', 'cargas', 'checklists', 'smp', 'consultas',
 ];
@@ -147,10 +202,13 @@ export function classificarAba(
   aba: AbaLeitura,
 ): { tipo: TipoAbaImportacao; mapa: Mapeamento | null; origem: 'dicionario' | 'nome' } | null {
   const dica = dicaPeloNome(aba.nome);
-  const mapas = new Map(TIPOS.map((t) => [t, mapearColunas(t, aba.cabecalhos)]));
+  const cabecalhos = aba.cabecalhos.filter((c) => !ehAuxiliar(c));
+  const mapas = new Map(TIPOS.map((t) => [t, mapearColunas(t, cabecalhos)]));
   promoverColunaDeCliente(aba, mapas.get('viagens')!);
+  if (dica === 'veiculos') promoverColunaDePlaca(aba, mapas.get('veiculos')!);
+  ajustarPeloAssuntoDaAba(aba.nome, aba, mapas.get('veiculos')!);
   if (dica === 'ignorada') return { tipo: 'ignorada', mapa: null, origem: 'nome' };
-  if (dica && aceita(dica, mapas.get(dica)!))
+  if (dica && aceita(dica, mapas.get(dica)!, true))
     return { tipo: dica, mapa: mapas.get(dica)!, origem: 'nome' };
   const candidatos = TIPOS.filter((t) => aceita(t, mapas.get(t)!)).sort(
     (a, b) => mapas.get(b)!.pontos - mapas.get(a)!.pontos,
@@ -276,6 +334,7 @@ export function lerRegistros(
     const extras: Record<string, unknown> = {};
     let algum = false;
     for (const col of aba.cabecalhos) {
+      if (ehAuxiliar(col)) continue;
       const raw = linha[col];
       if (vazio(raw)) continue;
       algum = true;

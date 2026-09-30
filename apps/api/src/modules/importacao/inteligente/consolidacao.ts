@@ -1,4 +1,5 @@
 import {
+  FLUXO_STATUS_VIAGEM,
   STATUS_VIAGEM_LEGADO_PARA_ATUAL,
   STATUS_VIAGEM_TERMINAIS,
   statusViagemDeTexto,
@@ -10,7 +11,8 @@ import {
 } from '@rigabras/shared';
 import { iguais, normTexto } from '../../iaSolicitacoes/leitura.js';
 import type { AbaLida, Registro } from './interpretacao.js';
-import { comoPlaca, lerBool } from './interpretacao.js';
+import { comoPlaca, lerBool, lerDataHora } from './interpretacao.js';
+import { clienteDoTexto, consolidarRetratoDiario } from './retratos.js';
 
 export type Row = Record<string, unknown>;
 
@@ -194,6 +196,56 @@ const refPlaca = (v: unknown) => {
   return p ? `p:${p}` : null;
 };
 
+/** Status que os códigos curtos das planilhas de frota dão sem detalhe ("INDO CARREGADO", "EM ADUANA"). */
+const STATUS_GENERICOS = new Set<StatusViagem>([
+  'PROGRAMADA',
+  'CARREGADO_AGUARDANDO_DOCUMENTOS',
+  'EM_TRANSITO_FRONTEIRA',
+  'ENTRADA_ADUANA_MULTILOG',
+]);
+
+/**
+ * A coluna de status manda; a observação só detalha um status genérico com uma etapa mais
+ * adiante na ida ("INDO CARREGADO" + "VEICULO NA COTECAR AGUARDANDO LIBERAÇÃO" = Cotecar). Ela
+ * nunca transforma a viagem em retorno/encerrada ("RET.CARREGADO" + "EM TRANSITO RET." segue
+ * sendo retorno carregado).
+ */
+function refinarStatus(principal: StatusViagem | null, detalhe: StatusViagem | null): StatusViagem | null {
+  if (!principal) return detalhe;
+  if (!detalhe || !STATUS_GENERICOS.has(principal)) return principal;
+  if (detalhe === 'RETORNANDO_VAZIO' || detalhe === 'ENCERRADA' || detalhe === 'CANCELADA') return principal;
+  return FLUXO_STATUS_VIAGEM.indexOf(detalhe) > FLUXO_STATUS_VIAGEM.indexOf(principal) ? detalhe : principal;
+}
+
+/**
+ * Mesmo motorista escrito curto numa aba e completo na outra ("CLEBER BALDEZ" x "CLEBER DA
+ * SILVA BALDEZ", "EDGAR" x "EDGAR JOSUE DE MOURA"): mesmo primeiro nome e todas as palavras do
+ * nome curto aparecem, na ordem, no nome longo.
+ */
+const PARTICULAS = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
+export function nomesCompativeis(a: string, b: string): boolean {
+  const pa = normTexto(a).split(' ').filter((x) => x && !PARTICULAS.has(x));
+  const pb = normTexto(b).split(' ').filter((x) => x && !PARTICULAS.has(x));
+  if (pa.length === 0 || pb.length === 0 || pa[0] !== pb[0]) return false;
+  const [curto, longo] = pa.length <= pb.length ? [pa, pb] : [pb, pa];
+  let i = 0;
+  for (const w of longo) if (w === curto[i]) i++;
+  return i === curto.length;
+}
+
+/** MOPP em texto livre: "Possui - 18/07/2026" | "Não possui" | "Vencido". */
+function lerMopp(texto: unknown): { mopp?: boolean; mopp_validade?: string } {
+  const t = normTexto(texto);
+  if (!t) return {};
+  const data = String(texto).match(/\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}/);
+  const validade = data ? (lerDataHora(data[0], true) ?? undefined) : undefined;
+  const comValidade = validade ? { mopp_validade: validade } : {};
+  if (/^(nao|sem|n)\b/.test(t)) return { mopp: false };
+  if (/vencid/.test(t)) return { mopp: false, ...comValidade };
+  if (/^(possui|sim|s|tem|ok|valido)\b/.test(t) || validade) return { mopp: true, ...comValidade };
+  return {};
+}
+
 // ---------------------------------------------------------------------------
 
 export function consolidar(
@@ -260,14 +312,50 @@ export function consolidar(
       for (const kk of chaves) planoMotorista.set(kk, p);
       return p;
     }
+    // Nome curto x nome completo: só casa se houver UM candidato compatível (sem CPF/código em conflito).
+    if (typeof nome === 'string' && nome.trim()) {
+      const cpfNovo = cpf && soDigitos(cpf).length === 11 ? soDigitos(cpf) : null;
+      const conflita = (r: Row) =>
+        (!!cpfNovo && !!r.cpf && soDigitos(r.cpf) !== cpfNovo) ||
+        (!!codigo && !!r.codigo_externo && normTexto(r.codigo_externo) !== normTexto(codigo));
+      const doPlano = [...new Set(planoMotorista.values())].filter((p) => {
+        const alvo = { ...(p.existente ?? {}), ...p.dados };
+        return typeof alvo.nome_completo === 'string' && nomesCompativeis(nome, alvo.nome_completo) && !conflita(alvo);
+      });
+      const idsPlano = new Set(doPlano.map((p) => p.existente?.id).filter(Boolean));
+      const doBanco = base.motoristas.filter(
+        (m) =>
+          !idsPlano.has(m.id) &&
+          typeof m.nome_completo === 'string' &&
+          nomesCompativeis(nome, m.nome_completo) &&
+          !conflita(m),
+      );
+      if (doPlano.length + doBanco.length === 1) {
+        const p: PlanoRegistro = doPlano[0] ?? {
+          acao: 'igual',
+          ref: `id:${String(doBanco[0]!.id)}`,
+          existente: doBanco[0]!,
+          dados: {},
+        };
+        for (const kk of chaves) planoMotorista.set(kk, p);
+        return p;
+      }
+    }
     return null;
   };
-  const registrarMotorista = (dados: Row): PlanoRegistro | null => {
+  const registrarMotorista = (entrada: Row): PlanoRegistro | null => {
+    let dados = entrada;
     const nome = dados.nome_completo as string | undefined;
     if (!nome || nome.length < 3) return null;
     const achado = acharMotorista(dados.codigo_externo, nome, dados.cpf);
     if (achado) {
       const alvo = achado.existente ? { ...achado.existente, ...achado.dados } : achado.dados;
+      // Casou pelo nome curto: fica o nome mais completo; o curto vira apelido.
+      const atual = String(alvo.nome_completo ?? '');
+      if (atual && normTexto(atual) !== normTexto(nome)) {
+        const [curto, longo] = normTexto(nome).length > normTexto(atual).length ? [atual, nome] : [nome, atual];
+        dados = { ...dados, nome_completo: longo, ...(alvo.apelido ? {} : { apelido: curto }) };
+      }
       const dif = diferenca(dados, alvo);
       if (Object.keys(dif).length > 0) {
         achado.dados = { ...achado.dados, ...dif };
@@ -291,10 +379,29 @@ export function consolidar(
     return p;
   };
 
+  /** Viagem traz o nome completo de quem já está no plano pelo nome curto: completa o cadastro. */
+  const completarNome = (p: PlanoRegistro, nome: string) => {
+    const alvo = { ...(p.existente ?? {}), ...p.dados };
+    const atual = String(alvo.nome_completo ?? '');
+    if (normTexto(nome).length <= normTexto(atual).length || normTexto(nome) === normTexto(atual)) return;
+    p.dados.nome_completo = nome;
+    if (!alvo.apelido && atual) p.dados.apelido = atual;
+    if (p.acao === 'igual') p.acao = 'atualizar';
+    if (!plano.motoristas.includes(p)) plano.motoristas.push(p);
+  };
+
   for (const r of regs('motoristas')) {
     const d: Row = { ...r.campos };
     if (d.cpf) d.cpf = soDigitos(d.cpf).length === 11 ? soDigitos(d.cpf) : undefined;
     if (typeof d.vinculo === 'string') d.frota_propria = normTexto(d.vinculo).startsWith('frota propria');
+    if (d.mopp_texto !== undefined) {
+      const m = lerMopp(d.mopp_texto);
+      if (m.mopp !== undefined) d.mopp = m.mopp;
+      if (m.mopp_validade && !d.mopp_validade) d.mopp_validade = m.mopp_validade;
+      if (m.mopp === undefined) r.extras.MOPP = d.mopp_texto;
+      delete d.mopp_texto;
+    }
+    if (typeof d.rg === 'number') d.rg = String(d.rg);
     if (Object.keys(r.extras).length > 0) d.dados_extras = r.extras;
     const p = registrarMotorista(d);
     if (!p) plano.erros.push({ arquivo: r.arquivo, aba: r.aba, linha: r.linha, mensagem: 'Motorista sem nome — linha ignorada' });
@@ -380,8 +487,13 @@ export function consolidar(
       continue;
     }
     const d: Row = {};
-    const tipo = tipoVeiculoDe(c.tipo_unidade, c.tipo_desc);
-    if (tipo) d.tipo = tipo;
+    // Aba "CARRETAS" com TIPO = "ABERTA": o nome da aba diz que é carreta.
+    const abaN = ` ${normTexto(r.aba)} `;
+    const daAba = / carreta| reboque| semi/.test(abaN) ? 'carreta' : / cavalo| trator/.test(abaN) ? 'cavalo' : '';
+    const tipo = tipoVeiculoDe(c.tipo_unidade, c.tipo_desc) ?? (daAba ? tipoVeiculoDe(daAba, c.tipo_desc) : null);
+    // "Semi-Reboque" (genérico) de outra aba não apaga o "ABERTA"/"SIDER" já conhecido.
+    const tipoAtual = (planoVeiculo.get(placa)?.dados.tipo ?? veiculoPorPlaca.get(chavePlaca(placa))?.tipo) as unknown;
+    if (tipo && !(tipo === 'CARRETA_OUTRO' && typeof tipoAtual === 'string' && tipoAtual.startsWith('CARRETA_'))) d.tipo = tipo;
     for (const k of [
       'marca', 'modelo', 'ano_fabricacao', 'capacidade_m3', 'vinculo', 'proprietario', 'motorista_atual',
       'km_atual', 'localizacao_atual', 'ultima_manutencao_data', 'proxima_manutencao_data', 'rntrc_numero',
@@ -398,7 +510,11 @@ export function consolidar(
     const sit = situacaoDe(c.situacao);
     if (sit) d.status_operacional = sit;
     if (typeof c.vinculo === 'string') d.frota_propria = normTexto(c.vinculo).startsWith('frota propria');
-    const extras = { ...r.extras, ...(c.situacao && !sit ? { Situação: c.situacao } : {}) };
+    let extras: Row = { ...r.extras, ...(c.situacao && !sit ? { Situação: c.situacao } : {}) };
+    // Aba de um assunto só (REVISÃO TÉCNICA, CRONOTACÓGRAFO): "Status", "Periodicidade"... são
+    // daquele documento — o nome da aba entra na chave para não misturar com as outras abas.
+    if (!/ veicul| frota| cavalo| carreta| placas| opentec/.test(abaN))
+      extras = Object.fromEntries(Object.entries(extras).map(([k, v]) => [`${r.aba} › ${k}`, v]));
     if (Object.keys(extras).length > 0) d.dados_extras = extras;
     registrarVeiculo(placa, d, false);
   }
@@ -505,7 +621,32 @@ export function consolidar(
     }
   };
 
-  for (const r of regs('viagens')) {
+  // Retrato diário da frota (um cavalo por dia): os dias de cada viagem viram uma viagem só.
+  // Linhas com data vêm antes das sem data: o retrato atual da frota ("Controle de Frota", sem
+  // data) completa a viagem em andamento do cavalo em vez de abrir outra.
+  const linhasViagem: Registro[] = [];
+  for (const a of abas.filter((x) => x.tipo === 'viagens')) {
+    const retrato = consolidarRetratoDiario(a.registros);
+    if (retrato) {
+      plano.avisos.push(
+        `${a.info.arquivo} › ${a.info.aba}: retrato diário da frota — ${retrato.dias} linha(s) (um cavalo por dia) consolidadas em ${retrato.viagens} viagem(ns)` +
+          (retrato.descartados > 0 ? `; ${retrato.descartados} trecho(s) sem rota e já terminados foram ignorados.` : '.'),
+      );
+      linhasViagem.push(...retrato.registros);
+    } else linhasViagem.push(...a.registros);
+  }
+  const temData = (r: Registro) => !!(r.campos.data_coleta ?? r.campos.data_programacao ?? r.campos.data_entrega);
+  linhasViagem.sort((a, b) => Number(temData(b)) - Number(temData(a)));
+  /** Viagem do plano, ainda aberta, de cada cavalo (a mais recente). */
+  const abertaDoCavalo = new Map<string, PlanoViagem>();
+  // Viagens do banco por cavalo + dia (reimportação de viagem sem ID nem CRT não duplica).
+  const porPlacaDia = new Map<string, Row>();
+  for (const v of base.viagens) {
+    const d = [v.data_coleta, v.data_programacao].find((x): x is string => typeof x === 'string');
+    if (d) porPlacaDia.set(`${chavePlaca(v.placa_cavalo)}|${d.slice(0, 10)}`, v);
+  }
+
+  for (const r of linhasViagem) {
     const c = r.campos;
     const placa = c.placa_cavalo as string | undefined;
     const fonte = `${r.arquivo} › ${r.aba} (linha ${r.linha})`;
@@ -515,17 +656,14 @@ export function consolidar(
     }
     const codigo = c.codigo_externo ? String(c.codigo_externo).trim() : null;
 
-    // "RETORNANDO VAZIO DA BALL PY" na coluna de cliente é situação, não nome de cliente.
-    let cliente = typeof c.cliente === 'string' ? c.cliente : undefined;
-    let textoCliente: string | null = null;
-    const mCli = cliente?.match(/^(?:retornando|retornou|voltando|voltou)\s+vazi[oa]\s+(?:d[aeo]s?\s+)?(.*)$/i);
-    if (mCli) {
-      textoCliente = cliente!;
-      cliente = mCli[1]?.trim() || undefined;
-    }
+    // "RETORNANDO VAZIO DA BALL PY" / "RETORNOU FRIMETAL" na coluna de cliente é situação, não nome.
+    const lido = clienteDoTexto(c.cliente);
+    let cliente = lido.cliente;
+    const textoCliente: string | null = lido.retorno ? String(c.cliente) : null;
     // Planilha de frota com ida e volta: sem ida preenchida, a viagem atual é a perna de volta.
     let origem = c.origem as string | undefined;
     let destino = c.destino as string | undefined;
+    if (typeof c.cliente_retorno === 'string' && /^vazi[oa]$/i.test(c.cliente_retorno.trim())) delete c.cliente_retorno;
     if (!origem && !destino && !cliente && (c.origem_retorno || c.destino_retorno || c.cliente_retorno)) {
       origem = c.origem_retorno as string | undefined;
       destino = c.destino_retorno as string | undefined;
@@ -566,7 +704,9 @@ export function consolidar(
     let status: StatusViagem | null = null;
     const textoStatus = typeof c.status_texto === 'string' ? c.status_texto : null;
     const textoObs = typeof c.observacoes === 'string' ? c.observacoes : null;
-    for (const t of [textoStatus, c.localizacao, textoObs, textoCliente]) if (!status && t) status = statusViagemDeTexto(t);
+    const doDetalhe = statusViagemDeTexto(c.localizacao) ?? statusViagemDeTexto(textoObs);
+    status = refinarStatus(statusViagemDeTexto(textoStatus), doDetalhe);
+    if (!status && textoCliente) status = statusViagemDeTexto(textoCliente);
     for (const t of [textoStatus, textoObs]) if (!status && t) status = statusIa.get(t) ?? null;
     if (!status) {
       if (c.descarregou === true) status = 'VAZIO_NO_CLIENTE';
@@ -639,11 +779,19 @@ export function consolidar(
     // Cadastro novo que só aparece em planilha de viagens com data (histórico de embarques, ex.:
     // VEGA) é de transportador/agregado: entra como terceiro, não como frota própria. Quem já
     // existe (ou veio antes da planilha da frota) não muda.
+    // Motorista novo num cavalo da frota própria (histórico da própria frota) continua próprio.
     const nMotoristas = plano.motoristas.length;
     const nVeiculos = plano.veiculos.length;
+    const cavaloPlano = planoVeiculo.get(placa);
+    const cavaloAntes = cavaloPlano
+      ? { ...(cavaloPlano.existente ?? {}), ...cavaloPlano.dados }
+      : veiculoPorPlaca.get(chavePlaca(placa));
+    const cavaloProprio = !!cavaloAntes && cavaloAntes.frota_propria !== false;
     const marcarTerceiros = () => {
-      if (!dataLinha) return;
-      for (const p of plano.motoristas.slice(nMotoristas)) if (p.acao === 'criar') p.dados.frota_propria = false;
+      // Retrato diário é da própria frota; só histórico de embarques (VEGA) traz terceiros.
+      if (!dataLinha || r.retrato) return;
+      if (!cavaloProprio)
+        for (const p of plano.motoristas.slice(nMotoristas)) if (p.acao === 'criar') p.dados.frota_propria = false;
       for (const p of plano.veiculos.slice(nVeiculos)) if (p.acao === 'criar') p.dados.frota_propria = false;
     };
 
@@ -659,6 +807,7 @@ export function consolidar(
               ...(placa ? { placa_habitual: placa } : {}),
             })
           : null);
+      if (motoristaPlano && typeof c.motorista_nome === 'string') completarNome(motoristaPlano, c.motorista_nome);
       if (!motoristaPlano && c.motorista_codigo)
         plano.avisos.push(`${fonte}: motorista de código ${String(c.motorista_codigo)} não encontrado e sem nome na planilha.`);
     }
@@ -667,7 +816,8 @@ export function consolidar(
     if (cliente) registrarCliente({ nome: cliente });
 
     // Veículos: cavalo e carretas existem? senão são cadastrados (placa + tipo).
-    const tipoTexto = r.extras['Tipo de veículo'] ?? r.extras['★Tipo de veículo'] ?? '';
+    const tipoTexto =
+      Object.entries(r.extras).find(([k]) => /^tipo (de )?veiculo$/.test(normTexto(k).replace(/^[^a-z]+/, '')))?.[1] ?? '';
     registrarVeiculo(placa, { tipo: 'CAVALO' }, true);
     for (const pc of [c.placa_carreta, c.placa_carreta_2])
       if (typeof pc === 'string') registrarVeiculo(pc, { tipo: tipoVeiculoDe('carreta', tipoTexto) ?? 'CARRETA_OUTRO' }, true);
@@ -698,6 +848,7 @@ export function consolidar(
       data_coleta: c.data_coleta,
       data_inicio_viagem: c.data_inicio_viagem,
       data_entrega: c.data_entrega,
+      data_encerramento: c.data_encerramento,
       observacoes: c.observacoes,
       pesquisa_ok: pesquisa,
       checklist_ok: checklist,
@@ -746,6 +897,22 @@ export function consolidar(
       continue;
     }
 
+    // Retrato atual da frota (sem data) de um cavalo que já tem viagem aberta nesta importação
+    // (vinda do histórico): é a mesma viagem, e o retrato é a informação mais recente.
+    if (!dataLinha && !codigo) {
+      const aberta = abertaDoCavalo.get(chavePlaca(placa));
+      const clienteAberta = aberta?.dados.cliente;
+      if (aberta && (!cliente || !clienteAberta || normTexto(clienteAberta) === normTexto(cliente))) {
+        const novoStatus = dados.status;
+        juntarLinha(aberta, dados, cargas);
+        if (novoStatus) aberta.dados.status = novoStatus;
+        if (typeof c.observacoes === 'string') aberta.dados.observacoes = c.observacoes;
+        aberta.fontes.push(fonte);
+        aberta.previa.fontes.push(fonte);
+        continue;
+      }
+    }
+
     // Casa com uma viagem já cadastrada: ID da planilha -> CRT/DANFE (mesmo cavalo) -> viagem ativa do cavalo.
     let existente: Row | null = null;
     if (codigo) existente = porCodigo.get(normTexto(codigo)) ?? null;
@@ -759,6 +926,10 @@ export function consolidar(
           break;
         }
       }
+    if (!existente && diaViagem) {
+      const e = porPlacaDia.get(`${chavePlaca(placa)}|${diaViagem}`);
+      if (e && !usadas.has(String(e.id))) existente = e;
+    }
     if (!existente) {
       // Linha histórica (já encerrada, com data) nunca fecha a viagem que o cavalo está fazendo
       // agora: só casa com uma viagem apenas programada e de data próxima.
@@ -821,6 +992,11 @@ export function consolidar(
     assinaturas.set(pv, new Set([JSON.stringify([c, r.extras])]));
     plano.viagens.push(pv);
     if (chaveLocal) planoPorChave.set(chaveLocal, pv);
+    if (!STATUS_VIAGEM_TERMINAIS.includes((dados.status ?? existente?.status ?? 'PROGRAMADA') as StatusViagem)) {
+      const antes = abertaDoCavalo.get(chavePlaca(placa));
+      const dataDe = (x: PlanoViagem) => String(x.dados.data_programacao ?? x.dados.data_coleta ?? '');
+      if (!antes || dataDe(pv) >= dataDe(antes)) abertaDoCavalo.set(chavePlaca(placa), pv);
+    }
   }
 
   // ----- fecha cada viagem: diferença com o banco, padrões de viagem nova, prévia ----------

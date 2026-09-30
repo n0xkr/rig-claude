@@ -218,6 +218,13 @@ export function statusViagemDeTexto(texto: unknown): StatusViagem | null {
   if (tem(' ret carregado', ' retorno carregado', ' retornando carregado')) return 'EM_TRANSITO_FRONTEIRA';
   if (tem(' retornando', ' retorno vazio', ' ret vazio', ' voltando', ' regressando', ' transito ret '))
     return 'RETORNANDO_VAZIO';
+  // Códigos curtos das planilhas de frota ("INDO CARREGADO", "AG.DESCARREGAR", "AG.CARREGAR").
+  if (tem(' indo carregado', ' seguindo carregado')) return 'EM_TRANSITO_FRONTEIRA';
+  if (tem(' indo vazio')) return 'EM_TRANSITO_CLIENTE';
+  if (tem(' ag descarreg', ' aguardando descarreg', ' aguard descarreg', ' pra descarregar', ' para descarregar'))
+    return 'CHEGADA_CLIENTE';
+  if (tem(' ag carregar', ' aguardando carregar', ' aguard carregar')) return 'PROGRAMADO_CARREGAR';
+  if (tem(' ag programac', ' aguardando programac')) return 'PROGRAMADA';
   if (tem(' vazio no cliente', ' descarregad', ' descarregou', ' descarga concluida', ' entregue', ' entregado'))
     return 'VAZIO_NO_CLIENTE';
   if (tem(' cliente') && saiu && !tem(' aduana')) return 'SAIDA_CLIENTE';
