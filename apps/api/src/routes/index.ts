@@ -37,6 +37,7 @@ import {
 import { acompanhamentoRoutes } from '../modules/acompanhamento/acompanhamento.routes.js';
 import { categoriasRoutes } from '../modules/categorias/categorias.routes.js';
 import { adminDadosRoutes } from '../modules/adminDados/adminDados.routes.js';
+import { camposPersonalizadosRoutes } from '../modules/camposPersonalizados/camposPersonalizados.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -76,6 +77,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(categoriasRoutes, { prefix: `${API_PREFIX}/categorias-usuario` });
   await app.register(perfilRoutes, { prefix: `${API_PREFIX}/perfil` });
   await app.register(adminDadosRoutes, { prefix: `${API_PREFIX}/admin/dados` });
+  await app.register(camposPersonalizadosRoutes, { prefix: `${API_PREFIX}/campos-personalizados` });
 
   await registrarModulo(app, '/viagens', VIAGENS, [
     viagensRoutes,

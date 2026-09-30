@@ -110,6 +110,15 @@ function situacaoDe(texto: unknown): string | null {
 
 const soDigitos = (v: unknown) => String(v ?? '').replace(/\D/g, '');
 
+/**
+ * Chave de uma informação extra do veículo. Abas de um assunto só (REVISÃO TÉCNICA,
+ * CRONOTACÓGRAFO...) põem o nome da aba na chave; abas de frota usam o cabeçalho puro.
+ */
+export function chaveExtraDeVeiculo(aba: string, cabecalho: string): string {
+  const abaN = ` ${normTexto(aba)} `;
+  return / veicul| frota| cavalo| carreta| placas| opentec/.test(abaN) ? cabecalho.trim() : `${aba} › ${cabecalho.trim()}`;
+}
+
 function tipoDocumento(texto: unknown, numero: string): TipoDocumentoCarga {
   const t = normTexto(texto);
   if (/crt|conhecimento/.test(t)) return 'CRT';
@@ -498,6 +507,7 @@ export function consolidar(
       'marca', 'modelo', 'ano_fabricacao', 'capacidade_m3', 'vinculo', 'proprietario', 'motorista_atual',
       'km_atual', 'localizacao_atual', 'ultima_manutencao_data', 'proxima_manutencao_data', 'rntrc_numero',
       'rntrc_validade', 'crlv_validade', 'inspecao_tecnica_validade', 'tacografo_validade', 'observacoes_acompanhamento',
+      'rastreador_autotrac_id', 'ativo',
     ])
       if (c[k] !== undefined) d[k] = c[k];
     if (typeof c.capacidade_kg === 'number') d.capacidade_kg = c.capacidade_kg;
@@ -513,8 +523,7 @@ export function consolidar(
     let extras: Row = { ...r.extras, ...(c.situacao && !sit ? { Situação: c.situacao } : {}) };
     // Aba de um assunto só (REVISÃO TÉCNICA, CRONOTACÓGRAFO): "Status", "Periodicidade"... são
     // daquele documento — o nome da aba entra na chave para não misturar com as outras abas.
-    if (!/ veicul| frota| cavalo| carreta| placas| opentec/.test(abaN))
-      extras = Object.fromEntries(Object.entries(extras).map(([k, v]) => [`${r.aba} › ${k}`, v]));
+    extras = Object.fromEntries(Object.entries(extras).map(([k, v]) => [chaveExtraDeVeiculo(r.aba, k), v]));
     if (Object.keys(extras).length > 0) d.dados_extras = extras;
     registrarVeiculo(placa, d, false);
   }
@@ -849,6 +858,13 @@ export function consolidar(
       data_inicio_viagem: c.data_inicio_viagem,
       data_entrega: c.data_entrega,
       data_encerramento: c.data_encerramento,
+      data_ordem_coleta: c.data_ordem_coleta,
+      data_chegada_fronteira: c.data_chegada_fronteira,
+      data_liberacao_fronteira: c.data_liberacao_fronteira,
+      km_rodado: c.km_rodado,
+      km_vazio: c.km_vazio,
+      consumo_combustivel_litros: c.consumo_combustivel_litros,
+      destino_armazem_rigabras: c.destino_armazem_rigabras,
       observacoes: c.observacoes,
       pesquisa_ok: pesquisa,
       checklist_ok: checklist,

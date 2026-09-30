@@ -1,5 +1,6 @@
 import {
   statusViagemDeTexto,
+  type CampoPersonalizadoImportado,
   type ImportacaoInteligenteInput,
   type ImportacaoInteligenteResultado,
   type StatusViagem,
@@ -28,6 +29,7 @@ import {
 } from './interpretacao.js';
 import { classificarAbaComIa, iaDisponivel, mapearColunasComIa, statusComIa } from './ia.js';
 import { consolidar, contar, type BaseExistente, type Plano, type Row } from './consolidacao.js';
+import { carregarCatalogo, descobrirCamposNovos, marcarNovos, registrarCampos } from './camposPersonalizados.js';
 
 const LOTE = 50;
 
@@ -219,8 +221,22 @@ export class ImportacaoInteligenteService {
       if (at.length > 15) avisos.push(`… e mais ${at.length - 15} ${nome.toLowerCase()}(s) atualizados.`);
     }
 
+    // Colunas sem campo próprio viram campos personalizados (valor em dados_extras + catálogo).
+    const catalogo = await carregarCatalogo();
+    const camposNovos = marcarNovos(descobrirCamposNovos(abas), catalogo);
+    const aCriar = camposNovos.filter((c) => c.novo);
+    if (aCriar.length > 0)
+      avisos.push(
+        catalogo === null
+          ? `${aCriar.length} coluna(s) nova(s) serão guardadas como informação extra. Para registrá-las como campos do sistema, aplique supabase/migrations/0015_campos_personalizados.sql no Supabase.`
+          : `${aCriar.length} campo(s) novo(s) serão criados a partir das colunas novas: ${aCriar.slice(0, 8).map((c) => c.chave).join(', ')}${aCriar.length > 8 ? '…' : ''}.`,
+      );
+
     let loteId: string | null = null;
-    if (input.modo === 'gravar') loteId = await this.gravar(plano, input, userId, ip);
+    if (input.modo === 'gravar') {
+      loteId = await this.gravar(plano, input, userId, ip);
+      if (catalogo !== null) await registrarCampos(camposNovos, userId);
+    }
 
     return {
       modo: input.modo,
@@ -241,6 +257,8 @@ export class ImportacaoInteligenteService {
       },
       cruzamentos: plano.cruzamentos,
       viagens: plano.viagens.slice(0, 500).map((v) => v.previa),
+      campos_novos: camposNovos as CampoPersonalizadoImportado[],
+      catalogo_disponivel: catalogo !== null,
       erros: plano.erros.slice(0, 300),
       avisos: [...avisos, ...plano.avisos].slice(0, 200),
     };

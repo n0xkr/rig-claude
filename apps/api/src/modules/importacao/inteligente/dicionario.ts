@@ -50,7 +50,7 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
       'placa carreta 2', 'carreta 2', 'placa reboque 2', 'reboque 2', 'segunda carreta',
     ], { excluir: ['tipo'] }),
     f('motorista_codigo', 'Código do motorista', 'text', [
-      'id motorista', 'codigo motorista', 'cod motorista', 'matricula motorista', 'id do motorista',
+      'id motorista', 'codigo motorista', 'codigo do motorista', 'cod motorista', 'matricula motorista', 'id do motorista',
     ], { excluir: ['2'] }),
     f('motorista_nome', 'Motorista', 'text', [
       'nome do motorista', 'motorista', 'nome motorista', 'condutor', 'motorista 1', 'nome condutor',
@@ -125,8 +125,51 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
       'data de coleta', 'coleta',
     ]),
     f('hora_coleta', 'Hora da coleta', 'text', ['hora coleta', 'hora da coleta', 'hora carregamento', 'hora', 'horario'], {
-      excluir: ['fim', 'final', 'chegada', 'entrega', 'termino', 'descarga', 'solicitacao'],
+      excluir: [
+        'fim', 'final', 'chegada', 'entrega', 'termino', 'descarga', 'solicitacao', 'programacao', 'programada',
+        'prevista', 'previsto', 'previsao', 'ordem', 'fronteira', 'liberacao', 'inicio', 'encerramento', 'fechamento', 'saida',
+      ],
     }),
+    f('hora_programacao', 'Hora de início / carregamento (previsto)', 'text', [
+      'hora programacao', 'hora programada', 'hora de programacao', 'hora prevista', 'hora previsao carregamento',
+      'hora prevista carregamento', 'horario programado', 'horario previsto',
+    ], { excluir: ['real'] }),
+    f('data_ordem_coleta', 'Data da ordem de coleta', 'datetime', [
+      'data ordem de coleta', 'data ordem coleta', 'data da ordem de coleta', 'ordem de coleta', 'data ordem',
+    ]),
+    f('hora_ordem_coleta', 'Hora da ordem de coleta', 'text', ['hora ordem de coleta', 'hora ordem coleta', 'hora da ordem de coleta']),
+    f('hora_inicio_viagem', 'Hora do início real da viagem', 'text', [
+      'hora inicio viagem', 'hora de inicio da viagem', 'hora inicio real', 'hora de saida', 'hora saida',
+    ]),
+    f('data_chegada_fronteira', 'Chegada na fronteira', 'datetime', [
+      'data hora chegada fronteira', 'data chegada fronteira', 'chegada fronteira', 'data de chegada na fronteira',
+      'chegada na fronteira', 'data entrada fronteira',
+    ]),
+    f('hora_chegada_fronteira', 'Hora da chegada na fronteira', 'text', [
+      'hora chegada fronteira', 'hora chegada na fronteira', 'hora da chegada na fronteira', 'hora entrada fronteira',
+    ]),
+    f('data_liberacao_fronteira', 'Liberação na fronteira', 'datetime', [
+      'data hora liberacao fronteira', 'data liberacao fronteira', 'liberacao fronteira', 'data de liberacao na fronteira',
+      'liberacao na fronteira', 'data saida fronteira',
+    ]),
+    f('hora_liberacao_fronteira', 'Hora da liberação na fronteira', 'text', [
+      'hora liberacao fronteira', 'hora liberacao na fronteira', 'hora da liberacao na fronteira', 'hora saida fronteira',
+    ]),
+    f('data_encerramento', 'Encerramento da viagem', 'datetime', [
+      'data hora encerramento', 'data encerramento', 'data de encerramento', 'encerramento', 'data fechamento',
+      'data de fechamento',
+    ]),
+    f('hora_encerramento', 'Hora do encerramento', 'text', ['hora encerramento', 'hora de encerramento', 'hora fechamento']),
+    f('km_rodado', 'KM rodado', 'number', ['km rodado', 'km rodados', 'km percorrido', 'km percorridos', 'quilometragem rodada'], {
+      excluir: ['vazio'],
+    }),
+    f('km_vazio', 'KM vazio', 'number', ['km vazio', 'km rodado vazio', 'km vazios']),
+    f('consumo_combustivel_litros', 'Consumo de combustível (L)', 'number', [
+      'consumo combustivel litros', 'consumo combustivel', 'consumo de combustivel', 'litros consumidos', 'litros',
+    ]),
+    f('destino_armazem_rigabras', 'Destino: armazém Rigabras', 'bool', [
+      'destino armazem rigabras', 'armazem rigabras', 'destino armazem', 'vai para armazem',
+    ]),
     f('data_inicio_viagem', 'Início real da viagem', 'datetime', ['inicio viagem macro inicio', 'inicio viagem', 'inicio real', 'data inicio real']),
     f('data_entrega', 'Chegada no destino', 'datetime', [
       'data hora chegada destino', 'chegada destino', 'data chegada destino', 'data entrega', 'data de entrega',
@@ -198,10 +241,14 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
       'tacografo validade', 'tacografo', 'data da validade calibracao', 'validade calibracao', 'validade da calibracao',
       'validade cronotacografo', 'validade do cronotacografo',
     ], { excluir: ['marca', 'serie', 'alerta', 'ultima', 'status', 'descricao'] }),
+    f('rastreador_autotrac_id', 'Rastreador (ID)', 'text', [
+      'id rastreador', 'rastreador autotrac', 'autotrac', 'codigo rastreador', 'numero rastreador', 'rastreador',
+    ], { excluir: ['status', 'situacao', 'validade', 'marca', 'sinal', 'tipo'] }),
+    f('ativo', 'Ativo', 'bool', ['ativo', 'veiculo ativo']),
     f('observacoes_acompanhamento', 'Observações', 'text', ['observacao', 'observacoes', 'obs'], { multi: true }),
   ],
   motoristas: [
-    f('codigo_externo', 'Código', 'text', ['id motorista', 'codigo motorista', 'codigo', 'matricula', 'id', 'cod']),
+    f('codigo_externo', 'Código', 'text', ['id motorista', 'codigo motorista', 'codigo do motorista', 'codigo', 'matricula', 'id', 'cod']),
     f('nome_completo', 'Nome', 'text', ['nome completo', 'nome', 'motorista', 'nome do motorista', 'condutor'], {
       excluir: ['empresa', 'mae', 'pai'],
     }),
@@ -226,6 +273,18 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('doc_viagem_tipo', 'Doc. viagem tipo', 'text', ['doc viagem tipo']),
     f('doc_viagem_validade', 'Doc. viagem validade', 'date', ['doc viagem validade', 'passaporte validade']),
     f('placa_habitual', 'Placa habitual', 'plate', ['placa habitual', 'placa', 'veiculo habitual']),
+    f('cnh_ear', 'CNH com EAR', 'bool', ['cnh ear', 'ear', 'curso ear', 'possui ear', 'ear cnh'], { excluir: ['validade', 'vencimento'] }),
+    f('cnh_primeira_habilitacao', '1ª habilitação', 'date', [
+      'cnh primeira habilitacao', 'primeira habilitacao', 'data primeira habilitacao', 'data da primeira habilitacao', '1 habilitacao',
+    ]),
+    f('toxicologico_data', 'Data do toxicológico', 'date', [
+      'toxicologico data', 'data toxicologico', 'data do toxicologico', 'data do exame toxicologico', 'ultimo toxicologico',
+    ], { excluir: ['vencimento', 'validade'] }),
+    f('treinamento_pgr_data', 'Treinamento PGR', 'date', [
+      'treinamento pgr data', 'treinamento pgr', 'data treinamento pgr', 'data do treinamento pgr', 'pgr treinamento',
+    ]),
+    f('nome_mae', 'Nome da mãe', 'text', ['nome da mae', 'nome mae', 'filiacao mae', 'mae']),
+    f('nome_pai', 'Nome do pai', 'text', ['nome do pai', 'nome pai', 'filiacao pai', 'pai']),
     f('ativo', 'Ativo', 'bool', ['ativo']),
     f('observacao', 'Observação', 'text', ['observacao', 'observacoes', 'obs'], { multi: true }),
   ],
@@ -237,6 +296,11 @@ export const CAMPOS_POR_TIPO: Record<Exclude<TipoAbaImportacao, 'ignorada'>, Cam
     f('tipo', 'Tipo', 'text', ['tipo']),
     f('contato', 'Contato', 'text', ['contato corporativo', 'contato', 'telefone', 'email', 'e mail']),
     f('regras', 'Regras', 'text', ['regras especificas', 'regras', 'observacao']),
+    f('exige_gr_propria', 'Exige GR própria', 'bool', ['exige gr propria', 'gr propria', 'exige gr']),
+    f('gr_cliente', 'GR do cliente', 'text', ['gr cliente', 'gr do cliente', 'gerenciadora do cliente', 'gerenciadora de risco']),
+    f('exige_espelhamento', 'Exige espelhamento', 'bool', ['exige espelhamento', 'espelhamento']),
+    f('pgr_proprio', 'PGR próprio', 'bool', ['pgr proprio', 'pgr do cliente', 'possui pgr']),
+    f('ddr', 'DDR', 'bool', ['ddr', 'exige ddr']),
   ],
   cargas: [
     f('viagem_ref', 'ID da viagem', 'text', ['id viagem', 'viagem', 'codigo viagem', 'n viagem']),
@@ -335,7 +399,10 @@ export function pontuar(cabecalho: string, campo: CampoImport): number {
   let melhor = 0;
   campo.sinonimos.forEach((s, i) => {
     let p = 0;
+    // "hora"/"horario" sozinhos só valem como cabeçalho inteiro: "Hora do lacre" não é a hora da coleta.
+    const soExato = s === 'hora' || s === 'horario';
     if (h === s) p = 100 - i;
+    else if (soExato) p = 0;
     else if (h.startsWith(`${s} `) || h.endsWith(` ${s}`)) p = 60 - i;
     else if (s.length >= 4 && palavras.includes(` ${s} `)) p = 40 - i;
     if (p > melhor) melhor = p;

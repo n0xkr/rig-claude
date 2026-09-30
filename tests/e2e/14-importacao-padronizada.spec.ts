@@ -163,11 +163,11 @@ test.describe('Importação com padronização', () => {
     await expect(linhaLib).toContainText('CONDUTOR LIBERADO');
   });
 
-  test('planilha modelo: baixa, reimporta e todas as abas são reconhecidas', async ({ page }) => {
+  test('planilha padrão: baixa, reimporta, todas as abas e colunas são reconhecidas (inclusive horários)', async ({ page }) => {
     await loginAs(page, 'OPERADOR');
     await page.goto('/importar-dados');
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('gerar-planilha-modelo').click()]);
-    expect(download.suggestedFilename()).toMatch(/planilha modelo\.xlsx$/);
+    expect(download.suggestedFilename()).toMatch(/planilha padrao\.xlsx$/);
     const conteudo = readFileSync((await download.path())!);
     await enviar(page, 'modelo.xlsx', conteudo);
     await page.getByRole('button', { name: /Como cada aba foi entendida/ }).click({ timeout: 60_000 });
@@ -178,9 +178,51 @@ test.describe('Importação com padronização', () => {
       ['Veiculos', 'Veículos'],
       ['Clientes', 'Clientes'],
       ['CRT e DANFE', 'Documentos de carga'],
+      ['Checklists', 'Checklists'],
+      ['SMP', 'SMP'],
+      ['Consultas GR', 'consultas'],
     ])
       await expect(abas.locator('li', { hasText: `${aba} →` }).first()).toContainText(tipo);
-    // Nenhuma coluna do modelo ficou como "informação extra"
-    await expect(abas.locator('li', { hasText: 'Viagens →' }).locator('span.bg-slate-100')).toHaveCount(0);
+    // Nenhuma coluna da planilha padrão ficou como "informação extra" (nem nasceu campo novo)
+    for (const aba of ['Viagens', 'Motoristas', 'Veiculos', 'Clientes'])
+      await expect(abas.locator('li', { hasText: `${aba} →` }).locator('span.bg-slate-100')).toHaveCount(0);
+    await expect(page.getByTestId('importacao-campos-novos')).toHaveCount(0);
+  });
+
+  test('colunas novas viram campos do sistema e os horários são registrados', async ({ page }) => {
+    const placa = placa7();
+    const csv = [
+      'Placa cavalo;Origem;Destino;Data coleta;Hora coleta;Hora chegada fronteira;Hora do lacre;Temperatura;Lacre',
+      `${placa};URUGUAIANA;BUENOS AIRES;02/10/2026;09:15;07:20;13h45;4,5;LCR-${r(9000) + 1000}`,
+    ].join('\n');
+    await loginAs(page, 'OPERADOR');
+    await page.goto('/importar-dados');
+    await enviar(page, 'campos-novos.csv', csv);
+    const painel = page.getByTestId('importacao-campos-novos');
+    await expect(painel).toBeVisible({ timeout: 60_000 });
+    await expect(painel).toContainText('Hora do lacre');
+    await expect(painel).toContainText('Hora');
+    await expect(painel).toContainText('Temperatura');
+    await expect(painel).toContainText('Lacre');
+    await page.getByTestId('importacao-gravar').click();
+    await expect(page.getByTestId('importacao-concluida')).toBeVisible({ timeout: 60_000 });
+
+    // A viagem guarda os horários: data + hora da coleta juntas; hora solta vira campo adicional.
+    const viagem = (await viagemPorPlaca(page, placa)) as unknown as {
+      id: string;
+      data_coleta: string;
+      dados_extras: Record<string, unknown>;
+    };
+    const id = viagem.id;
+    expect(viagem.data_coleta).toBe('2026-10-02T12:15:00.000Z');
+    expect(viagem.dados_extras['Hora da chegada na fronteira']).toBe('07:20');
+    expect(viagem.dados_extras['Hora do lacre']).toBe('13:45');
+    expect(viagem.dados_extras['Temperatura']).toBe(4.5);
+
+    await page.goto(`/viagens/${id}`);
+    const extras = page.getByTestId('campos-adicionais');
+    await expect(extras).toContainText('Hora do lacre');
+    await expect(extras).toContainText('13:45');
+    await expect(extras).toContainText('Temperatura');
   });
 });

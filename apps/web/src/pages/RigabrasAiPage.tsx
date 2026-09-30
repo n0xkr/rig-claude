@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Bot, Send, User } from 'lucide-react';
+import { Bot, Mic, MicOff, Send, User } from 'lucide-react';
 import { useChatbot } from '../hooks/useChatbot.js';
+import { useReconhecimentoVoz } from '../hooks/useReconhecimentoVoz.js';
 
 interface Mensagem {
   autor: 'usuario' | 'ia';
@@ -23,6 +24,9 @@ export default function RigabrasAiPage() {
   const { perguntar, enviando, error } = useChatbot();
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [pergunta, setPergunta] = useState('');
+  const { suportado, ouvindo, erroVoz, alternar } = useReconhecimentoVoz({
+    aoTranscrever: (texto) => setPergunta(texto),
+  });
 
   async function enviar(texto: string) {
     if (!texto.trim() || enviando) return;
@@ -98,6 +102,11 @@ export default function RigabrasAiPage() {
       </div>
 
       {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+      {erroVoz && (
+        <p className="mb-2 text-sm text-red-600" data-testid="chatbot-erro-voz">
+          {erroVoz}
+        </p>
+      )}
 
       <form
         onSubmit={(e) => {
@@ -108,11 +117,33 @@ export default function RigabrasAiPage() {
       >
         <input
           className="input flex-1"
-          placeholder="Pergunte sobre a operação..."
+          placeholder={ouvindo ? 'Ouvindo...' : 'Pergunte sobre a operação...'}
           value={pergunta}
           onChange={(e) => setPergunta(e.target.value)}
           disabled={enviando}
+          data-testid="chatbot-input"
         />
+        <button
+          type="button"
+          onClick={alternar}
+          disabled={enviando || !suportado}
+          aria-label={ouvindo ? 'Parar de ouvir' : 'Falar pergunta'}
+          title={
+            suportado
+              ? ouvindo
+                ? 'Parar de ouvir'
+                : 'Falar pergunta'
+              : 'Seu navegador não suporta reconhecimento de voz (use Chrome ou Edge).'
+          }
+          data-testid="chatbot-microfone"
+          className={`rounded-xl border px-3 py-2 transition-all duration-200 disabled:opacity-50 ${
+            ouvindo
+              ? 'animate-pulse border-red-500 bg-red-500 text-white'
+              : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          {suportado ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+        </button>
         <button
           type="submit"
           disabled={enviando || !pergunta.trim()}

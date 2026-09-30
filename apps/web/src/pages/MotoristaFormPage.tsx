@@ -12,6 +12,7 @@ import {
 } from '@rigabras/shared';
 import { api, ApiError, getCurrentUserRole } from '../lib/apiClient.js';
 import { arquivosParaGuardar, imagensParaOcr } from '../lib/arquivosDocumento.js';
+import { CamposAdicionais } from '../components/CamposAdicionais.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 
 interface FormState {
@@ -131,6 +132,7 @@ export default function MotoristaFormPage() {
   const [carregando, setCarregando] = useState(editando);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
   const [documentos, setDocumentos] = useState<MotoristaDocumento[]>([]);
+  const [extras, setExtras] = useState<Record<string, unknown> | null>(null);
   const [cnhArquivos, setCnhArquivos] = useState<File[]>([]);
   const [cnhOcr, setCnhOcr] = useState<OcrDocumentoResultado | null>(null);
   const [lendoCnh, setLendoCnh] = useState(false);
@@ -155,7 +157,12 @@ export default function MotoristaFormPage() {
     setCarregando(true);
     api
       .get<Motorista>(`/motoristas/${id}`)
-      .then((m) => setForm(doMotorista(m)))
+      .then((m) => {
+        setForm(doMotorista(m));
+        // Só o que não é campo da tela (colunas novas das planilhas).
+        const jaNaTela = new Set(Object.values(EXTRA));
+        setExtras(Object.fromEntries(Object.entries(m.dados_extras ?? {}).filter(([k]) => !jaNaTela.has(k))));
+      })
       .catch((err) => setErroCarga(msg(err)))
       .finally(() => setCarregando(false));
     void carregarDocs();
@@ -338,6 +345,8 @@ export default function MotoristaFormPage() {
         ← Motoristas
       </Link>
       <h1 className="mb-6 text-2xl font-bold text-slate-900">{editando ? form.nome_completo || 'Motorista' : 'Novo motorista'}</h1>
+
+      {editando && <CamposAdicionais entidade="motoristas" extras={extras} />}
 
       <form onSubmit={salvar} className="space-y-6" data-testid="motorista-form">
         {podeEditar && (

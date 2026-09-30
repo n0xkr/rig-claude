@@ -138,6 +138,66 @@ export interface ImportacaoInteligenteResultado {
     status_deduzidos: number;
   };
   viagens: ViagemConsolidadaPrevia[];
+  /** Colunas sem campo próprio: cada uma vira um campo personalizado (valor em `dados_extras`). */
+  campos_novos: CampoPersonalizadoImportado[];
+  /** Catálogo de campos personalizados existe no banco (migration 0015 aplicada)? */
+  catalogo_disponivel: boolean;
   erros: Array<{ arquivo: string; aba: string; linha: number | null; mensagem: string }>;
   avisos: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Campos personalizados: colunas novas das planilhas viram campos do sistema
+// ---------------------------------------------------------------------------
+
+export const ENTIDADES_CAMPO_PERSONALIZADO = ['viagens', 'veiculos', 'motoristas', 'clientes'] as const;
+export type EntidadeCampoPersonalizado = (typeof ENTIDADES_CAMPO_PERSONALIZADO)[number];
+
+export const TIPOS_CAMPO_PERSONALIZADO = ['texto', 'numero', 'data', 'datahora', 'hora', 'booleano'] as const;
+export type TipoCampoPersonalizado = (typeof TIPOS_CAMPO_PERSONALIZADO)[number];
+
+export const TIPO_CAMPO_PERSONALIZADO_LABEL: Record<TipoCampoPersonalizado, string> = {
+  texto: 'Texto',
+  numero: 'Número',
+  data: 'Data',
+  datahora: 'Data e hora',
+  hora: 'Hora',
+  booleano: 'Sim/Não',
+};
+
+export const ENTIDADE_CAMPO_PERSONALIZADO_LABEL: Record<EntidadeCampoPersonalizado, string> = {
+  viagens: 'Viagens',
+  veiculos: 'Veículos',
+  motoristas: 'Motoristas',
+  clientes: 'Clientes',
+};
+
+/** Definição de um campo criado a partir de uma coluna nova (valor fica em `dados_extras[chave]`). */
+export interface CampoPersonalizado {
+  entidade: EntidadeCampoPersonalizado;
+  chave: string;
+  rotulo: string;
+  tipo: TipoCampoPersonalizado;
+  exemplo?: string | null;
+}
+
+/** Campo detectado numa importação: `novo` = ainda não existia no catálogo. */
+export interface CampoPersonalizadoImportado extends CampoPersonalizado {
+  novo: boolean;
+  preenchidas: number;
+}
+
+/** Valor de `dados_extras` formatado conforme o tipo do campo (hora "14:30", data dd/mm/aaaa...). */
+export function formatarValorCampoPersonalizado(valor: unknown, tipo: TipoCampoPersonalizado | null | undefined): string {
+  if (valor === null || valor === undefined || valor === '') return '—';
+  if (typeof valor === 'boolean') return valor ? 'Sim' : 'Não';
+  if (typeof valor === 'number') return tipo === 'numero' || !tipo ? valor.toLocaleString('pt-BR') : String(valor);
+  if (typeof valor === 'object') return JSON.stringify(valor);
+  const s = String(valor);
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(s);
+  if (m && (tipo === 'data' || tipo === 'datahora' || !tipo)) {
+    const dia = `${m[3]}/${m[2]}/${m[1]}`;
+    return m[4] && tipo !== 'data' ? `${dia} ${m[4]}:${m[5]}` : dia;
+  }
+  return s;
 }

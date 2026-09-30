@@ -30,6 +30,7 @@ import { useViagemWmsStatus } from '../hooks/useViagemWmsStatus.js';
 import { useChangeViagemStatus } from '../hooks/useChangeViagemStatus.js';
 import { useMotoristasList } from '../hooks/useMotoristas.js';
 import { api, ApiError, getCurrentUserRole } from '../lib/apiClient.js';
+import { CamposAdicionais } from '../components/CamposAdicionais.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
 import {
   StatusBadge,
@@ -207,6 +208,8 @@ export default function ViagemDetailPage() {
         <Info label="Valor do frete" value={moeda(viagem.valor_frete)} />
         <Info label="MIC/DTA" value={viagem.numero_mic_dta ?? '-'} />
       </dl>
+
+      <CamposAdicionais entidade="viagens" extras={viagem.dados_extras} />
 
       {/* Checagens de liberação */}
       <div className="mb-6 flex flex-wrap gap-2" data-testid="viagem-checagens">

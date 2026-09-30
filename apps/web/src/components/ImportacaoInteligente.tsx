@@ -10,13 +10,16 @@ import {
   FileSpreadsheet,
   Link2,
   Loader2,
+  Plus,
   Sparkles,
   UploadCloud,
   X,
 } from 'lucide-react';
 import {
+  ENTIDADE_CAMPO_PERSONALIZADO_LABEL,
   STATUS_VIAGEM_LABEL,
   TIPO_ABA_IMPORTACAO_LABEL,
+  TIPO_CAMPO_PERSONALIZADO_LABEL,
   type ImportacaoInteligenteInput,
   type ImportacaoInteligenteResultado,
   type StatusViagem,
@@ -130,6 +133,39 @@ function TratamentoAba({ aba }: { aba: ImportacaoInteligenteResultado['abas'][nu
   );
 }
 
+/** Colunas novas da planilha: cada uma vira um campo do sistema (com o tipo detectado). */
+function CamposNovos({ r, gravado }: { r: ImportacaoInteligenteResultado; gravado: boolean }) {
+  const novos = r.campos_novos.filter((c) => c.novo).length;
+  return (
+    <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-4 shadow-sm" data-testid="importacao-campos-novos">
+      <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <Plus className="h-4 w-4 text-violet-600" />
+        {gravado ? 'Campos criados a partir das colunas novas' : 'Colunas novas → novos campos do sistema'} ({r.campos_novos.length})
+      </p>
+      <p className="mb-2 text-xs text-slate-600">
+        {r.catalogo_disponivel
+          ? `${novos} campo(s) ${gravado ? 'criado(s) agora' : 'serão criados'}; os demais já existiam. `
+          : 'Os valores serão guardados nos "Campos adicionais" de cada registro. '}
+        O tipo (hora, data, número, sim/não, texto) foi detectado pelos valores da coluna.
+      </p>
+      <div className="flex flex-wrap gap-1.5 text-[11px]">
+        {r.campos_novos.map((c) => (
+          <span
+            key={`${c.entidade}|${c.chave}`}
+            className={`rounded px-1.5 py-0.5 ${c.novo ? 'bg-violet-100 text-violet-800' : 'bg-slate-100 text-slate-600'}`}
+            title={`${ENTIDADE_CAMPO_PERSONALIZADO_LABEL[c.entidade]} · ${c.preenchidas} valor(es)${c.exemplo ? ` · ex.: ${c.exemplo}` : ''}`}
+            data-testid="importacao-campo-novo"
+          >
+            {ENTIDADE_CAMPO_PERSONALIZADO_LABEL[c.entidade]} › {c.rotulo}{' '}
+            <span className="font-semibold">({TIPO_CAMPO_PERSONALIZADO_LABEL[c.tipo]})</span>
+            {c.novo ? '' : ' · já existe'}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Importação sem mapeamento manual: o usuário só solta as planilhas. O sistema
  * lê todas as abas, entende o que cada uma é, cruza as informações e mostra o
@@ -198,19 +234,20 @@ export function ImportacaoInteligente({ onImported }: { onImported?: () => void 
 
   return (
     <div className="space-y-4" data-testid="importacao-inteligente">
-      {fase === 'inicio' && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm">
-          <span>Não tem planilha pronta? Baixe o modelo com as colunas que o sistema entende.</span>
-          <button
-            type="button"
-            onClick={() => baixarPlanilhaModelo()}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-100"
-            data-testid="gerar-planilha-modelo"
-          >
-            <Download className="h-3.5 w-3.5" /> Gerar planilha modelo
-          </button>
-        </div>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600 shadow-sm">
+        <span>
+          Não tem planilha pronta? Baixe a planilha padrão: ela traz todas as colunas que o sistema precisa (inclusive
+          horários) para alimentar todos os campos.
+        </span>
+        <button
+          type="button"
+          onClick={() => baixarPlanilhaModelo()}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-100"
+          data-testid="gerar-planilha-modelo"
+        >
+          <Download className="h-3.5 w-3.5" /> Download planilha padrão
+        </button>
+      </div>
       {fase === 'inicio' || ocupado ? (
         <div
           onDragOver={(e) => e.preventDefault()}
@@ -313,6 +350,8 @@ export function ImportacaoInteligente({ onImported }: { onImported?: () => void 
               <span>{r.ia_disponivel ? 'IA ativa' : 'IA indisponível (só dicionário)'}</span>
             </div>
           </div>
+
+          {r.campos_novos.length > 0 && <CamposNovos r={r} gravado={fase === 'gravado'} />}
 
           <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
             <button

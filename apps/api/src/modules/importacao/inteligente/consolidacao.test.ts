@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PLANILHA_MODELO, statusViagemDeTexto } from '@rigabras/shared';
 import { classificarAba, lerRegistros, type AbaLida, type TipoDados } from './interpretacao.js';
 import { consolidar, paisDe, type BaseExistente } from './consolidacao.js';
+import { CAMPOS_POR_TIPO } from './dicionario.js';
 
 function ler(nome: string, cabecalhos: string[], linhas: Array<Record<string, unknown>>): AbaLida {
   const aba = { nome, cabecalhos, linhas };
@@ -120,25 +121,55 @@ describe('importação inteligente', () => {
     expect(plano.clientes.map((c) => c.dados.nome)).not.toContain('DIGITAL DIESEL');
   });
 
-  it('planilha modelo: toda aba é reconhecida e toda coluna tem campo', () => {
+  it('planilha padrão: toda aba é reconhecida, cada coluna cai no campo certo e nenhum campo do sistema ficou de fora', () => {
     const esperado: Record<string, string> = {
       Viagens: 'viagens',
       Motoristas: 'motoristas',
       Veiculos: 'veiculos',
       Clientes: 'clientes',
       'CRT e DANFE': 'cargas',
+      Checklists: 'checklists',
+      SMP: 'smp',
+      'Consultas GR': 'consultas',
     };
     for (const m of PLANILHA_MODELO) {
       const c = classificarAba({ nome: m.aba, cabecalhos: m.colunas, linhas: m.exemplos });
       expect(c?.tipo, m.aba).toBe(esperado[m.aba]);
       const semCampo = m.colunas.filter((col) => !c!.mapa!.porColuna.has(col));
       expect(semCampo, m.aba).toEqual([]);
+      // Cada coluna alimenta exatamente o campo que o modelo diz.
+      const trocados = m.detalhes.filter((d) => c!.mapa!.porColuna.get(d.coluna) !== d.campo).map((d) => `${d.coluna} → ${c!.mapa!.porColuna.get(d.coluna)} (esperado ${d.campo})`);
+      expect(trocados, m.aba).toEqual([]);
+      // Nenhum campo do dicionário fica sem coluna na planilha (exceto alternativas/atalhos).
+      const dispensados = new Set(['peso_t', 'capacidade_t', 'cliente_retorno', 'origem_retorno', 'destino_retorno', 'carregou', 'em_viagem', 'em_fronteira', 'chegou', 'descarregou']);
+      const faltando = CAMPOS_POR_TIPO[esperado[m.aba] as keyof typeof CAMPOS_POR_TIPO]
+        .map((x) => x.campo)
+        .filter((campo) => !dispensados.has(campo) && !m.detalhes.some((d) => d.campo === campo));
+      expect(faltando, m.aba).toEqual([]);
     }
     const viagens = PLANILHA_MODELO[0]!;
     const r = ler(viagens.aba, viagens.colunas, viagens.exemplos).registros[0]!;
     expect(Object.keys(r.extras)).toEqual([]);
     expect(r.campos.pesquisa_gr).toBe(true);
     expect(r.campos.peso_kg).toBe(24500);
+    // Horários: cada "Hora ..." se junta à data ao lado (horário de Brasília -03:00 → ISO em UTC).
+    expect(r.campos.data_programacao).toBe('2026-10-01T11:00:00.000Z');
+    expect(r.campos.data_ordem_coleta).toBe('2026-09-30T19:30:00.000Z');
+    expect(r.campos.data_coleta).toBe('2026-10-01T12:15:00.000Z');
+    expect(r.campos.data_chegada_fronteira).toBe('2026-10-02T10:20:00.000Z');
+    expect(r.campos.data_liberacao_fronteira).toBe('2026-10-02T18:05:00.000Z');
+    expect(r.campos.data_entrega).toBe('2026-10-03T13:30:00.000Z');
+    expect(r.campos.data_encerramento).toBe('2026-10-03T21:00:00.000Z');
+    expect(Object.keys(r.campos).filter((k) => k.startsWith('hora_'))).toEqual([]);
+  });
+
+  it('hora sem data não se perde: vira informação extra "HH:mm"', () => {
+    const aba = ler('Viagens', ['Placa cavalo', 'Origem', 'Destino', 'Hora chegada fronteira'], [
+      { 'Placa cavalo': 'ABC1D23', Origem: 'URUGUAIANA', Destino: 'BUENOS AIRES', 'Hora chegada fronteira': '07:20' },
+    ]);
+    const r = aba.registros[0]!;
+    expect(r.campos.hora_chegada_fronteira).toBeUndefined();
+    expect(r.extras['Hora da chegada na fronteira']).toBe('07:20');
   });
 
   it('descobre o país pelo destino', () => {

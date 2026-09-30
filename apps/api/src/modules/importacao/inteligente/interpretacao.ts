@@ -32,14 +32,42 @@ export function lerHora(raw: unknown): [number, number] | null {
   return H < 24 && M < 60 ? [H, M] : null;
 }
 
-/** Junta a coluna de hora separada ("Data Coleta" + "Hora") na data/hora do campo. */
-function aplicarHora(campos: Record<string, unknown>, campoData: string, campoHora: string) {
+/** Campo de hora separado -> campo de data/hora ao qual ele pertence (viagens). */
+export const PARES_DATA_HORA: Array<{ data: string; hora: string; rotulo: string }> = [
+  { data: 'data_programacao', hora: 'hora_programacao', rotulo: 'Hora de início / carregamento (previsto)' },
+  { data: 'data_ordem_coleta', hora: 'hora_ordem_coleta', rotulo: 'Hora da ordem de coleta' },
+  { data: 'data_coleta', hora: 'hora_coleta', rotulo: 'Hora da coleta' },
+  { data: 'data_inicio_viagem', hora: 'hora_inicio_viagem', rotulo: 'Hora do início real da viagem' },
+  { data: 'data_chegada_fronteira', hora: 'hora_chegada_fronteira', rotulo: 'Hora da chegada na fronteira' },
+  { data: 'data_liberacao_fronteira', hora: 'hora_liberacao_fronteira', rotulo: 'Hora da liberação na fronteira' },
+  { data: 'data_entrega', hora: 'hora_entrega', rotulo: 'Hora da chegada' },
+  { data: 'data_encerramento', hora: 'hora_encerramento', rotulo: 'Hora do encerramento' },
+];
+
+/**
+ * Junta a coluna de hora separada ("Data Coleta" + "Hora") na data/hora do campo. Hora sem a
+ * data correspondente não se perde: vira informação extra ("HH:mm") com o rótulo do campo.
+ */
+function aplicarHora(
+  campos: Record<string, unknown>,
+  extras: Record<string, unknown>,
+  campoData: string,
+  campoHora: string,
+  rotulo: string,
+) {
   const hora = campos[campoHora];
   delete campos[campoHora];
-  const data = campos[campoData];
-  if (typeof data !== 'string' || hora === undefined) return;
+  if (hora === undefined) return;
   const hm = lerHora(hora);
-  if (!hm) return;
+  if (!hm) {
+    extras[rotulo] = hora;
+    return;
+  }
+  const data = campos[campoData];
+  if (typeof data !== 'string') {
+    extras[rotulo] = `${String(hm[0]).padStart(2, '0')}:${String(hm[1]).padStart(2, '0')}`;
+    return;
+  }
   // A data já está em ISO (UTC); pega o dia em horário de Brasília e aplica a hora da planilha.
   const local = new Date(Date.parse(data) - 3 * 3600000);
   if (Number.isNaN(local.getTime())) return;
@@ -369,10 +397,7 @@ export function lerRegistros(
       } else if (campos[campo!] === undefined) campos[campo!] = v;
     }
     if (!algum) return;
-    if (tipo === 'viagens') {
-      aplicarHora(campos, 'data_coleta', 'hora_coleta');
-      aplicarHora(campos, 'data_entrega', 'hora_entrega');
-    }
+    if (tipo === 'viagens') for (const p of PARES_DATA_HORA) aplicarHora(campos, extras, p.data, p.hora, p.rotulo);
     const numeroLinha = typeof linha.__linha === 'number' ? (linha.__linha as number) : i + 2;
     delete extras.__linha;
     out.push({ arquivo, aba: aba.nome, linha: numeroLinha, campos, extras });
