@@ -1,3 +1,4 @@
+import { getCurrentUserId } from '../lib/apiClient.js';
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 /**
@@ -24,6 +25,10 @@ export interface QueuedMutation {
   createdAt: string;
   attempts: number;
   lastError?: string;
+  /** Dono da operação: a fila nunca sincroniza mutações de outro usuário. */
+  userId?: string | null;
+  /** PENDING = aguardando envio; FAILED = erro permanente; CONFLICT = 409 do servidor. */
+  status?: 'PENDING' | 'FAILED' | 'CONFLICT';
 }
 
 interface RigabrasOfflineDB extends DBSchema {
@@ -50,7 +55,11 @@ export function getOfflineDb(): Promise<IDBPDatabase<RigabrasOfflineDB>> {
 
 export async function enqueueMutation(mutation: QueuedMutation): Promise<void> {
   const db = await getOfflineDb();
-  await db.put('mutationQueue', mutation);
+  await db.put('mutationQueue', {
+    ...mutation,
+    userId: mutation.userId ?? getCurrentUserId(),
+    status: mutation.status ?? 'PENDING',
+  });
 }
 
 export async function listQueuedMutations(): Promise<QueuedMutation[]> {
@@ -69,5 +78,30 @@ export async function updateMutationAttempt(id: string, error: string): Promise<
   if (!existing) return;
   existing.attempts += 1;
   existing.lastError = error;
+  await db.put('mutationQueue', existing);
+}
+
+/** Marca a mutação como erro permanente/conflito (não será reenviada automaticamente). */
+export async function marcarMutationFalha(
+  id: string,
+  status: 'FAILED' | 'CONFLICT',
+  error: string,
+): Promise<void> {
+  const db = await getOfflineDb();
+  const existing = await db.get('mutationQueue', id);
+  if (!existing) return;
+  existing.status = status;
+  existing.attempts += 1;
+  existing.lastError = error;
+  await db.put('mutationQueue', existing);
+}
+
+/** Recoloca uma mutação com erro na fila para nova tentativa manual. */
+export async function reenfileirarMutation(id: string): Promise<void> {
+  const db = await getOfflineDb();
+  const existing = await db.get('mutationQueue', id);
+  if (!existing) return;
+  existing.status = 'PENDING';
+  existing.attempts = 0;
   await db.put('mutationQueue', existing);
 }

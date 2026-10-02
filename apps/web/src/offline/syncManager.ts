@@ -1,25 +1,53 @@
 import { randomUUID } from './uuid.js';
-import { api } from '../lib/apiClient.js';
+import { api, ApiError, getCurrentUserId } from '../lib/apiClient.js';
 import {
   enqueueMutation,
   listQueuedMutations,
   removeMutation,
+  marcarMutationFalha,
+  reenfileirarMutation,
   updateMutationAttempt,
   type QueuedMutation,
 } from './db.js';
 
 const MAX_ATTEMPTS = 5;
 let syncing = false;
-const listeners = new Set<(pending: number) => void>();
+export interface QueueStatus {
+  pending: number;
+  failed: number;
+}
+const listeners = new Set<(status: QueueStatus) => void>();
 
-export function onQueueChange(listener: (pending: number) => void): () => void {
+export function onQueueChange(listener: (status: QueueStatus) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
 
 async function notifyListeners(): Promise<void> {
-  const pending = (await listQueuedMutations()).length;
-  for (const listener of listeners) listener(pending);
+  const status = await statusDaFila();
+  for (const listener of listeners) listener(status);
+}
+
+/** Operações do usuário atual: pendentes de envio e com erro (FAILED/CONFLICT ou tentativas esgotadas). */
+export async function statusDaFila(): Promise<QueueStatus> {
+  const uid = getCurrentUserId();
+  const minhas = (await listQueuedMutations()).filter((m) => !m.userId || m.userId === uid);
+  const failed = minhas.filter(
+    (m) => m.status === 'FAILED' || m.status === 'CONFLICT' || m.attempts >= MAX_ATTEMPTS,
+  );
+  return { pending: minhas.length - failed.length, failed: failed.length };
+}
+
+/** Reenvia manualmente as operações com erro do usuário atual. */
+export async function tentarNovamenteFalhas(): Promise<void> {
+  const uid = getCurrentUserId();
+  for (const m of await listQueuedMutations()) {
+    if (m.userId && m.userId !== uid) continue;
+    if (m.status === 'FAILED' || m.status === 'CONFLICT' || m.attempts >= MAX_ATTEMPTS) {
+      await reenfileirarMutation(m.id);
+    }
+  }
+  await trySync();
 }
 
 /**
@@ -205,25 +233,25 @@ export async function queueCreateAvaria(payload: Record<string, unknown>): Promi
 
 async function sendMutation(mutation: QueuedMutation): Promise<void> {
   if (mutation.kind === 'create-viagem') {
-    await api.post('/viagens', mutation.payload);
+    await api.post('/viagens', mutation.payload, mutation.id);
   } else if (mutation.kind === 'update-viagem' && mutation.targetId) {
-    await api.patch(`/viagens/${mutation.targetId}`, mutation.payload);
+    await api.patch(`/viagens/${mutation.targetId}`, mutation.payload, mutation.id);
   } else if (mutation.kind === 'create-evento-fronteira' && mutation.targetId) {
-    await api.post(`/viagens/${mutation.targetId}/fronteira/eventos`, mutation.payload);
+    await api.post(`/viagens/${mutation.targetId}/fronteira/eventos`, mutation.payload, mutation.id);
   } else if (mutation.kind === 'create-frete' && mutation.targetId) {
-    await api.post(`/viagens/${mutation.targetId}/frete`, mutation.payload);
+    await api.post(`/viagens/${mutation.targetId}/frete`, mutation.payload, mutation.id);
   } else if (mutation.kind === 'update-frete' && mutation.targetId) {
-    await api.patch(`/fretes/${mutation.targetId}`, mutation.payload);
+    await api.patch(`/fretes/${mutation.targetId}`, mutation.payload, mutation.id);
   } else if (mutation.kind === 'create-manutencao-veiculo') {
-    await api.post('/frota/manutencoes', mutation.payload);
+    await api.post('/frota/manutencoes', mutation.payload, mutation.id);
   } else if (mutation.kind === 'update-quilometragem-viagem' && mutation.targetId) {
-    await api.patch(`/frota/viagens/${mutation.targetId}/quilometragem`, mutation.payload);
+    await api.patch(`/frota/viagens/${mutation.targetId}/quilometragem`, mutation.payload, mutation.id);
   } else if (mutation.kind === 'create-registro-jornada') {
-    await api.post('/jornada/eventos', mutation.payload);
+    await api.post('/jornada/eventos', mutation.payload, mutation.id);
   } else if (mutation.kind === 'create-depositante') {
-    await api.post('/wms/depositantes', mutation.payload);
+    await api.post('/wms/depositantes', mutation.payload, mutation.id);
   } else if (mutation.kind === 'create-avaria') {
-    await api.post('/wms/avarias', mutation.payload);
+    await api.post('/wms/avarias', mutation.payload, mutation.id);
   }
 }
 
@@ -240,7 +268,11 @@ export async function trySync(): Promise<void> {
     // Eventos de jornada dependem da ordem (máquina de estados no servidor): se um falhar, os
     // seguintes do mesmo motorista esperam a próxima rodada em vez de serem rejeitados fora de ordem.
     const motoristasComFalha = new Set<string>();
+    const uid = getCurrentUserId();
+    if (!uid) return;
     for (const mutation of pending) {
+      if (mutation.userId && mutation.userId !== uid) continue;
+      if (mutation.status === 'FAILED' || mutation.status === 'CONFLICT') continue;
       if (mutation.attempts >= MAX_ATTEMPTS) continue;
       const motoristaId =
         mutation.kind === 'create-registro-jornada' ? String(mutation.payload.motorista_id) : null;
@@ -250,6 +282,15 @@ export async function trySync(): Promise<void> {
         await removeMutation(mutation.id);
       } catch (error) {
         if (motoristaId) motoristasComFalha.add(motoristaId);
+        const http = error instanceof ApiError ? error.problem.status : 0;
+        if (http === 409) {
+          await marcarMutationFalha(mutation.id, 'CONFLICT', (error as Error).message);
+          continue;
+        }
+        if (http >= 400 && http < 500 && http !== 401 && http !== 408 && http !== 429) {
+          await marcarMutationFalha(mutation.id, 'FAILED', (error as Error).message);
+          continue;
+        }
         await updateMutationAttempt(
           mutation.id,
           error instanceof Error ? error.message : 'erro desconhecido',

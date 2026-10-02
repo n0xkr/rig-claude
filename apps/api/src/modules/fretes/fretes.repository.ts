@@ -10,6 +10,7 @@ import type {
   UpdateFreteInput,
 } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { DomainError } from '../../lib/errors.js';
 
 const TABLE = 'fretes';
 const LANCAMENTOS_TABLE = 'frete_lancamentos';
@@ -105,15 +106,23 @@ export class FretesRepository {
     return data as Frete;
   }
 
-  async updateStatus(id: string, patch: StatusFechamentoPatch): Promise<Frete> {
-    const { data, error } = await supabaseAdmin
-      .from(TABLE)
-      .update(patch)
-      .eq('id', id)
-      .is('deleted_at', null)
-      .select('*')
-      .single();
+  /** Update condicional: só aplica se o status ainda for `expected` (evita corrida entre duas transições). */
+  async updateStatus(
+    id: string,
+    patch: StatusFechamentoPatch,
+    expected?: StatusFechamentoFrete,
+  ): Promise<Frete> {
+    let query = supabaseAdmin.from(TABLE).update(patch).eq('id', id).is('deleted_at', null);
+    if (expected) query = query.eq('status_fechamento', expected);
+    const { data, error } = await query.select('*').maybeSingle();
     if (error) throw error;
+    if (!data) {
+      throw new DomainError(
+        'Conflito de estado',
+        409,
+        'O frete mudou de status durante a operação. Recarregue e tente novamente.',
+      );
+    }
     return data as Frete;
   }
 
@@ -217,12 +226,30 @@ export class FretesRepository {
     input: CreatePagamentoFreteInput,
     createdBy: string | null,
   ): Promise<PagamentoFrete> {
-    const { data, error } = await supabaseAdmin
-      .from(PAGAMENTOS_TABLE)
-      .insert({ ...input, frete_id: freteId, created_by: createdBy })
-      .select('*')
-      .single();
-    if (error) throw error;
+    // RPC atômica (migration 0017): lock do frete + estado + limite de saldo na mesma transação.
+    const { data, error } = await supabaseAdmin.rpc('registrar_pagamento_frete', {
+      p_frete_id: freteId,
+      p_pagamento: input,
+      p_user: createdBy,
+    });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') {
+        const legacy = await supabaseAdmin
+          .from(PAGAMENTOS_TABLE)
+          .insert({ ...input, frete_id: freteId, created_by: createdBy })
+          .select('*')
+          .single();
+        if (legacy.error) throw legacy.error;
+        return legacy.data as PagamentoFrete;
+      }
+      if (/PAGAMENTO_EXCEDE_SALDO/.test(error.message)) {
+        throw new DomainError('Pagamento excede o saldo', 422, 'O valor excede o saldo em aberto do frete');
+      }
+      if (/FRETE_NAO_APROVADO/.test(error.message)) {
+        throw new DomainError('Frete não aprovado', 409, 'Pagamentos só após a aprovação financeira');
+      }
+      throw error;
+    }
     return data as PagamentoFrete;
   }
 }

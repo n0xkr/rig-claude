@@ -2,9 +2,9 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
 import type { ModuloKey, UserRole } from '@rigabras/shared';
 import { supabaseAdmin, createPasswordAuthClient } from '../../config/supabase.js';
-import { env } from '../../config/env.js';
+import { env, JWT_AUDIENCE, JWT_ISSUER } from '../../config/env.js';
 import { DomainError } from '../../lib/errors.js';
-import { carregarPermissoesEfetivas } from '../../lib/permissoes.js';
+import { carregarPermissoesEfetivas, isSchemaAusente } from '../../lib/permissoes.js';
 
 export interface Session {
   accessToken: string;
@@ -144,35 +144,104 @@ export class AuthService {
     );
   }
 
-  issueSession(profile: Session['profile'], permissoes: ModuloKey[] | null = null): Session {
+  async issueSession(
+    profile: Session['profile'],
+    permissoes: ModuloKey[] | null = null,
+    familyId: string = randomUUID(),
+  ): Promise<Session> {
+    const base = { issuer: JWT_ISSUER, audience: JWT_AUDIENCE } as const;
     const accessToken = jwt.sign(
       { sub: profile.id, email: profile.email, role: profile.role, mods: permissoes },
       env.JWT_ACCESS_SECRET,
-      { expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
+      { ...base, expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
     );
+    const jti = randomUUID();
     const refreshToken = jwt.sign(
-      { sub: profile.id, jti: randomUUID(), type: 'refresh' },
+      { sub: profile.id, jti, fam: familyId, type: 'refresh' },
       env.JWT_REFRESH_SECRET,
-      { expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
+      { ...base, expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions['expiresIn'] },
     );
+    const decoded = jwt.decode(refreshToken) as { exp: number };
+    const { error } = await supabaseAdmin.from('refresh_tokens').insert({
+      jti,
+      family_id: familyId,
+      user_id: profile.id,
+      expires_at: new Date(decoded.exp * 1000).toISOString(),
+    });
+    // Migration 0017 pendente: degrada para o comportamento anterior (sem revogação).
+    if (error && !isSchemaAusente(error)) {
+      throw new DomainError('Falha ao registrar a sessão', 500, error.message);
+    }
     return { accessToken, refreshToken, profile, permissoes };
   }
 
-  async refresh(refreshToken: string): Promise<Session> {
-    let payload: { sub: string; type?: string };
+  /** Revoga o refresh token (logout) e toda a sua família. Idempotente e silencioso. */
+  async logout(refreshToken: string | undefined): Promise<void> {
+    if (!refreshToken) return;
     try {
-      payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] }) as {
-        sub: string;
-        type?: string;
-      };
+      const p = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET, {
+        algorithms: ['HS256'],
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE,
+        ignoreExpiration: true,
+      }) as { fam?: string };
+      if (p.fam) await this.revogarFamilia(p.fam);
+    } catch {
+      /* token inválido: nada a revogar */
+    }
+  }
+
+  private async revogarFamilia(familyId: string): Promise<void> {
+    await supabaseAdmin
+      .from('refresh_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('family_id', familyId)
+      .is('revoked_at', null);
+  }
+
+  async refresh(refreshToken: string): Promise<Session> {
+    let payload: { sub: string; type?: string; jti?: string; fam?: string };
+    try {
+      payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET, {
+        algorithms: ['HS256'],
+        issuer: JWT_ISSUER,
+        audience: JWT_AUDIENCE,
+      }) as typeof payload;
       if (payload.type !== 'refresh') throw new Error('tipo de token inválido');
     } catch {
       throw new DomainError('Refresh token inválido', 401, 'Faça login novamente');
     }
 
-    // Rotação: um novo refresh token é emitido a cada uso (critério #4). Papel e
-    // permissões são relidos do banco, então mudanças feitas por um admin valem
-    // a partir da próxima renovação (≤ JWT_ACCESS_EXPIRES_IN).
-    return this.sessionFromProfile(await this.findProfileAtivo(payload.sub));
+    // Rotação com uso único: marca o jti como usado de forma atômica. Se já foi
+    // usado/revogado, é reutilização (possível roubo): invalida a família inteira.
+    if (payload.jti && payload.fam) {
+      const { data, error } = await supabaseAdmin
+        .from('refresh_tokens')
+        .update({ used_at: new Date().toISOString() })
+        .eq('jti', payload.jti)
+        .is('used_at', null)
+        .is('revoked_at', null)
+        .select('jti');
+      if (error && !isSchemaAusente(error)) {
+        throw new DomainError('Falha ao renovar a sessão', 500, error.message);
+      }
+      if (!error && (data ?? []).length === 0) {
+        await this.revogarFamilia(payload.fam);
+        throw new DomainError('INVALID_REFRESH_TOKEN', 401, 'Sessão inválida. Faça login novamente');
+      }
+    }
+
+    const row = await this.findProfileAtivo(payload.sub);
+    const permissoes = await carregarPermissoesEfetivas(row);
+    return this.issueSession(
+      {
+        id: row.id,
+        email: row.email,
+        role: row.role as UserRole,
+        nome_completo: row.nome_completo,
+      },
+      permissoes,
+      payload.fam,
+    );
   }
 }

@@ -184,7 +184,7 @@ export class FretesService {
       patch.pago_em = now;
     }
 
-    const updated = await this.repo.updateStatus(id, patch);
+    const updated = await this.repo.updateStatus(id, patch, current.status_fechamento);
     await this.repo.insertStatusHistory({
       freteId: id,
       statusAnterior: current.status_fechamento,
@@ -220,7 +220,15 @@ export class FretesService {
       this.repo.listLancamentos(id),
       this.repo.listPagamentos(id),
     ]);
+    return FretesService.saldoDeRegistros(frete, lancamentos, pagamentos);
+  }
 
+  /** Fórmula única do saldo (usada também pela exportação ERP em lote, sem N+1). */
+  static saldoDeRegistros(
+    frete: Pick<Frete, 'id' | 'valor_contratado'>,
+    lancamentos: FreteLancamento[],
+    pagamentos: PagamentoFrete[],
+  ): SaldoFrete {
     const totalPorTipo = (tipo: FreteLancamento['tipo']) =>
       round2(lancamentos.filter((l) => l.tipo === tipo).reduce((acc, l) => acc + l.valor, 0));
     const totalAdiantamentos = totalPorTipo('ADIANTAMENTO');
@@ -229,7 +237,6 @@ export class FretesService {
     const totalPagoConfirmado = round2(
       pagamentos.filter((p) => p.status === 'CONFIRMADO').reduce((acc, p) => acc + p.valor_pago, 0),
     );
-
     const saldo = round2(
       frete.valor_contratado -
         totalAdiantamentos -
@@ -237,9 +244,8 @@ export class FretesService {
         totalMultas -
         totalPagoConfirmado,
     );
-
     return {
-      frete_id: id,
+      frete_id: frete.id,
       valor_contratado: frete.valor_contratado,
       total_adiantamentos: totalAdiantamentos,
       total_descontos: totalDescontos,
@@ -326,6 +332,14 @@ export class FretesService {
     if (frete.status_fechamento !== 'APROVADO') {
       throw new ConflictError(
         `Pagamentos só podem ser registrados após a aprovação financeira do frete (status atual: ${frete.status_fechamento})`,
+      );
+    }
+    const saldo = await this.computeSaldo(freteId);
+    if (input.valor_pago > saldo.saldo) {
+      throw new DomainError(
+        'Pagamento excede o saldo',
+        422,
+        `O valor informado (${input.valor_pago.toFixed(2)}) excede o saldo em aberto do frete (${saldo.saldo.toFixed(2)})`,
       );
     }
     const created = await this.repo.createPagamento(freteId, input, userId);

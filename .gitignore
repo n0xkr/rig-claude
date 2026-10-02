@@ -21,3 +21,20 @@ supabase/.temp/
 
 # Backups gerados pelos scripts de manutenção de dados (apps/api/scripts)
 backup-*.json
+
+# Segredos e dados sensíveis (nunca versionar)
+.env.production
+.env.*
+!.env.example
+.mcp.json
+*.pem
+*.key
+.claude/worktrees/
+.claude/settings.local.json
+*.xlsx
+*.xls
+*.pptx
+*.pdf
+!docs/**/*.pdf
+gestão-de-frotas-&-viagens/
+legacy/

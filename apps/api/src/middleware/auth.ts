@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
 import { MODULOS, temModulo, type ModuloKey, type UserRole } from '@rigabras/shared';
-import { env } from '../config/env.js';
+import { env, JWT_AUDIENCE, JWT_ISSUER } from '../config/env.js';
 import { Problems } from '../lib/problemDetails.js';
 
 export interface AccessTokenPayload {
@@ -33,6 +33,8 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   try {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, {
       algorithms: ['HS256'],
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
     }) as AccessTokenPayload;
     request.user = payload;
   } catch {

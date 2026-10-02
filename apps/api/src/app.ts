@@ -10,6 +10,7 @@ import { registerRoutes } from './routes/index.js';
 import { Problems, sendProblem } from './lib/problemDetails.js';
 import { pgErrorToProblem } from './lib/pgErrors.js';
 import { isGroqConfigured } from './config/env.js';
+import { registerIdempotency } from './middleware/idempotency.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -24,11 +25,12 @@ export async function buildApp(): Promise<FastifyInstance> {
     // Atrás de proxy reverso (Coolify/Traefik) o IP real vem de X-Forwarded-For. Defina
     // TRUST_PROXY_HOPS com o nº de proxies à frente da API para não aceitar IP forjado.
     // (o Fastify aceita número de saltos em runtime, mas a tipagem só declara boolean/string)
-    trustProxy: (env.TRUST_PROXY_HOPS ?? true) as boolean,
+    trustProxy: (env.TRUST_PROXY_HOPS ?? 0) as unknown as boolean,
     genReqId: () => crypto.randomUUID(),
   });
 
   registerCorrelationId(app);
+  registerIdempotency(app);
 
   await app.register(helmet, {
     contentSecurityPolicy: {

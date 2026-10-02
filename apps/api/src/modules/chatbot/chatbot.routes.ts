@@ -7,5 +7,12 @@ const LEITURA_TODOS = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE'
 /** RIGABRAS AI (Módulo 10) — assistente operacional conversacional, somente leitura. */
 export async function chatbotRoutes(app: FastifyInstance): Promise<void> {
   app.addHook('onRequest', authenticate);
-  app.post('/perguntar', { preHandler: LEITURA_TODOS }, ChatbotController.perguntar);
+  app.post(
+    '/perguntar',
+    {
+      preHandler: LEITURA_TODOS,
+      config: { rateLimit: { max: 15, timeWindow: '1 minute' } },
+    },
+    ChatbotController.perguntar,
+  );
 }

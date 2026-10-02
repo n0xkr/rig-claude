@@ -74,9 +74,9 @@ const EnvSchema = z
      * E-mails (separados por vírgula) autorizados a ver a trilha de Auditoria.
      * A auditoria é restrita a pessoas específicas — nem o papel SUPERADMIN a vê.
      */
-    AUDITORIA_EMAILS: z.string().default('otavio@otavio.com'),
+    AUDITORIA_EMAILS: z.string().default(''),
 
-    /** Nº de proxies reversos à frente da API (ex.: 1 com Traefik). Vazio = confia em X-Forwarded-For. */
+    /** Nº de proxies reversos à frente da API (ex.: 1 com Traefik). Padrão 0 (não confia em X-Forwarded-For); obrigatório em produção. */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).optional(),
 
     /**
@@ -85,7 +85,7 @@ const EnvSchema = z
      */
     ALLOW_PUBLIC_REGISTRATION: z
       .enum(['true', 'false'])
-      .default('true')
+      .default('false')
       .transform((v) => v === 'true'),
 
     REDIS_URL: z.string().optional(),
@@ -104,6 +104,67 @@ const EnvSchema = z
       .transform((v) => v === 'true'),
   })
   .superRefine((cfg, ctx) => {
+    const placeholder = /(change-?me|your-|example|placeholder|default|^secret$|^changeme$|xxxx)/i;
+    const exigirReal = (campo: string, valor: string | undefined) => {
+      if (valor && placeholder.test(valor)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [campo],
+          message: 'valor de exemplo/placeholder não é permitido em produção',
+        });
+      }
+    };
+    if (cfg.NODE_ENV === 'production') {
+      for (const campo of [
+        'JWT_ACCESS_SECRET',
+        'JWT_REFRESH_SECRET',
+        'COOKIE_SECRET',
+        'SUPABASE_SERVICE_ROLE_KEY',
+        'SUPABASE_ANON_KEY',
+      ] as const) {
+        exigirReal(campo, cfg[campo]);
+      }
+      exigirReal('GROQ_API_KEY', cfg.GROQ_API_KEY);
+      for (const campo of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
+        if (cfg[campo].length < 32) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [campo],
+            message: 'deve ter ao menos 32 caracteres em produção',
+          });
+        }
+      }
+      if (cfg.JWT_ACCESS_SECRET === cfg.JWT_REFRESH_SECRET) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['JWT_REFRESH_SECRET'],
+          message: 'deve ser diferente de JWT_ACCESS_SECRET',
+        });
+      }
+      if (cfg.TRUST_PROXY_HOPS === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['TRUST_PROXY_HOPS'],
+          message: 'obrigatório em produção (nº de proxies à frente da API; 0 se nenhum)',
+        });
+      }
+      if (/localhost|127\.0\.0\.1/.test(cfg.WEB_ORIGIN)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['WEB_ORIGIN'],
+          message: 'deve apontar para a origem real do web em produção',
+        });
+      }
+      try {
+        new URL(cfg.SUPABASE_URL);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SUPABASE_URL'],
+          message: 'URL inválida',
+        });
+      }
+    }
     if (cfg.NODE_ENV === 'production' && cfg.USE_FAKE_DB) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -131,6 +192,10 @@ function loadEnv(): Env {
 }
 
 export const env = loadEnv();
+
+/** Emissor/audiência dos JWTs da API (validados em verify). */
+export const JWT_ISSUER = 'rigabras-api';
+export const JWT_AUDIENCE = 'rigabras-web';
 
 export const isGroqConfigured = Boolean(
   env.GROQ_API_KEY && env.GROQ_API_KEY !== 'your-groq-api-key-here',

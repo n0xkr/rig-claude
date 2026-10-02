@@ -64,6 +64,20 @@ export function getCurrentUserEmail(): string | null {
   }
 }
 
+/** Id (`sub`) do usuário a partir do JWT — usado para escopar a fila offline. */
+export function getCurrentUserId(): string | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const seg = token.split('.')[1];
+    if (!seg) return null;
+    const payload = JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/'))) as { sub?: string };
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 let refreshEmAndamento: Promise<boolean> | null = null;
 
 /**
@@ -152,10 +166,18 @@ export async function apiFetch<T>(path: string, init?: RequestInit, jaRenovou = 
 
 export const api = {
   get: <T>(path: string) => apiFetch<T>(path, { method: 'GET' }),
-  post: <T>(path: string, data?: unknown) =>
-    apiFetch<T>(path, { method: 'POST', body: data ? JSON.stringify(data) : undefined }),
-  patch: <T>(path: string, data?: unknown) =>
-    apiFetch<T>(path, { method: 'PATCH', body: data ? JSON.stringify(data) : undefined }),
+  post: <T>(path: string, data?: unknown, idempotencyKey?: string) =>
+    apiFetch<T>(path, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    }),
+  patch: <T>(path: string, data?: unknown, idempotencyKey?: string) =>
+    apiFetch<T>(path, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    }),
   delete: <T>(path: string) => apiFetch<T>(path, { method: 'DELETE' }),
 };
 

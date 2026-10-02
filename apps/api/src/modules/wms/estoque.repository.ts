@@ -23,6 +23,49 @@ export class EstoqueRepository {
     input: CreateMovimentacaoEstoqueInput,
     createdBy: string | null,
   ): Promise<MovimentacaoEstoque> {
+    const viaRpc = await this.registrarViaRpc(input, createdBy);
+    if (viaRpc) return viaRpc;
+    return this.registrarSequencial(input, createdBy);
+  }
+
+  /**
+   * Caminho atômico (migration 0017): ledger + saldo + status do endereço numa
+   * transação com lock de linha. Retorna `null` somente se a função ainda não
+   * existe no banco (migration pendente) — aí cai no caminho sequencial legado.
+   */
+  private async registrarViaRpc(
+    input: CreateMovimentacaoEstoqueInput,
+    createdBy: string | null,
+  ): Promise<MovimentacaoEstoque | null> {
+    const delta = calcularDeltaSaldo(
+      input.tipo_movimentacao,
+      input.quantidade,
+      Boolean(input.endereco_origem_id),
+      Boolean(input.endereco_destino_id),
+    );
+    const { data, error } = await supabaseAdmin.rpc('registrar_movimentacao_estoque', {
+      p_mov: { ...input, created_by: createdBy },
+      p_origem_delta: delta.origemDelta,
+      p_destino_delta: delta.destinoDelta,
+    });
+    if (error) {
+      if (error.code === 'PGRST202' || error.code === '42883') return null;
+      if (/SALDO_INSUFICIENTE/.test(error.message)) {
+        throw new DomainError(
+          'Saldo insuficiente',
+          422,
+          `O endereço de origem não possui saldo suficiente deste produto para a saída de ${input.quantidade}`,
+        );
+      }
+      throw mapPgError(error);
+    }
+    return data as MovimentacaoEstoque;
+  }
+
+  private async registrarSequencial(
+    input: CreateMovimentacaoEstoqueInput,
+    createdBy: string | null,
+  ): Promise<MovimentacaoEstoque> {
     // Valida o saldo ANTES de gravar no ledger: uma saída maior que o saldo do
     // endereço violaria o CHECK `chk_estoque_quantidade` (quantidade >= 0) ou,
     // pior, seria "absorvida" em silêncio (saldo truncado em 0) deixando o

@@ -34,6 +34,7 @@ export const AuthController = {
       if (error instanceof DomainError) {
         if (error.status === 409) return Problems.conflict(reply, error.detail ?? error.message);
         if (error.status === 400) return Problems.badRequest(reply, error.detail ?? error.message);
+        if (error.status === 403) return Problems.forbidden(reply, error.detail ?? error.message);
         return Problems.internal(reply, error.detail ?? error.message);
       }
       throw error;
@@ -84,7 +85,8 @@ export const AuthController = {
     }
   },
 
-  async logout(_request: FastifyRequest, reply: FastifyReply) {
+  async logout(request: FastifyRequest, reply: FastifyReply) {
+    await service.logout(request.cookies[REFRESH_COOKIE]);
     reply.clearCookie(REFRESH_COOKIE, { path: '/api/v1/auth' });
     return reply.status(204).send();
   },
