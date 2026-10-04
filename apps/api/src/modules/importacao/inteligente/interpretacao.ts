@@ -7,7 +7,7 @@ import type {
 import { normTexto } from '../../iaSolicitacoes/leitura.js';
 
 // Placas: uma só implementação, a da padronização (usada também pela consolidação).
-import { comoPlaca, extrairPlacas } from './padronizacao.js';
+import { comoPlaca, extrairPlacas, type TipoCanonico } from './padronizacao.js';
 export { comoPlaca, extrairPlacas };
 
 /** Aba já padronizada (etapa 1) — é o que a interpretação lê. */
@@ -82,11 +82,50 @@ import {
   ehAuxiliar,
   ehExtraConhecido,
   mapearColunas,
+  pontuar,
+  type CampoImport,
   type Mapeamento,
   type TipoValor,
 } from './dicionario.js';
 
 export type TipoDados = Exclude<TipoAbaImportacao, 'ignorada'>;
+
+/** Sugestão (da IA) que NÃO foi aplicada por estar abaixo do limiar: fica para revisão humana. */
+export interface SugestaoColuna {
+  campo: string;
+  rotulo: string | null;
+  confianca: number;
+  motivo?: string;
+}
+
+/**
+ * Coluna como a prévia mostra: além do contrato do shared, a confiança do mapeamento (0..1),
+ * o motivo e, quando a IA sugeriu um campo com pouca certeza, a sugestão não aplicada.
+ * Campos opcionais: o contrato HTTP continua compatível com `ColunaInterpretada`.
+ */
+export interface ColunaInterpretadaDetalhada extends ColunaInterpretada {
+  confianca?: number;
+  motivo?: string;
+  sugestao?: SugestaoColuna;
+}
+
+export interface AbaInterpretadaDetalhada extends AbaInterpretada {
+  colunas: ColunaInterpretadaDetalhada[];
+  /** Confiança do tipo da aba (0..1) e de onde ela veio. */
+  confianca?: number;
+  motivo?: string;
+  /** Tipo sugerido pela IA mas não aplicado (falta coluna obrigatória ou confiança baixa). */
+  sugestao?: { tipo: TipoAbaImportacao; confianca: number; motivo?: string };
+  /** Total real de linhas descartadas quando a lista `descartadas` foi encurtada. */
+  descartadas_total?: number;
+}
+
+/** Detalhe de confiança por coluna, calculado antes de `descreverColunas`. */
+export interface DetalheColuna {
+  confianca?: number;
+  motivo?: string;
+  sugestao?: SugestaoColuna;
+}
 
 /** Linha já traduzida para campos do sistema. */
 export interface Registro {
@@ -101,7 +140,7 @@ export interface Registro {
 }
 
 export interface AbaLida {
-  info: AbaInterpretada;
+  info: AbaInterpretadaDetalhada;
   tipo: TipoAbaImportacao;
   registros: Registro[];
 }
@@ -245,6 +284,95 @@ export function classificarAba(
   return melhor ? { tipo: melhor, mapa: mapas.get(melhor)!, origem: 'dicionario' } : null;
 }
 
+/** O que falta para a aba cumprir os requisitos mínimos do tipo (texto para o usuário). */
+function faltaParaTipo(tipo: TipoDados, m: Mapeamento): string {
+  const tem = (c: string) => m.campos.has(c);
+  switch (tipo) {
+    case 'viagens':
+      return tem('placa_cavalo') ? 'faltam colunas de rota, cliente, documento ou status' : 'falta a coluna de placa do cavalo';
+    case 'veiculos':
+      return tem('placa') ? 'faltam colunas de cadastro do veículo (tipo, marca, ano, validades...)' : 'falta a coluna de placa';
+    case 'motoristas':
+      return tem('nome_completo') ? 'faltam colunas de documento ou contato (CPF, CNH, telefone...)' : 'falta a coluna de nome';
+    case 'clientes':
+      return tem('nome') ? 'faltam colunas de documento, país ou contato' : 'falta a coluna de nome';
+    case 'cargas':
+      return tem('numero_documento') ? 'falta a coluna da viagem ou da placa' : 'falta a coluna do nº do documento';
+    case 'checklists':
+    case 'smp':
+      return tem('resultado') ? 'falta a coluna da viagem ou da placa' : 'falta a coluna de resultado/status';
+    case 'consultas':
+      return tem('resultado') ? 'falta a coluna do motorista ou da placa consultada' : 'falta a coluna de resultado';
+  }
+}
+
+/**
+ * Mapeamento de uma aba para um tipo JÁ decidido fora do dicionário (pela IA): passa pelas
+ * MESMAS travas de `classificarAba` — ignora colunas auxiliares, aplica as promoções por
+ * conteúdo (cliente/placa) e o assunto da aba, e confere os requisitos mínimos do tipo. Assim
+ * uma aba que a IA chama de "veiculos" sem coluna de placa não é aceita em silêncio.
+ * `cobertura` = fração das colunas com dados que ganharam um campo (evidência para a confiança).
+ */
+export function mapaParaTipo(
+  aba: AbaLeitura,
+  tipo: TipoDados,
+): { mapa: Mapeamento; aceito: boolean; falta: string | null; cobertura: number } {
+  const cabecalhos = aba.cabecalhos.filter((c) => c !== '__linha' && !ehAuxiliar(c));
+  const mapa = mapearColunas(tipo, cabecalhos);
+  if (tipo === 'viagens') promoverColunaDeCliente(aba, mapa);
+  if (tipo === 'veiculos') {
+    promoverColunaDePlaca(aba, mapa);
+    ajustarPeloAssuntoDaAba(aba.nome, aba, mapa);
+  }
+  const aceito = aceita(tipo, mapa, true);
+  const comDados = cabecalhos.filter((c) => aba.linhas.some((l) => !vazio(l[c])));
+  const cobertura = comDados.length === 0 ? 0 : comDados.filter((c) => mapa.porColuna.has(c)).length / comDados.length;
+  return { mapa, aceito, falta: aceito ? null : faltaParaTipo(tipo, mapa), cobertura: Math.round(cobertura * 1000) / 1000 };
+}
+
+/**
+ * Compatibilidade entre o tipo que a padronização detectou olhando a coluna INTEIRA e o tipo do
+ * campo do sistema: 1 = combina, valores intermediários = plausível, 0 = incompatível (uma
+ * coluna de datas nunca vira "valor do frete"), null = sem evidência (coluna vazia/desconhecida).
+ * É a evidência determinística usada para calibrar a confiança das sugestões da IA.
+ */
+export function compatibilidadeTipo(tipoColuna: TipoCanonico | null | undefined, campo: Pick<CampoImport, 'campo' | 'tipo'>): number | null {
+  if (!tipoColuna || tipoColuna === 'vazio') return null;
+  const ehHora = campo.campo.startsWith('hora_');
+  switch (campo.tipo) {
+    case 'plate':
+      return tipoColuna === 'placa' || tipoColuna === 'placas' ? 1 : tipoColuna === 'texto' || tipoColuna === 'codigo' ? 0.3 : 0;
+    case 'date':
+    case 'datetime':
+      return tipoColuna === 'data' || tipoColuna === 'datahora' ? 1 : tipoColuna === 'texto' ? 0.3 : 0;
+    case 'number':
+    case 'int':
+      return tipoColuna === 'numero' ? 1 : tipoColuna === 'codigo' ? 0.3 : 0;
+    case 'bool':
+      return tipoColuna === 'booleano' ? 1 : tipoColuna === 'texto' ? 0.5 : 0;
+    case 'text':
+      if (ehHora) return tipoColuna === 'hora' ? 1 : tipoColuna === 'datahora' ? 0.6 : tipoColuna === 'texto' ? 0.4 : 0;
+      if (tipoColuna === 'texto' || tipoColuna === 'codigo') return 0.8;
+      if (tipoColuna === 'numero') return 0.6;
+      if (tipoColuna === 'placa' || tipoColuna === 'placas') return 0.3;
+      return 0.2; // hora, data, booleano num campo de texto livre: possível, mas improvável
+  }
+}
+
+/**
+ * Confiança de um mapeamento feito pelo dicionário (sem IA), pela força do casamento do nome:
+ * nome igual a um sinônimo vale mais que "contém o sinônimo". Coluna promovida pelo conteúdo
+ * (cliente/placa) ou pelo assunto da aba não casa pelo nome e recebe um valor intermediário.
+ */
+export function confiancaDoDicionario(tipo: TipoDados, coluna: string, campo: string): { confianca: number; motivo: string } {
+  const def = campoDef(tipo, campo);
+  const p = def ? pontuar(normTexto(coluna), def) : 0;
+  if (p >= 90) return { confianca: 0.95, motivo: 'nome da coluna igual a um nome conhecido do campo' };
+  if (p >= 50) return { confianca: 0.8, motivo: 'nome da coluna começa ou termina com um nome conhecido do campo' };
+  if (p > 0) return { confianca: 0.6, motivo: 'nome da coluna contém um nome conhecido do campo' };
+  return { confianca: 0.7, motivo: 'deduzida pelo conteúdo da coluna ou pelo assunto da aba' };
+}
+
 // ---------------------------------------------------------------------------
 // Leitura de valores
 // ---------------------------------------------------------------------------
@@ -291,6 +419,8 @@ export function lerDataHora(raw: unknown, soData = false): string | null {
       [y, m, d] = [Number(r[1]), Number(r[2]), Number(r[3])];
       if (r[4]) [H, M] = [Number(r[4]), Number(r[5])];
       if (/Z$|[+-]\d{2}:\d{2}$/.test(s) && !soData) {
+        // O V8 "rola" dias inexistentes ("2024-02-31T..." vira 02/03): confere antes.
+        if (m < 1 || m > 12 || d < 1 || d > new Date(Date.UTC(y, m, 0)).getUTCDate()) return null;
         const dt = new Date(s);
         return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
       }
@@ -309,7 +439,12 @@ export function lerDataHora(raw: unknown, soData = false): string | null {
       if (r[4]) [H, M] = [Number(r[4]), Number(r[5])];
     }
   } else return null;
-  if (y! < 1950 || y! > 2100 || m! < 1 || m! > 12 || d! < 1 || d! > 31) return null;
+  if (y! < 1950 || y! > 2100 || m! < 1 || m! > 12 || d! < 1) return null;
+  // Dia que não existe no mês ("31/02/2024") não pode virar outra data em silêncio (02/03):
+  // devolve null, a célula fica como informação extra e o relatório de qualidade aponta a linha.
+  if (d! > new Date(Date.UTC(y!, m!, 0)).getUTCDate()) return null;
+  // Hora impossível ("25:70") geraria uma data inválida (e um RangeError no toISOString).
+  if (H > 23 || M > 59) return null;
   const dia = `${y!}-${pad(m!)}-${pad(d!)}`;
   if (soData) return dia;
   return new Date(`${dia}T${pad(H)}:${pad(M)}:00-03:00`).toISOString();
@@ -421,22 +556,37 @@ function corrigirEscalaDePeso(regs: Registro[]) {
   }
 }
 
+/**
+ * Descreve como cada coluna foi entendida. `detalhes` traz a confiança/motivo calculados para as
+ * colunas da IA (e as sugestões não aplicadas); as do dicionário recebem a confiança pelo nome.
+ */
 export function descreverColunas(
   tipo: TipoAbaImportacao,
   cabecalhos: string[],
   porColuna: Map<string, string>,
   daIa: Set<string>,
-): ColunaInterpretada[] {
+  detalhes?: ReadonlyMap<string, DetalheColuna>,
+): ColunaInterpretadaDetalhada[] {
   return cabecalhos
     .filter((c) => c !== '__linha')
-    .map((coluna) => {
+    .map((coluna): ColunaInterpretadaDetalhada => {
       const campo = porColuna.get(coluna) ?? null;
       const def = campo && tipo !== 'ignorada' ? campoDef(tipo, campo) : null;
+      const origem: ColunaInterpretada['origem'] =
+        tipo === 'ignorada' ? 'ignorada' : campo ? (daIa.has(coluna) ? 'ia' : 'dicionario') : 'extra';
+      const d = detalhes?.get(coluna);
+      const doDicionario =
+        origem === 'dicionario' && campo && tipo !== 'ignorada' ? confiancaDoDicionario(tipo, coluna, campo) : null;
+      const confianca = d?.confianca ?? doDicionario?.confianca;
+      const motivo = d?.motivo ?? doDicionario?.motivo;
       return {
         coluna,
         campo,
         rotulo: def?.rotulo ?? null,
-        origem: tipo === 'ignorada' ? 'ignorada' : campo ? (daIa.has(coluna) ? 'ia' : 'dicionario') : 'extra',
+        origem,
+        ...(confianca !== undefined ? { confianca } : {}),
+        ...(motivo ? { motivo } : {}),
+        ...(d?.sugestao && origem !== 'ignorada' ? { sugestao: d.sugestao } : {}),
       };
     });
 }

@@ -1,26 +1,60 @@
-import Groq from 'groq-sdk';
+import { z } from 'zod';
 import { RiskAnalysisResultSchema, type RiskAnalysisResult } from '@rigabras/shared';
-import { env, isGroqConfigured } from '../../config/env.js';
-import { logger } from '../../config/logger.js';
+import {
+  ia,
+  erroIaDeFalha,
+  AiNotConfiguredError,
+  type BlocoDadosIa,
+  type ContextoIa,
+} from '../../lib/ai/index.js';
 
 /**
- * Wrapper de integração real com a Groq (OpenAI-compatible SDK). Se
- * GROQ_API_KEY não estiver configurada, `isGroqConfigured` é false e o
- * chamador deve tratar isso como uma indisponibilidade previsível (503 /
- * feature desabilitada), sem derrubar o processo do servidor.
+ * LEGADO — wrappers mantidos para não quebrar os consumidores atuais. Todos
+ * delegam ao AIService (`lib/ai`), que agora cuida de prazo, retry/backoff,
+ * fallback de modelo (texto e visão), disjuntor, cota por usuário/tarefa,
+ * cache, envelope anti-injection e log sem conteúdo.
+ *
+ * Código novo deve usar `gerarJson` / `visaoJson` / `gerarTexto` de
+ * `lib/ai/index.js`, que NÃO lançam (devolvem `{ ok: false, motivo }`).
+ * Estes wrappers lançam: `GroqNotConfiguredError` (alias de
+ * `AiNotConfiguredError`, 503) quando a IA não está configurada ou foi
+ * desligada, e as demais subclasses de `AiError` nas outras falhas.
  */
-let client: Groq | null = null;
 
-function getClient(): Groq {
-  if (!client) {
-    // Timeout/retry explícitos: sem eles o SDK espera até ~60s x 3 tentativas por requisição.
-    client = new Groq({ apiKey: env.GROQ_API_KEY, timeout: 25_000, maxRetries: 1 });
-  }
-  return client;
+/** Alias compatível: `instanceof GroqNotConfiguredError` continua valendo para AiNotConfiguredError/AiDisabledError. */
+export { AiNotConfiguredError as GroqNotConfiguredError };
+
+/** Opções extras (opcionais) aceitas pelos wrappers legados. */
+export interface OpcoesLegadoIa {
+  /** Tarefa "familia.subtarefa" — define cota, kill switch e roteamento de modelo. */
+  tarefa?: string;
+  usuarioId?: string | null;
+  contexto?: ContextoIa;
+  signal?: AbortSignal;
+  timeoutMs?: number;
 }
 
-/** Trecho curto da resposta para diagnóstico; o texto completo pode conter dados pessoais (OCR de CNH). */
-const amostra = (texto: string) => texto.slice(0, 200);
+/** O legado montava a mensagem do usuário com JSON: volta a ser objeto para ir num bloco <dados> estruturado. */
+function comoDado(texto: string): unknown {
+  const t = texto.trim();
+  if (t.startsWith('{') || t.startsWith('[')) {
+    try {
+      return JSON.parse(t);
+    } catch {
+      // JSON cortado pelo chamador antigo (`.slice`): vai como texto
+    }
+  }
+  return texto;
+}
+
+function extras(o: OpcoesLegadoIa | undefined) {
+  return {
+    ...(o?.usuarioId !== undefined ? { usuarioId: o.usuarioId } : {}),
+    ...(o?.contexto ? { contexto: o.contexto } : {}),
+    ...(o?.signal ? { signal: o.signal } : {}),
+    ...(o?.timeoutMs ? { timeoutMs: o.timeoutMs } : {}),
+  };
+}
 
 export interface ViagemRiskContext {
   numeroCrt: string | null;
@@ -36,7 +70,7 @@ export interface ViagemRiskContext {
 
 const SYSTEM_PROMPT = `Você é um analista de risco de uma transportadora rodoviária internacional
 (Rigabras Transportes, Uruguaiana/RS, Brasil - fronteira com Paso de los Libres/Argentina).
-Analise os dados da viagem fornecidos e responda ESTRITAMENTE em JSON, sem nenhum texto
+Analise os dados da viagem do bloco "viagem" e responda ESTRITAMENTE em JSON, sem nenhum texto
 adicional, seguindo exatamente este formato:
 {
   "riskLevel": "BAIXA" | "MEDIA" | "ALTA" | "CRITICA",
@@ -49,60 +83,34 @@ Considere fatores como: atraso entre datas programadas e reais, histórico de ev
 da viagem, rota internacional (travessia de fronteira Uruguaiana/Paso de los Libres),
 severidade e recorrência de eventos.`;
 
-export async function analyzeViagemRisk(context: ViagemRiskContext): Promise<RiskAnalysisResult> {
-  if (!isGroqConfigured) {
-    throw new GroqNotConfiguredError();
-  }
-
-  const userPrompt = JSON.stringify(context, null, 2);
-
-  const completion = await getClient().chat.completions.create({
-    model: env.GROQ_MODEL,
-    temperature: 0.2,
-    max_tokens: 800,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: `Dados da viagem:\n${userPrompt}` },
-    ],
+/** @deprecated legado — prefira `gerarJson({ tarefa: 'risco.viagem', ... })`. */
+export async function analyzeViagemRisk(
+  context: ViagemRiskContext,
+  opcoes?: OpcoesLegadoIa,
+): Promise<RiskAnalysisResult> {
+  const r = await ia.gerarJson({
+    tarefa: opcoes?.tarefa ?? 'risco.viagem',
+    versaoPrompt: 'legado-v1',
+    sistema: SYSTEM_PROMPT,
+    instrucao: 'Analise o risco desta viagem.',
+    blocos: [{ nome: 'viagem', valor: context, maxItens: 20, maxCharsPorCampo: 600 }],
+    schema: RiskAnalysisResultSchema,
+    maxTokens: 800,
+    temperatura: 0.1,
+    ...extras(opcoes),
   });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) {
-    throw new Error('Resposta vazia da Groq');
-  }
-
-  let parsedJson: unknown;
-  try {
-    parsedJson = JSON.parse(raw);
-  } catch (parseError) {
-    logger.error(
-      { raw: amostra(raw), parseError },
-      'Falha ao fazer parse do JSON retornado pela Groq',
-    );
-    throw new Error('Resposta da Groq não é um JSON válido');
-  }
-
-  const result = RiskAnalysisResultSchema.safeParse(parsedJson);
-  if (!result.success) {
-    logger.error(
-      { raw: amostra(raw), issues: result.error.issues },
-      'Resposta da Groq não corresponde ao schema esperado',
-    );
-    throw new Error('Resposta da Groq não corresponde ao schema de RiskAnalysisResult');
-  }
-
-  return result.data;
+  if (r.ok) return r.dados;
+  throw erroIaDeFalha(r);
 }
 
 const CHATBOT_SYSTEM_PROMPT = `Você é o RIGABRAS AI, assistente operacional interno da Rigabras
 Transportes (transporte rodoviário internacional de cargas + Armazém Geral, Uruguaiana/RS).
 
-REGRA DE OURO, inegociável: responda ESTRITAMENTE com base no "SNAPSHOT DE DADOS" fornecido
-abaixo, que já foi consultado ao vivo no banco de dados da empresa. NUNCA invente números,
+REGRA DE OURO, inegociável: responda ESTRITAMENTE com base no bloco de dados "snapshot"
+fornecido, que já foi consultado ao vivo no banco de dados da empresa. NUNCA invente números,
 registros ou causas. Se o snapshot não contiver informação suficiente para responder com
 segurança, diga literalmente: "Não encontrei dados suficientes nos registros disponíveis para
-responder." — nunca tente adivinhar.
+responder." — nunca tente adivinhar. A pergunta do usuário está no bloco "pergunta".
 
 Ao responder:
 1. Dê uma resposta objetiva, citando os números relevantes do snapshot.
@@ -112,143 +120,80 @@ Ao responder:
    certeza quando houver apenas uma hipótese — nesse caso diga "possível causa a investigar".
 4. Responda em português, em texto corrido (não JSON), de forma direta e profissional.`;
 
+/** @deprecated legado — prefira `gerarTexto({ tarefa: 'chatbot.pergunta', ... , validar })`. */
 export async function askOperationalQuestion(
   pergunta: string,
   snapshotJson: string,
+  opcoes?: OpcoesLegadoIa,
 ): Promise<string> {
-  if (!isGroqConfigured) {
-    throw new GroqNotConfiguredError();
-  }
-
-  const completion = await getClient().chat.completions.create({
-    model: env.GROQ_MODEL,
-    temperature: 0.1,
-    max_tokens: 600,
-    messages: [
-      { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
-      {
-        role: 'user',
-        content: `SNAPSHOT DE DADOS (JSON):\n${snapshotJson}\n\nPERGUNTA: ${pergunta}`,
-      },
-    ],
+  const blocos: BlocoDadosIa[] = [
+    { nome: 'snapshot', valor: comoDado(snapshotJson), maxItens: 100, maxCharsPorCampo: 300, maxChars: 40_000 },
+    { nome: 'pergunta', valor: pergunta, maxCharsPorCampo: 2000 },
+  ];
+  const r = await ia.gerarTexto({
+    tarefa: opcoes?.tarefa ?? 'chatbot.pergunta',
+    versaoPrompt: 'legado-v1',
+    sistema: CHATBOT_SYSTEM_PROMPT,
+    instrucao: 'Responda à pergunta do bloco "pergunta" usando somente o bloco "snapshot".',
+    blocos,
+    maxTokens: 600,
+    temperatura: 0.1,
+    ...extras(opcoes),
   });
-
-  const resposta = completion.choices[0]?.message?.content;
-  if (!resposta) {
-    throw new Error('Resposta vazia da Groq');
-  }
-  return resposta.trim();
+  if (r.ok) return r.dados.trim();
+  throw erroIaDeFalha(r);
 }
 
 /**
- * Chamada genérica em modo JSON (`response_format: json_object`) usada pelos
- * recursos de IA de importação e insights. Devolve o objeto já parseado —
- * quem chama SEMPRE valida o formato com Zod antes de confiar no conteúdo.
+ * @deprecated legado — prefira `gerarJson({ tarefa, schema, ... })`, que valida
+ * e repara a resposta. Chamada genérica em modo JSON: devolve o objeto já
+ * parseado e quem chama SEMPRE valida o formato com Zod antes de confiar.
  */
 export async function completeJson(
   system: string,
   user: string,
   maxTokens = 1500,
+  opcoes?: OpcoesLegadoIa,
 ): Promise<unknown> {
-  if (!isGroqConfigured) {
-    throw new GroqNotConfiguredError();
-  }
-  const completion = await getClient().chat.completions.create({
-    model: env.GROQ_MODEL,
-    temperature: 0.1,
-    max_tokens: maxTokens,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ],
+  const r = await ia.gerarJson({
+    tarefa: opcoes?.tarefa ?? 'geral.json',
+    versaoPrompt: 'legado-v1',
+    sistema: system,
+    // Teto estrutural (o legado fazia `.slice` no JSON pronto): reduz listas/textos até caber.
+    blocos: [{ nome: 'entrada', valor: comoDado(user), maxItens: 500, maxCharsPorCampo: 2000, maxChars: 60_000 }],
+    schema: z.unknown(),
+    maxTokens,
+    cacheTtlMs: 0,
+    ...extras(opcoes),
   });
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) {
-    throw new Error('Resposta vazia da Groq');
-  }
-  try {
-    return JSON.parse(raw);
-  } catch (parseError) {
-    logger.error({ raw: amostra(raw), parseError }, 'Groq devolveu JSON inválido');
-    throw new Error('Resposta da Groq não é um JSON válido');
-  }
-}
-
-export class GroqNotConfiguredError extends Error {
-  constructor() {
-    super(
-      'GROQ_API_KEY não configurada - análise de risco por IA está desabilitada neste ambiente',
-    );
-    this.name = 'GroqNotConfiguredError';
-  }
+  if (r.ok) return r.dados;
+  throw erroIaDeFalha(r);
 }
 
 /**
- * Chamada com imagens (modelo de visão) em modo JSON — usada pelo OCR de
- * documentos (CNH/CRLV). `imagens` são data URLs (`data:image/jpeg;base64,...`).
- * Quem chama valida o conteúdo com Zod.
+ * @deprecated legado — prefira `visaoJson({ tarefa: 'ocr.cnh', schema, imagens, ... })`.
+ * Chamada com imagens (modelo de visão, com a lista de reserva do catálogo)
+ * em modo JSON — usada pelo OCR de documentos (CNH/CRLV). `imagens` são data
+ * URLs (`data:image/jpeg;base64,...`). Quem chama valida o conteúdo com Zod.
  */
-const MODELOS_VISAO = [
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'meta-llama/llama-4-maverick-17b-128e-instruct',
-];
-
 export async function completeJsonComImagens(
   system: string,
   texto: string,
   imagens: string[],
   maxTokens = 1200,
+  opcoes?: OpcoesLegadoIa,
 ): Promise<unknown> {
-  if (!isGroqConfigured) {
-    throw new GroqNotConfiguredError();
-  }
-  const conteudo = [
-    { type: 'text' as const, text: texto },
-    ...imagens.map((url) => ({ type: 'image_url' as const, image_url: { url } })),
-  ];
-  // Modelos de visão da Groq são trocados com frequência: tenta o configurado e, se ele
-  // não existir mais (404 model_not_found / descontinuado), os demais conhecidos.
-  const modelos = [...new Set([env.GROQ_VISION_MODEL, ...MODELOS_VISAO])];
-  let completion: Awaited<
-    ReturnType<ReturnType<typeof getClient>['chat']['completions']['create']>
-  > | null = null;
-  let ultimoErro: unknown = null;
-  for (const model of modelos) {
-    try {
-      completion = await getClient().chat.completions.create({
-        model,
-        temperature: 0,
-        max_tokens: maxTokens,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: conteudo },
-        ],
-      });
-      break;
-    } catch (err) {
-      ultimoErro = err;
-      const status = (err as { status?: number }).status;
-      const texto = String((err as { message?: string }).message ?? '');
-      if (
-        status === 404 ||
-        /model_not_found|decommission|does not exist|not support/i.test(texto)
-      ) {
-        logger.warn({ model }, 'Modelo de visão indisponível na Groq; tentando o próximo');
-        continue;
-      }
-      throw err;
-    }
-  }
-  if (!completion) throw ultimoErro ?? new Error('Nenhum modelo de visão disponível na Groq');
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error('Resposta vazia da Groq');
-  const json = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
-  try {
-    return JSON.parse(json);
-  } catch (parseError) {
-    logger.error({ raw: amostra(raw), parseError }, 'Groq (visão) devolveu JSON inválido');
-    throw new Error('Resposta da Groq não é um JSON válido');
-  }
+  const r = await ia.visaoJson({
+    tarefa: opcoes?.tarefa ?? 'ocr.documento',
+    versaoPrompt: 'legado-v1',
+    sistema: system,
+    instrucao: texto,
+    imagens,
+    schema: z.unknown(),
+    maxTokens,
+    sensivel: true,
+    ...extras(opcoes),
+  });
+  if (r.ok) return r.dados;
+  throw erroIaDeFalha(r);
 }

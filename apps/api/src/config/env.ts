@@ -38,6 +38,40 @@ function loadDotEnv(): void {
 loadDotEnv();
 
 /**
+ * Flag booleana tolerante (true/false, 1/0, sim/não, on/off). Valor
+ * irreconhecível cai no padrão em vez de derrubar o boot — usada só nas
+ * variáveis opcionais da IA.
+ */
+function flagEnv(padrao: boolean) {
+  return z
+    .string()
+    .optional()
+    .transform((v) => {
+      const s = v?.trim().toLowerCase();
+      if (!s) return padrao;
+      if (['true', '1', 'sim', 'yes', 'on'].includes(s)) return true;
+      if (['false', '0', 'nao', 'não', 'no', 'off'].includes(s)) return false;
+      return padrao;
+    });
+}
+
+/**
+ * Inteiro opcional tolerante para as variáveis da IA: vazio = ausente e valor
+ * inválido/fora da faixa cai no padrão (um typo no painel do Coolify não pode
+ * derrubar a API inteira por causa de um limite de IA).
+ */
+function intEnvOpcional(min: number, max: number) {
+  return z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.coerce.number().int().min(min).max(max).optional().catch(undefined),
+  );
+}
+
+function intEnv(min: number, max: number, padrao: number) {
+  return intEnvOpcional(min, max).transform((n) => n ?? padrao);
+}
+
+/**
  * Validação de variáveis de ambiente no boot (critério #11): a aplicação
  * encerra imediatamente com uma mensagem clara caso falte alguma variável
  * obrigatória. GROQ_API_KEY é tratada como opcional em runtime (o wrapper de
@@ -69,6 +103,48 @@ const EnvSchema = z
     GROQ_MODEL: z.string().default('openai/gpt-oss-120b'),
     /** Modelo com visão (lê fotos de CNH/CRLV no OCR de motoristas). */
     GROQ_VISION_MODEL: z.string().default('meta-llama/llama-4-scout-17b-16e-instruct'),
+
+    // ---- Camada de IA (lib/ai) — todas opcionais, com defaults seguros ----
+    /** Modelo "rápido" para classificar/mapear (importação, solicitações). */
+    GROQ_FAST_MODEL: z.string().default('openai/gpt-oss-20b'),
+    /** Reservas extras (vírgula) antes da lista conhecida, para 404/model_not_found. */
+    GROQ_TEXT_FALLBACK_MODELS: z.string().default(''),
+    GROQ_VISION_FALLBACK_MODELS: z.string().default(''),
+    /** Kill switch global da IA (as regras determinísticas continuam). */
+    IA_HABILITADA: flagEnv(true),
+    /** Kill switch do OCR (LGPD: desliga a transferência de documentos sem desligar o resto da IA). */
+    IA_OCR_HABILITADO: flagEnv(true),
+    IA_IMPORTACAO_HABILITADO: flagEnv(true),
+    IA_SOLICITACOES_HABILITADO: flagEnv(true),
+    IA_INSIGHTS_HABILITADO: flagEnv(true),
+    IA_CHATBOT_HABILITADO: flagEnv(true),
+    IA_RISCO_HABILITADO: flagEnv(true),
+    /** Tarefas ou famílias desligadas (vírgula), ex.: "importacao.status,insights". */
+    IA_TAREFAS_DESABILITADAS: z.string().default(''),
+    /** Sobrescreve o prazo padrão de TODAS as famílias (ms). */
+    IA_TIMEOUT_MS: intEnvOpcional(1000, 300_000),
+    /** Retentativas por modelo em 5xx/rede/timeout. */
+    IA_RETENTATIVAS: intEnv(0, 5, 2),
+    /** Chamadas simultâneas à IA no processo. */
+    IA_CONCORRENCIA: intEnv(1, 32, 4),
+    /** Sobrescrevem os limites por usuário/família de TODAS as famílias (0 = sem limite). */
+    IA_LIMITE_MINUTO_USUARIO: intEnvOpcional(0, 100_000),
+    IA_LIMITE_DIA_USUARIO: intEnvOpcional(0, 10_000_000),
+    /** Limites por família, ex.: "ocr=10/200;chatbot=15/300" (por minuto / por dia). */
+    IA_LIMITES: z.string().default(''),
+    /** Tetos globais diários (todas as pessoas somadas; 0 = sem limite). */
+    IA_LIMITE_DIA_GLOBAL: intEnv(0, 10_000_000, 5000),
+    IA_TOKENS_DIA_GLOBAL: intEnv(0, 1_000_000_000, 5_000_000),
+    /** Disjuntor: falhas seguidas até pular a IA, e por quanto tempo (ms). */
+    IA_DISJUNTOR_FALHAS: intEnv(0, 100, 5),
+    IA_DISJUNTOR_PAUSA_MS: intEnv(1000, 3_600_000, 60_000),
+    IA_CACHE_MAX_ENTRADAS: intEnv(0, 100_000, 500),
+    /** Cache persistente na tabela ia_cache (nunca para OCR); exige a tabela. */
+    IA_CACHE_PERSISTENTE: flagEnv(false),
+    /** Grava uma linha por chamada na tabela ia_uso (sem conteúdo); exige a tabela. */
+    IA_PERSISTIR_USO: flagEnv(false),
+    /** Sob vitest a IA real fica desligada; `true` libera a Groq de verdade nos testes. */
+    IA_TESTES_HABILITADA: flagEnv(false),
 
     /**
      * E-mails (separados por vírgula) autorizados a ver a trilha de Auditoria.
