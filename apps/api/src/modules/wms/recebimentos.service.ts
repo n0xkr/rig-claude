@@ -195,12 +195,13 @@ export class RecebimentosService {
     if (!endereco) throw new NotFoundError('endereco_armazem', input.endereco_id);
 
     const divergente = input.quantidade_conferida !== item.quantidade_esperada;
-    const updatedItem = await this.repo.updateItem(itemId, {
+    const updatedItem = await this.repo.claimItemConferencia(itemId, {
       quantidade_conferida: input.quantidade_conferida,
       endereco_id: input.endereco_id,
       divergente,
       observacoes: input.observacoes ?? null,
     });
+    if (!updatedItem) throw new ConflictError('Este item do recebimento já foi conferido');
 
     if (input.quantidade_conferida > 0) {
       await this.estoqueRepo.registrarMovimentacao(
