@@ -10,6 +10,7 @@ import {
 import { useDepositantesList } from '../hooks/useDepositantes.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Catálogo de produtos armazenados por depositante (Módulo 5, WMS — SKU). */
 export default function ProdutosListPage() {
@@ -22,6 +23,7 @@ export default function ProdutosListPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <Link
         to="/wms/depositantes"
         className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
@@ -96,6 +98,10 @@ export default function ProdutosListPage() {
                 <p className="font-medium text-slate-900">
                   {p.sku} — {p.descricao}
                 </p>
+                <p className="text-xs text-slate-400">
+                  {p.codigo}
+                  {p.numero_produto && ` · nº ${p.numero_produto}`}
+                </p>
                 <p className="text-sm text-slate-500">
                   {p.unidade_medida ?? 'UN'}
                   {p.peso_kg != null && ` · ${p.peso_kg} kg`}
@@ -148,6 +154,7 @@ function ProdutoEditForm({
   const [form, setForm] = useState({
     sku: produto.sku,
     descricao: produto.descricao,
+    numero_produto: produto.numero_produto ?? '',
     unidade_medida: produto.unidade_medida ?? 'UN',
     peso_kg: produto.peso_kg != null ? String(produto.peso_kg) : '',
     volume_m3: produto.volume_m3 != null ? String(produto.volume_m3) : '',
@@ -159,6 +166,7 @@ function ProdutoEditForm({
     await update(produto.id, {
       sku: form.sku,
       descricao: form.descricao,
+      numero_produto: form.numero_produto || null,
       unidade_medida: form.unidade_medida,
       peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
       volume_m3: form.volume_m3 ? Number(form.volume_m3) : undefined,
@@ -171,10 +179,10 @@ function ProdutoEditForm({
     <form
       onSubmit={handleSubmit}
       data-testid="produto-edit-form"
-      className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-6 sm:grid-cols-5"
+      className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-6 sm:grid-cols-6"
     >
       <p className="col-span-full text-sm font-semibold text-slate-900">
-        Editando {produto.sku}
+        Editando {produto.sku} · {produto.codigo}
       </p>
       <input
         required
@@ -191,6 +199,13 @@ function ProdutoEditForm({
         className="input col-span-2 sm:col-span-2"
         value={form.descricao}
         onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+      />
+      <input
+        placeholder="Nº do produto"
+        aria-label="Nº do produto"
+        className="input"
+        value={form.numero_produto}
+        onChange={(e) => setForm((f) => ({ ...f, numero_produto: e.target.value }))}
       />
       <input
         placeholder="Unidade"
@@ -265,6 +280,7 @@ function ProdutoForm({
     depositante_id: defaultDepositanteId ?? '',
     sku: '',
     descricao: '',
+    numero_produto: '',
     unidade_medida: 'UN',
     peso_kg: '',
     volume_m3: '',
@@ -276,6 +292,7 @@ function ProdutoForm({
       depositante_id: form.depositante_id,
       sku: form.sku,
       descricao: form.descricao,
+      numero_produto: form.numero_produto || undefined,
       unidade_medida: form.unidade_medida,
       peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
       volume_m3: form.volume_m3 ? Number(form.volume_m3) : undefined,
@@ -323,6 +340,13 @@ function ProdutoForm({
         className="input col-span-2 sm:col-span-1"
         value={form.descricao}
         onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+      />
+      <input
+        placeholder="Nº do produto"
+        aria-label="Nº do produto"
+        className="input"
+        value={form.numero_produto}
+        onChange={(e) => setForm((f) => ({ ...f, numero_produto: e.target.value }))}
       />
       <input
         placeholder="Peso (kg)"

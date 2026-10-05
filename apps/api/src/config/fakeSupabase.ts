@@ -61,6 +61,8 @@ const TABLE_COLUMN_DEFAULTS: Record<string, Row> = {
   fretes: { status_fechamento: 'ABERTO' },
   pagamentos_frete: { status: 'PENDENTE' },
   produtos_armazenados: { unidade_medida: 'UN' },
+  redes: { condicao_uso: 'BOA', status: 'DISPONIVEL', padrao_cliente: false, validade: null },
+  manutencoes_veiculo: { fotos: [] },
   enderecos_armazem: { status: 'LIVRE' },
   recebimentos: { status: 'AGUARDANDO' },
   expedicoes: { tipo: 'NORMAL', status: 'SOLICITADA' },
@@ -82,7 +84,7 @@ function genId(): string {
 }
 
 /**
- * Constraints UNIQUE realmente existentes no Postgres real (migrations 0001–0017),
+ * Constraints UNIQUE realmente existentes no Postgres real (migrations 0001–0020),
  * emuladas no insert: sem elas o banco falso aceitava reenvios que o PostgREST
  * rejeitaria com 23505, descarregando qualquer código que depende de unique
  * (ex.: `primary key (user_id, key)` de `idempotency_keys` — sem 23505 o
@@ -91,6 +93,8 @@ function genId(): string {
  */
 const UNIQUE_CONSTRAINTS: Record<string, string[][]> = {
   idempotency_keys: [['user_id', 'key']],
+  produtos_armazenados: [['codigo']],
+  redes: [['codigo']],
 };
 
 function uniqueViolation(all: Row[], input: Row, cols: string[]): Row | null {

@@ -62,8 +62,21 @@ export class ProdutosRepository {
     return resultado;
   }
 
+  /** Maior `codigo` já emitido (PROD-######) — base da sequência do próximo produto. */
+  async findMaxCodigo(): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .select('codigo')
+      .like('codigo', 'PROD-%')
+      .order('codigo', { ascending: false })
+      .limit(1);
+    if (error) throw mapPgError(error);
+    const rows = (data ?? []) as Array<{ codigo: string }>;
+    return rows[0]?.codigo ?? null;
+  }
+
   async create(
-    input: CreateProdutoArmazenadoInput,
+    input: CreateProdutoArmazenadoInput & { codigo: string },
     createdBy: string | null,
   ): Promise<ProdutoArmazenado> {
     const { data, error } = await supabaseAdmin

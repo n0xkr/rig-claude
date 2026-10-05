@@ -11,6 +11,9 @@ import type {
   StatusInventario,
   StatusPortariaEntrada,
   StatusOrdemServico,
+  StatusOperacionalVeiculo,
+  StatusRede,
+  CondicaoUsoRede,
 } from '@rigabras/shared';
 import { STATUS_VIAGEM_LABEL } from '@rigabras/shared';
 
@@ -272,6 +275,70 @@ export function OrdemServicoStatusBadge({ status }: { status: StatusOrdemServico
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_ORDEM_SERVICO_STYLES[status]}`}
     >
       {status.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+const STATUS_VEICULO_STYLES: Record<StatusOperacionalVeiculo, string> = {
+  DISPONIVEL: 'bg-emerald-50 text-emerald-700',
+  EM_TRANSITO: 'bg-blue-50 text-blue-700',
+  MANUTENCAO: 'bg-amber-50 text-amber-700',
+  GARAGEM: 'bg-slate-100 text-slate-700',
+};
+
+const STATUS_VEICULO_LABEL: Record<StatusOperacionalVeiculo, string> = {
+  DISPONIVEL: 'Disponível',
+  EM_TRANSITO: 'Em trânsito',
+  MANUTENCAO: 'Manutenção',
+  GARAGEM: 'Garagem',
+};
+
+/** Badge do estado operacional de um veículo (Módulo 4 — Controle de Frota). */
+export function VeiculoStatusBadge({ status }: { status: StatusOperacionalVeiculo }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_VEICULO_STYLES[status]}`}
+    >
+      {STATUS_VEICULO_LABEL[status]}
+    </span>
+  );
+}
+
+const STATUS_REDE_STYLES: Record<StatusRede, string> = {
+  DISPONIVEL: 'bg-emerald-50 text-emerald-700',
+  EM_TRANSITO: 'bg-blue-50 text-blue-700',
+};
+
+const STATUS_REDE_LABEL: Record<StatusRede, string> = {
+  DISPONIVEL: 'Disponível',
+  EM_TRANSITO: 'Em trânsito',
+};
+
+/** Badge de onde a rede está (pátio x em trânsito) — painel de redes do WMS. */
+export function RedeStatusBadge({ status }: { status: StatusRede }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_REDE_STYLES[status]}`}
+    >
+      {STATUS_REDE_LABEL[status]}
+    </span>
+  );
+}
+
+const CONDICAO_REDE_STYLES: Record<CondicaoUsoRede, string> = {
+  NOVA: 'bg-emerald-50 text-emerald-700',
+  BOA: 'bg-cyan-50 text-cyan-700',
+  REGULAR: 'bg-amber-50 text-amber-700',
+  RUIM: 'bg-red-50 text-red-700',
+};
+
+/** Badge da condição de uso de uma rede (NOVA/BOA/REGULAR/RUIM). */
+export function RedeCondicaoBadge({ condicao }: { condicao: CondicaoUsoRede }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${CONDICAO_REDE_STYLES[condicao]}`}
+    >
+      {condicao}
     </span>
   );
 }

@@ -7,6 +7,7 @@ import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { AvariaSeveridadeBadge } from '../components/StatusBadge.js';
 import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 const SEVERIDADES: SeveridadeAvaria[] = ['LEVE', 'MODERADA', 'GRAVE', 'PERDA_TOTAL'];
 
@@ -17,6 +18,7 @@ export default function AvariasListPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <div className="mb-6 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <AlertOctagon className="h-6 w-6 text-red-600" />

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Building2, Plus, Package } from 'lucide-react';
 import { useDepositantesList } from '../hooks/useDepositantes.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Lista de depositantes (Módulo 5, WMS — clientes do serviço de Armazém Geral, Decreto 1.102/1903). */
 export default function DepositantesListPage() {
@@ -9,6 +10,7 @@ export default function DepositantesListPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <div className="mb-6 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Building2 className="h-6 w-6 text-rigabras-500" />

@@ -37,7 +37,11 @@ export async function frotaRoutes(app: FastifyInstance): Promise<void> {
   );
   app.post(
     '/manutencoes',
-    { preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR') },
+    {
+      preHandler: requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR'),
+      // Fotos opcionais da solicitação (data URLs reduzidas no cliente) passam do limite padrão de 1 MB.
+      bodyLimit: 3 * 1024 * 1024,
+    },
     FrotaController.createManutencao,
   );
   app.patch(

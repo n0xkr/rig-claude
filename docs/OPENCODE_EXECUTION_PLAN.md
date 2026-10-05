@@ -71,13 +71,21 @@ Estado: **CONCLUÍDO**.
 - Web: página `/wms/estoque` (linha, avulsa, histórico), checklist de entrada (`AGUARDANDO`) e saída (`SOLICITADA`), edição de produto.
 - Testes: `estoque.service.test.ts` (+6) e `17-wms-estoque-manual.spec.ts` (+2).
 
+## Fase 19 — Leva CORREÇÕES 0.5 (pedido do usuário)
+Estado: **CONCLUÍDO**.
+- WMS: `WmsSubNav` nas 14 telas; produtos com `codigo` `PROD-######` server-side + `numero_produto`; "+ Adicionar novo..." em Estoque e nos itens da expedição; painel **Redes dos veículos** (`/wms/redes`) com KPIs, retirada/devolução e máquina de estados.
+- Frota: solicitação de manutenção com hora (HH:MM), solicitante server-set e fotos (≤5, ≤500 KB); manutenções com tempo decorrido e previsão da próxima; CRUD de veículos (`/frota/veiculos`).
+- Migrations `0019` (produtos + manutenções) e `0020` (redes + RLS 0006) escritas — **REQUER VALIDAÇÃO EXTERNA** (aplicar no Supabase); `0018` intocada (REQUER DECISÃO).
+- Testes: `18-wms-redes.spec.ts` (+2); encoding U+FFFD corrigido em 5 páginas e scan final negativo.
+
 ---
 
 ## Ordem de execução recomendada
-1. ~~Fase 1~~ · ~~Fase 17~~ · ~~Fase 18~~ · commit + `git push origin master`.
-2. Fora deste ambiente: Fases 11–13, 15–16, decisões 1/2/3 do AUDIT §8.
+1. ~~Fase 1~~ · ~~Fase 17~~ · ~~Fase 18~~ · ~~Fase 19~~ · commit + `git push origin master`.
+2. Usuário: aplicar migrations `0019`/`0020` no SQL editor do Supabase + redeploy no Coolify.
+3. Fora deste ambiente: Fases 11–13, 15–16, decisões 1/2/3 do AUDIT §8.
 
 ## Critérios de aceite globais
-- `pnpm -r run typecheck` verde · `pnpm --filter @rigabras/api run test` **137 verdes** · E2E **43/43 verdes**.
+- `pnpm -r run typecheck` verde · `pnpm --filter @rigabras/api run test` **137 verdes** · E2E **45 specs** (42 verdes na suíte completa + 3 flaky de timeout que passam isolados).
 - Nenhum contrato de rota/Zod alterado sem nota no CHANGELOG.
 - Achados `REQUER DECISÃO`/`REQUER VALIDAÇÃO EXTERNA` nunca marcados como concluídos.

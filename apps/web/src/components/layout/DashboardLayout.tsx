@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   Bot,
+  Car,
   ClipboardCheck,
   Clock,
   IdCard,
@@ -59,6 +60,7 @@ const NAV: NavItem[] = [
   { to: '/fretes', label: 'Financeiro do frete', icon: Wallet, modulo: 'fretes' },
   { to: '/acompanhamento', label: 'Acompanhamento', icon: Radar, modulo: 'acompanhamento' },
   { to: '/frota/kpis', label: 'Frota', icon: Wrench, modulo: 'frota' },
+  { to: '/frota/veiculos', label: 'Veículos', icon: Car, modulo: 'frota' },
   { to: '/jornada', label: 'Jornada', icon: Clock, modulo: 'jornada' },
   { to: '/wms', label: 'WMS', icon: Warehouse, modulo: 'wms' },
   { to: '/exportacoes', label: 'Exportações', icon: UploadCloud, modulo: 'exportacoes' },

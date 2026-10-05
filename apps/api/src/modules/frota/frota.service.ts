@@ -51,7 +51,11 @@ export class FrotaService {
     const veiculo = await this.veiculosRepo.findById(input.veiculo_id);
     if (!veiculo) throw new NotFoundError('veiculo', input.veiculo_id);
 
-    const created = await this.repo.createManutencao(input, userId);
+    const solicitante = userId ? await this.repo.findNomeSolicitante(userId) : null;
+    const created = await this.repo.createManutencao(
+      { ...input, solicitante_id: userId, solicitante },
+      userId,
+    );
     await writeAuditLog({
       userId,
       action: 'CREATE',

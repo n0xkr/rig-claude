@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Warehouse, PackageCheck, Truck, AlertOctagon, ClipboardList, Boxes } from 'lucide-react';
+import { Warehouse } from 'lucide-react';
 import { useWmsKpis } from '../hooks/useWmsKpis.js';
 import { useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Painel de KPIs do Armazém Geral (Módulo 5, WMS, critério #6): ocupação, giro de estoque, avarias por severidade. */
 export default function WmsKpiPage() {
@@ -44,26 +44,7 @@ export default function WmsKpiPage() {
         </div>
       </div>
 
-      <div className="mb-8 flex flex-wrap gap-2">
-        <NavLink
-          to="/wms/depositantes"
-          icon={<PackageCheck className="h-4 w-4" />}
-          label="Depositantes"
-        />
-        <NavLink
-          to="/wms/armazem/mapa"
-          icon={<Warehouse className="h-4 w-4" />}
-          label="Mapa do armazém"
-        />
-        <NavLink
-          to="/wms/recebimentos"
-          icon={<ClipboardList className="h-4 w-4" />}
-          label="Recebimentos"
-        />
-        <NavLink to="/wms/expedicoes" icon={<Truck className="h-4 w-4" />} label="Expedições" />
-        <NavLink to="/wms/estoque" icon={<Boxes className="h-4 w-4" />} label="Estoque" />
-        <NavLink to="/wms/avarias" icon={<AlertOctagon className="h-4 w-4" />} label="Avarias" />
-      </div>
+      <WmsSubNav />
 
       {armazens.length === 0 && (
         <EmptyState
@@ -122,16 +103,5 @@ function Kpi({ label, value }: { label: string; value: string | number }) {
       <dt className="text-sm text-slate-500">{label}</dt>
       <dd className="mt-1 text-2xl font-bold text-slate-900">{value}</dd>
     </div>
-  );
-}
-
-function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link
-      to={to}
-      className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
-    >
-      {icon} {label}
-    </Link>
   );
 }

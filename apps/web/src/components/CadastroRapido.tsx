@@ -74,6 +74,7 @@ const DEFS: Record<
     campos: [
       { nome: 'sku', rotulo: 'SKU / código', obrigatorio: true, maiusculas: true },
       { nome: 'descricao', rotulo: 'Descrição', obrigatorio: true },
+      { nome: 'numero_produto', rotulo: 'Nº do produto' },
       { nome: 'unidade_medida', rotulo: 'Unidade', padrao: 'UN', maiusculas: true },
       { nome: 'peso_kg', rotulo: 'Peso (kg)', tipo: 'number' },
     ],
@@ -81,6 +82,7 @@ const DEFS: Record<
       depositante_id: ctx.depositante_id,
       sku: f.sku,
       descricao: f.descricao,
+      numero_produto: f.numero_produto || undefined,
       unidade_medida: f.unidade_medida || 'UN',
       ...(f.peso_kg ? { peso_kg: Number(f.peso_kg.replace(',', '.')) } : {}),
       ativo: true,

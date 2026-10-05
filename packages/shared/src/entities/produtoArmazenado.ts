@@ -4,6 +4,8 @@ import { z } from 'zod';
 export const ProdutoArmazenadoSchema = z.object({
   id: z.string().uuid(),
   depositante_id: z.string().uuid(),
+  codigo: z.string().min(1),
+  numero_produto: z.string().min(1).max(60).nullable().optional(),
   sku: z.string().min(1),
   descricao: z.string().min(1),
   unidade_medida: z.string().optional(),
@@ -19,6 +21,7 @@ export type ProdutoArmazenado = z.infer<typeof ProdutoArmazenadoSchema>;
 
 export const CreateProdutoArmazenadoSchema = ProdutoArmazenadoSchema.omit({
   id: true,
+  codigo: true,
   created_at: true,
   updated_at: true,
   deleted_at: true,

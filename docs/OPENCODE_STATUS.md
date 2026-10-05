@@ -9,7 +9,8 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 | `pnpm -r run typecheck` | **verde** (shared, api, web) |
 | `pnpm -r run lint` | placeholder (ESLint real = Fase 16, pendente) |
 | `pnpm --filter @rigabras/api run test` | **137 passed** (13 arquivos) |
-| `pnpm exec playwright test` | **43 passed** (~10 min) |
+| `pnpm exec playwright test` | **45 specs**: 42 passed na suíte completa; 3 timeouts de carga (`10`, `11`, `12`) passam isolados (flaky, não é regressão da leva 0.5) |
+| Scan `U+FFFD` nas fontes | **negativo** |
 
 ## Fases do plano
 
@@ -39,6 +40,16 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 - **Cadastro/edição de itens**: recebimentos editáveis enquanto `AGUARDANDO` e expedições enquanto `SOLICITADA` (adicionar/editar/remover), com SKU exibido no card.
 - **Retiradas/entradas**: movimentações manuais gravadas só no ledger (`movimentacoes_estoque`), saldo materializado nunca é editado direto.
 - **Edição de produto**: SKU, descrição, unidade, peso, volume e flag ativo pela tela.
+
+## Leva CORREÇÕES 0.5 (WMS + frota — entregue)
+
+- **Submenus do WMS**: `WmsSubNav` em todas as 14 telas do Módulo 5.
+- **Produtos únicos**: `codigo` `PROD-######` gerado no servidor (único entre ativos, retry) + `numero_produto`; "+ Adicionar novo..." também em Estoque e no card de itens da expedição.
+- **Manutenções**: hora (HH:MM), solicitante (server-set), fotos opcionais (≤5, ≤500 KB cada) na solicitação; lista com data da solicitação, tempo decorrido e badge de previsão da próxima.
+- **Veículos**: CRUD completo em `/frota/veiculos` (+ rota de navegação lateral).
+- **Redes dos veículos**: painel exclusivo em `/wms/redes` com cadastro (condição/validade/padrão-cliente), KPIs em tempo real (auto-refresh 20s) e movimentação retirada/devolução (máquina de estados `DISPONIVEL`↔`EM_TRANSITO`).
+- **Migrations prontas**: `0019` (produtos + manutenções) e `0020` (redes + RLS no padrão da 0006) — **aguardam aplicação no SQL editor do Supabase** (REQUER VALIDAÇÃO EXTERNA); `0018` intocada.
+- **Ação do usuário**: aplicar `supabase/migrations/0019_*` e `0020_*` no Supabase e fazer redeploy no Coolify (repositório atualizado via `git push origin master`).
 
 ## Decisões pendentes do usuário (AUDIT §8)
 

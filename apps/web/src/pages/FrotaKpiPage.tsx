@@ -53,6 +53,12 @@ export default function FrotaKpiPage() {
 
       <div className="mb-8 flex flex-wrap gap-2">
         <Link
+          to="/frota/veiculos"
+          className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
+        >
+          <Truck className="h-4 w-4" /> Veículos da frota
+        </Link>
+        <Link
           to="/frota/manutencoes"
           className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 transition-all duration-200 bg-white shadow-sm"
         >

@@ -1,6 +1,6 @@
 # CHANGELOG — OPENCODE_CHANGELOG
 
-Registro das mudanças entregues na execução do `OPENCODE_EXECUTION_PLAN.md` (base `dbc2af6`). Contratos/Zod/RBAC/RLS/ledger imutável/fila offline preservados; nenhuma migration nova escrita.
+Registro das mudanças entregues na execução do `OPENCODE_EXECUTION_PLAN.md` (base `dbc2af6`) e na **leva CORREÇÕES 0.5**. Contratos/Zod/RBAC/RLS/ledger imutável/fila offline preservados; migrations novas limitadas a `0019`/`0020` (a `0018` não foi tocada).
 
 Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQUER VALIDAÇÃO EXTERNA`
 
@@ -50,18 +50,56 @@ Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQ
 | Checklist de **saída**: adicionar/editar/remover itens da expedição enquanto `SOLICITADA` | ADICIONADO | `ExpedicaoDetailPage.tsx`, `hooks/useExpedicoes.ts` (`useExpedicaoItens`) |
 | **Edição de produto** (SKU, descrição, UM, peso, volume, ativo) com badge Ativo/Inativo | ADICIONADO | `ProdutosListPage.tsx`, `hooks/useProdutosArmazenados.ts` (`useUpdateProduto`) |
 
+---
+
+## Leva CORREÇÕES 0.5 (WMS + frota — pedido direto do usuário)
+
+### WMS (Módulo 5)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| Submenu compartilhado do WMS em todas as 14 telas (`aria-label="Seções do WMS"`, `data-testid="wms-subnav"`): Painel/Depositantes/Produtos/Recebimentos/Expedições/Estoque/Redes/Mapa/Avarias | ADICIONADO | `components/WmsSubNav.tsx` + 14 páginas; nav local removida da `WmsKpiPage` |
+| Produtos com `codigo` (**PROD-######** gerado no servidor, único entre ativos, retry 5× em `ConflictError`) e `numero_produto` informado pelo usuário | ADICIONADO | `entities/produtoArmazenado.ts`, `produtos.repository/service`, `pgErrors.ts`, fake DB |
+| "+ Adicionar novo..." nos selects que faltavam: Estoque (produto/destino) e itens da expedição (produto/endereço), com modal `cadastro-rapido` e reload da lista após criar | ADICIONADO | `EstoqueListPage.tsx`, `ExpedicaoDetailPage.tsx` |
+| Painel **Redes dos veículos** (`/wms/redes`): cadastro com código **RED-######** (server-side), condição NOVA/BOA/REGULAR/RUIM, validade, "padrão cliente", KPIs com auto-refresh (20s), retirada (cliente+veículo) e devolução, exclusão bloqueada enquanto `EM_TRANSITO` | ADICIONADO | `redes.{repository,service,controller}.ts`, `wms.routes.ts`, `RedesListPage.tsx`, `hooks/useRedes.ts`, badges `RedeStatusBadge`/`RedeCondicaoBadge`, rota em `App.tsx` |
+
+### Frota (Módulo 4)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| Solicitação de manutenção com **hora (HH:MM)**, **solicitante** (server-set a partir do token, exibido como somente-leitura) e **fotos opcionais** (até 5, reduzidas no cliente a ≤500 KB, data URLs) | ADICIONADO | `entities/manutencaoVeiculo.ts`, `frota.repository/service/routes` (`bodyLimit` 3 MB), `ManutencaoFormPage.tsx`, `lib/imagens.ts` |
+| Manutenções listando **data da solicitação**, hora, solicitante, **tempo decorrido** e badge de **previsão da próxima** (vencida/hoje/≤7d) | ADICIONADO | `ManutencoesListPage.tsx`, `ManutencaoDetailPage.tsx` |
+| **CRUD de veículos** (`/frota/veiculos`, `/nova`, `/:id`): busca, mostrar inativos, exclusão soft delete + item "Veículos" no menu lateral | ADICIONADO | `VeiculosListPage.tsx`, `VeiculoFormPage.tsx`, `useVeiculos.ts`, `DashboardLayout.tsx`, `App.tsx` |
+
+### Migrations (REQUER VALIDAÇÃO EXTERNA — sem Postgres local)
+
+| Migration | Conteúdo |
+|---|---|
+| `0019_correcoes_05_produtos_manutencoes.sql` | `produtos_armazenados.codigo`/`numero_produto` + índices únicos parciais + backfill `PROD-######`; `manutencoes_veiculo.hora` (text HH:MM, contrato do Zod), `solicitante_id`/`solicitante`, `fotos jsonb` (máx. 5) |
+| `0020_redes_veiculos.sql` | enums `condicao_uso_rede`/`status_rede`/`tipo_movimentacao_rede`, tabelas `redes` (unique `codigo`, check trânsito→veículo) e `rede_movimentacoes` (append-only), RLS no padrão da migration 0006 |
+
+> Nenhuma das duas toca a migration **0018** (permanece livre; **REQUER DECISÃO**).
+
+### Correções de encoding
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| Comentários `/** ... */` com U+FFFD/acentos quebrados reescritos (5 páginas do WMS) | CORRIGIDO | `AvariasListPage`, `DepositantesListPage`, `ExpedicoesListPage`, `RastreioProdutoPage`, `RecebimentosListPage` |
+| Scan `U+FFFD` no repositório (fontes, excluindo binários): **negativo** | VERIFICADO | — |
+
 ## Testes
 
 | O quê | Tipo | Onde |
 |---|---|---|
 | 6 testes do `EstoqueService` (saldo insuficiente, produto/endereço inexistentes, ledger com documento, enriquecimento de saldos, limit de movimentações) | ADICIONADO | `apps/api/src/modules/wms/estoque.service.test.ts` |
 | E2E `17-wms-estoque-manual.spec.ts`: entrada avulsa → saldo; saída parcial → saldo atualizado; histórico do ledger; edição de produto pela tela | ADICIONADO | `tests/e2e/` |
+| E2E `18-wms-redes.spec.ts`: cria rede (código gerado), KPIs, retirada com veículo → `EM_TRANSITO` + exclusão bloqueada, devolução → `DISPONIVEL`, filtros de busca/condição | ADICIONADO | `tests/e2e/18-wms-redes.spec.ts` |
 
 ## Regressão (estado final desta execução)
 
-- `pnpm -r run typecheck` · **verde**
-- `pnpm --filter @rigabras/api run test` · **137 passed** (131 base + 6 novos)
-- `pnpm exec playwright test` · **43 passed** (41 base + 2 novos)
+- `pnpm -r run typecheck` · **verde** (shared, api, web)
+- `pnpm --filter @rigabras/api run test` · **137 passed** (13 arquivos)
+- `pnpm exec playwright test` · **45 specs**: 42 passed na suíte completa (~17 min); as 3 falhas (`10-acompanhamento`, `11-importacao-planilha-completa`, `12-usuarios-categorias`) são **flaky de tempo limite sob carga** — cada uma passa isolada (reexecução individual **2–4 passed**) e não regridem comportamento da leva 0.5.
 
 ## Não alterado (mantido propositalmente)
 

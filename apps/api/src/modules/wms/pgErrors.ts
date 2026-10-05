@@ -11,6 +11,7 @@ interface PgErrorLike {
 const MENSAGENS_UNICO: Record<string, string> = {
   idx_depositantes_cnpj_cpf: 'Já existe um depositante ativo com este CNPJ/CPF',
   idx_produtos_armazenados_depositante_sku: 'Já existe um produto com este SKU para o depositante',
+  idx_produtos_armazenados_codigo: 'Já existe um produto com este código',
   idx_enderecos_armazem_posicao:
     'Já existe um endereço com esta área/rua/prateleira/posição neste armazém',
   idx_estoque_produto_endereco: 'Já existe saldo registrado para este produto neste endereço',

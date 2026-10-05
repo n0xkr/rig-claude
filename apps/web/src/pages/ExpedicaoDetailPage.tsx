@@ -10,6 +10,8 @@ import { useProdutosList } from '../hooks/useProdutosArmazenados.js';
 import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 import { ExpedicaoStatusBadge } from '../components/StatusBadge.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 const PROXIMA_ACAO: Record<
   string,
@@ -34,8 +36,8 @@ export default function ExpedicaoDetailPage() {
   const workflow = useExpedicaoWorkflow();
   const gestaoItens = useExpedicaoItens();
   const { armazens } = useArmazensList();
-  const { enderecos } = useEnderecosList(armazens[0]?.id);
-  const { produtos } = useProdutosList(expedicao?.depositante_id);
+  const { enderecos, reload: reloadEnderecos } = useEnderecosList(armazens[0]?.id);
+  const { produtos, reload: reloadProdutos } = useProdutosList(expedicao?.depositante_id);
 
   if (state === 'loading' || state === 'idle') return <LoadingSkeleton />;
   if (state === 'error' || !expedicao)
@@ -50,6 +52,7 @@ export default function ExpedicaoDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <Link
         to="/wms/expedicoes"
         className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
@@ -86,6 +89,8 @@ export default function ExpedicaoDetailPage() {
             item={item}
             produtoRotulo={rotuloProduto(item.produto_id)}
             enderecos={enderecos}
+            armazemId={armazens[0]?.id}
+            onEnderecoCriado={reloadEnderecos}
             editavel={editavel}
             podeSeparar={expedicao.status === 'SOLICITADA' || expedicao.status === 'EM_SEPARACAO'}
             onSeparar={async (input) => {
@@ -111,6 +116,8 @@ export default function ExpedicaoDetailPage() {
       {editavel && (
         <AdicionarItemExpedicaoForm
           produtos={produtos}
+          depositanteId={expedicao.depositante_id}
+          onProdutoCriado={reloadProdutos}
           submitting={gestaoItens.submitting}
           error={gestaoItens.error}
           onAdicionar={async (input) => {
@@ -154,17 +161,22 @@ export default function ExpedicaoDetailPage() {
 
 function AdicionarItemExpedicaoForm({
   produtos,
+  depositanteId,
+  onProdutoCriado,
   submitting,
   error,
   onAdicionar,
 }: {
   produtos: Array<{ id: string; sku: string; descricao: string }>;
+  depositanteId?: string;
+  onProdutoCriado?: () => unknown;
   submitting: boolean;
   error: string | null;
   onAdicionar: (input: { produto_id: string; quantidade_solicitada: number }) => Promise<void>;
 }) {
   const [produtoId, setProdutoId] = useState('');
   const [quantidade, setQuantidade] = useState('');
+  const novo = useCadastroRapido();
 
   return (
     <form
@@ -182,7 +194,9 @@ function AdicionarItemExpedicaoForm({
         aria-label="Produto"
         className="input"
         value={produtoId}
-        onChange={(e) => setProdutoId(e.target.value)}
+        onChange={novo.aoMudar('produto', setProdutoId, onProdutoCriado, {
+          depositante_id: depositanteId,
+        })}
         data-testid="novo-item-expedicao-produto"
       >
         <option value="">Produto...</option>
@@ -191,6 +205,7 @@ function AdicionarItemExpedicaoForm({
             {p.sku} — {p.descricao}
           </option>
         ))}
+        <OpcaoAdicionarNovo />
       </select>
       <input
         required
@@ -213,6 +228,7 @@ function AdicionarItemExpedicaoForm({
         <Plus className="h-4 w-4" /> {submitting ? 'Adicionando...' : 'Adicionar item'}
       </button>
       {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
+      {novo.modal}
     </form>
   );
 }
@@ -221,6 +237,8 @@ function ItemSeparacao({
   item,
   produtoRotulo,
   enderecos,
+  armazemId,
+  onEnderecoCriado,
   editavel,
   podeSeparar,
   onSeparar,
@@ -238,6 +256,8 @@ function ItemSeparacao({
   };
   produtoRotulo: string;
   enderecos: Array<{ id: string; area: string; rua: string; prateleira: string; posicao: string }>;
+  armazemId?: string;
+  onEnderecoCriado?: () => unknown;
   editavel: boolean;
   podeSeparar: boolean;
   onSeparar: (input: { quantidade_separada: number; endereco_id: string }) => Promise<void>;
@@ -247,6 +267,7 @@ function ItemSeparacao({
 }) {
   const [quantidade, setQuantidade] = useState(String(item.quantidade_solicitada));
   const [enderecoId, setEnderecoId] = useState('');
+  const novo = useCadastroRapido();
   const jaSeparado = item.quantidade_separada != null;
   const alterado = Number(quantidade) !== item.quantidade_solicitada;
 
@@ -309,7 +330,9 @@ function ItemSeparacao({
           <select
             className="input"
             value={enderecoId}
-            onChange={(e) => setEnderecoId(e.target.value)}
+            onChange={novo.aoMudar('endereco', setEnderecoId, onEnderecoCriado, {
+              armazem_id: armazemId,
+            })}
             disabled={!podeSeparar}
           >
             <option value="">Endereço...</option>
@@ -318,6 +341,7 @@ function ItemSeparacao({
                 {e.area}-{e.rua}-{e.prateleira}-{e.posicao}
               </option>
             ))}
+            <OpcaoAdicionarNovo rotulo="+ Novo endereço..." />
           </select>
           <button
             disabled={!podeSeparar || !enderecoId}
@@ -351,6 +375,7 @@ function ItemSeparacao({
           </label>
         </div>
       )}
+      {novo.modal}
     </div>
   );
 }

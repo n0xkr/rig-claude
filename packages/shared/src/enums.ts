@@ -540,6 +540,22 @@ export const TRANSICOES_STATUS_INVENTARIO: Record<StatusInventario, StatusInvent
   ENCERRADO: [],
 };
 
+// ---------------------------------------------------------------------------
+// Redes de veículos (painel de controle das redes transportadas na frota)
+// ---------------------------------------------------------------------------
+
+/** Condição de uso da rede no momento do cadastro/avaliação. */
+export const CondicaoUsoRedeSchema = z.enum(['NOVA', 'BOA', 'REGULAR', 'RUIM']);
+export type CondicaoUsoRede = z.infer<typeof CondicaoUsoRedeSchema>;
+
+/** Onde a rede está agora: no pátio (disponível) ou em trânsito com um veículo. */
+export const StatusRedeSchema = z.enum(['DISPONIVEL', 'EM_TRANSITO']);
+export type StatusRede = z.infer<typeof StatusRedeSchema>;
+
+/** Tipo de movimentação da rede (retirada para uma viagem / devolução ao pátio). */
+export const TipoMovimentacaoRedeSchema = z.enum(['RETIRADA', 'DEVOLUCAO']);
+export type TipoMovimentacaoRede = z.infer<typeof TipoMovimentacaoRedeSchema>;
+
 // ============================================================================
 // Módulo 6 — Integração TMS + WMS
 // ============================================================================

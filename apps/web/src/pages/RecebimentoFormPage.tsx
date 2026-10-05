@@ -5,6 +5,7 @@ import { useCreateRecebimento } from '../hooks/useRecebimentos.js';
 import { useDepositantesList } from '../hooks/useDepositantes.js';
 import { useProdutosList } from '../hooks/useProdutosArmazenados.js';
 import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Formulário de registro da expectativa de recebimento (Módulo 5, WMS — Recebimento e Conferência). */
 export default function RecebimentoFormPage() {
@@ -45,6 +46,7 @@ export default function RecebimentoFormPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <Link
         to="/wms/recebimentos"
         className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"

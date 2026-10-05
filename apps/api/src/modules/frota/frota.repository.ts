@@ -88,7 +88,10 @@ export class FrotaRepository {
   }
 
   async createManutencao(
-    input: CreateManutencaoVeiculoInput,
+    input: CreateManutencaoVeiculoInput & {
+      solicitante_id?: string | null;
+      solicitante?: string | null;
+    },
     createdBy: string | null,
   ): Promise<ManutencaoVeiculo> {
     const { data, error } = await supabaseAdmin
@@ -98,6 +101,18 @@ export class FrotaRepository {
       .single();
     if (error) throw error;
     return data as ManutencaoVeiculo;
+  }
+
+  /** Nome de exibição do solicitante (profiles.nome_completo) — falha vira null, nunca bloqueia a criação. */
+  async findNomeSolicitante(userId: string): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select('nome_completo')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) return null;
+    const nome = (data as { nome_completo?: string | null } | null)?.nome_completo;
+    return nome?.trim() ? nome : null;
   }
 
   async updateManutencao(

@@ -3,6 +3,7 @@ import { Truck, Plus } from 'lucide-react';
 import { useExpedicoesList } from '../hooks/useExpedicoes.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { ExpedicaoStatusBadge } from '../components/StatusBadge.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Lista de expedições (Módulo 5, WMS — Separação/Reembalagem/Etiquetagem/Cross-docking/Expedição). */
 export default function ExpedicoesListPage() {
@@ -10,6 +11,7 @@ export default function ExpedicoesListPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <div className="mb-6 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Truck className="h-6 w-6 text-rigabras-500" />

@@ -12,6 +12,7 @@ import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 import { RecebimentoStatusBadge } from '../components/StatusBadge.js';
 import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Detalhe/workflow de um recebimento (Módulo 5, WMS — Recebimento e Conferência): inicia a conferência, confere item a item (endereçando no armazém) e conclui. */
 export default function RecebimentoDetailPage() {
@@ -41,6 +42,7 @@ export default function RecebimentoDetailPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <Link
         to="/wms/recebimentos"
         className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"

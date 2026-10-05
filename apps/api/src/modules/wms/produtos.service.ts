@@ -34,16 +34,38 @@ export class ProdutosService {
     const depositante = await this.depositantesRepo.findById(input.depositante_id);
     if (!depositante) throw new NotFoundError('depositante', input.depositante_id);
 
-    const created = await this.repo.create(input, userId);
-    await writeAuditLog({
-      userId,
-      action: 'CREATE',
-      entity: 'produtos_armazenados',
-      entityId: created.id,
-      changes: { after: created },
-      ip,
-    });
-    return created;
+    // Código sequencial PROD-###### gerado no servidor: o índice único parcial
+    // (migration 0019) é a autoridade; em corrida o 23505 vira um novo tentativa.
+    let tentativas = 0;
+    for (;;) {
+      const codigo = await this.proximoCodigo(tentativas);
+      try {
+        const created = await this.repo.create({ ...input, codigo }, userId);
+        await writeAuditLog({
+          userId,
+          action: 'CREATE',
+          entity: 'produtos_armazenados',
+          entityId: created.id,
+          changes: { after: created },
+          ip,
+        });
+        return created;
+      } catch (error) {
+        tentativas += 1;
+        const detalhe = error instanceof ConflictError ? (error.detail ?? '') : '';
+        const codigoEmUso = detalhe.includes('código') || detalhe.includes('unicidade');
+        if (!(error instanceof ConflictError) || !codigoEmUso || tentativas >= 5) throw error;
+      }
+    }
+  }
+
+  private async proximoCodigo(deslocamento: number): Promise<string> {
+    const maximo = await this.repo.findMaxCodigo();
+    const sequencia = (maximo ? Number(maximo.slice('PROD-'.length)) : 0) + 1 + deslocamento;
+    if (!Number.isFinite(sequencia) || sequencia <= 0) {
+      throw new ConflictError('Não foi possível gerar o código do produto');
+    }
+    return `PROD-${String(sequencia).padStart(6, '0')}`;
   }
 
   async update(

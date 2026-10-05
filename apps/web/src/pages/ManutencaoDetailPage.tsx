@@ -50,6 +50,7 @@ export default function ManutencaoDetailPage() {
 
           <dl className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-6 text-sm bg-white shadow-sm">
             <Info label="Data" value={formatDateOnly(manutencao.data_manutencao)} />
+            <Info label="Hora" value={manutencao.hora ?? '-'} />
             <Info label="Custo" value={`R$ ${manutencao.custo.toLocaleString('pt-BR')}`} />
             <Info
               label="Km do veículo"
@@ -67,7 +68,41 @@ export default function ManutencaoDetailPage() {
               label="Próxima manutenção (km)"
               value={manutencao.proxima_manutencao_km?.toLocaleString('pt-BR') ?? '-'}
             />
+            <Info label="Solicitante" value={manutencao.solicitante ?? '-'} />
+            <Info
+              label="Solicitado em"
+              value={
+                manutencao.created_at
+                  ? new Date(manutencao.created_at).toLocaleString('pt-BR')
+                  : '-'
+              }
+            />
           </dl>
+
+          {manutencao.fotos && manutencao.fotos.length > 0 && (
+            <div>
+              <h2 className="mb-2 text-sm font-bold text-slate-700">
+                Fotos da solicitação ({manutencao.fotos.length})
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {manutencao.fotos.map((foto, i) => (
+                  <a
+                    key={`${i}-${foto.length}`}
+                    href={foto}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="manutencao-foto"
+                  >
+                    <img
+                      src={foto}
+                      alt={`Foto ${i + 1} da manutenção`}
+                      className="h-28 w-28 rounded-xl border border-slate-200 object-cover hover:opacity-90 transition-all duration-200"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
 
           {manutencao.descricao && (
             <div>

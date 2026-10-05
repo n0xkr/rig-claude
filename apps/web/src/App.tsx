@@ -20,6 +20,8 @@ const FrotaKpiPage = lazy(() => import('./pages/FrotaKpiPage.js'));
 const ManutencoesListPage = lazy(() => import('./pages/ManutencoesListPage.js'));
 const ManutencaoFormPage = lazy(() => import('./pages/ManutencaoFormPage.js'));
 const ManutencaoDetailPage = lazy(() => import('./pages/ManutencaoDetailPage.js'));
+const VeiculosListPage = lazy(() => import('./pages/VeiculosListPage.js'));
+const VeiculoFormPage = lazy(() => import('./pages/VeiculoFormPage.js'));
 const JornadaRegistroPage = lazy(() => import('./pages/JornadaRegistroPage.js'));
 const JornadaAlertasPage = lazy(() => import('./pages/JornadaAlertasPage.js'));
 const JornadaHistoricoPage = lazy(() => import('./pages/JornadaHistoricoPage.js'));
@@ -37,6 +39,7 @@ const ExpedicoesListPage = lazy(() => import('./pages/ExpedicoesListPage.js'));
 const ExpedicaoFormPage = lazy(() => import('./pages/ExpedicaoFormPage.js'));
 const ExpedicaoDetailPage = lazy(() => import('./pages/ExpedicaoDetailPage.js'));
 const AvariasListPage = lazy(() => import('./pages/AvariasListPage.js'));
+const RedesListPage = lazy(() => import('./pages/RedesListPage.js'));
 const ExportacoesPage = lazy(() => import('./pages/ExportacoesPage.js'));
 const PortariaEntradasListPage = lazy(() => import('./pages/PortariaEntradasListPage.js'));
 const PortariaEntradaFormPage = lazy(() => import('./pages/PortariaEntradaFormPage.js'));
@@ -213,6 +216,30 @@ export default function App() {
           }
         />
         <Route
+          path="/frota/veiculos"
+          element={
+            <AuthGate modulo="frota">
+              <VeiculosListPage />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/frota/veiculos/novo"
+          element={
+            <AuthGate modulo="frota">
+              <VeiculoFormPage />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/frota/veiculos/:id"
+          element={
+            <AuthGate modulo="frota">
+              <VeiculoFormPage />
+            </AuthGate>
+          }
+        />
+        <Route
           path="/jornada"
           element={
             <AuthGate modulo="jornada">
@@ -345,6 +372,14 @@ export default function App() {
           element={
             <AuthGate modulo="wms">
               <AvariasListPage />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/wms/redes"
+          element={
+            <AuthGate modulo="wms">
+              <RedesListPage />
             </AuthGate>
           }
         />

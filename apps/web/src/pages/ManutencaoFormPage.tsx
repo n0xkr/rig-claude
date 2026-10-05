@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, WifiOff } from 'lucide-react';
+import { ArrowLeft, Loader2, WifiOff, X, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { CreateManutencaoVeiculoInput, TipoManutencaoVeiculo } from '@rigabras/shared';
+import { MANUTENCAO_FOTOS_MAX, MANUTENCAO_FOTO_MAX_BYTES } from '@rigabras/shared';
 import { useCreateManutencao } from '../hooks/useManutencoes.js';
 import { useVeiculosList } from '../hooks/useVeiculos.js';
+import { usePerfil } from '../hooks/usePerfil.js';
 import { LoadingSkeleton } from '../components/StateViews.js';
 import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 import { todayLocalIso } from '../lib/dateOnly.js';
+import { reduzirImagem } from '../lib/imagens.js';
 
 const TIPOS: TipoManutencaoVeiculo[] = [
   'PREVENTIVA',
@@ -17,17 +20,27 @@ const TIPOS: TipoManutencaoVeiculo[] = [
   'OUTRO',
 ];
 
+function horaAgora(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 /** Formulário de registro de manutenção de veículo (Módulo 4, Controle de Frota). */
 export default function ManutencaoFormPage() {
   const navigate = useNavigate();
   const { create, submitting, error } = useCreateManutencao();
   const { state: veiculosState, veiculos, reload: reloadVeiculos } = useVeiculosList();
+  const { perfil } = usePerfil();
   const novo = useCadastroRapido();
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [processandoFoto, setProcessandoFoto] = useState(false);
+  const [erroFoto, setErroFoto] = useState<string | null>(null);
   const [form, setForm] = useState({
     veiculo_id: '',
     tipo: 'PREVENTIVA' as TipoManutencaoVeiculo,
     data_manutencao: todayLocalIso(),
+    hora: horaAgora(),
     km_veiculo: '',
     custo: '',
     descricao: '',
@@ -36,6 +49,35 @@ export default function ManutencaoFormPage() {
     observacoes: '',
   });
 
+  async function aoSelecionarFotos(e: ChangeEvent<HTMLInputElement>) {
+    const arquivos = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (arquivos.length === 0) return;
+    setErroFoto(null);
+    setProcessandoFoto(true);
+    try {
+      const restantes = MANUTENCAO_FOTOS_MAX - fotos.length;
+      if (arquivos.length > restantes) {
+        setErroFoto(`Envie no máximo ${MANUTENCAO_FOTOS_MAX} fotos.`);
+      }
+      const reduzidas: string[] = [];
+      for (const arquivo of arquivos.slice(0, Math.max(restantes, 0))) {
+        reduzidas.push(
+          await reduzirImagem(arquivo, {
+            larguraMax: 1280,
+            alturaMax: 1280,
+            maxBytes: MANUTENCAO_FOTO_MAX_BYTES,
+          }),
+        );
+      }
+      setFotos((prev) => [...prev, ...reduzidas]);
+    } catch (err) {
+      setErroFoto(err instanceof Error ? err.message : 'Não foi possível processar a foto.');
+    } finally {
+      setProcessandoFoto(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFeedback(null);
@@ -43,6 +85,7 @@ export default function ManutencaoFormPage() {
       veiculo_id: form.veiculo_id,
       tipo: form.tipo,
       data_manutencao: form.data_manutencao,
+      hora: form.hora || undefined,
       km_veiculo: form.km_veiculo ? Number(form.km_veiculo) : undefined,
       custo: Number(form.custo),
       descricao: form.descricao || undefined,
@@ -51,6 +94,7 @@ export default function ManutencaoFormPage() {
         ? Number(form.proxima_manutencao_km)
         : undefined,
       observacoes: form.observacoes || undefined,
+      fotos: fotos.length > 0 ? fotos : undefined,
     };
     try {
       const { queued } = await create(payload);
@@ -117,7 +161,7 @@ export default function ManutencaoFormPage() {
             </select>
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Field label="Data *">
               <input
                 required
@@ -125,6 +169,15 @@ export default function ManutencaoFormPage() {
                 className="input"
                 value={form.data_manutencao}
                 onChange={(e) => setForm((f) => ({ ...f, data_manutencao: e.target.value }))}
+              />
+            </Field>
+            <Field label="Hora">
+              <input
+                type="time"
+                className="input"
+                value={form.hora}
+                onChange={(e) => setForm((f) => ({ ...f, hora: e.target.value }))}
+                data-testid="manutencao-hora"
               />
             </Field>
             <Field label="Custo (R$) *">
@@ -139,6 +192,19 @@ export default function ManutencaoFormPage() {
               />
             </Field>
           </div>
+
+          <Field label="Solicitante">
+            <input
+              className="input bg-slate-50 text-slate-600"
+              readOnly
+              value={perfil?.nome_completo ?? ''}
+              placeholder="Usuário logado"
+              data-testid="manutencao-solicitante"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              Registrado automaticamente junto com a data e a hora desta solicitação.
+            </span>
+          </Field>
 
           <Field label="Km do veículo no momento (opcional)">
             <input
@@ -189,6 +255,46 @@ export default function ManutencaoFormPage() {
               value={form.observacoes}
               onChange={(e) => setForm((f) => ({ ...f, observacoes: e.target.value }))}
             />
+          </Field>
+
+          <Field label={`Fotos do veículo (opcional, até ${MANUTENCAO_FOTOS_MAX})`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-200">
+                {processandoFoto ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
+                {processandoFoto ? 'Processando...' : 'Adicionar fotos'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  disabled={processandoFoto || fotos.length >= MANUTENCAO_FOTOS_MAX}
+                  onChange={(e) => void aoSelecionarFotos(e)}
+                  data-testid="manutencao-fotos"
+                />
+              </label>
+              {fotos.map((foto, i) => (
+                <span
+                  key={`${i}-${foto.length}`}
+                  className="relative inline-block"
+                  data-testid="manutencao-foto-miniatura"
+                >
+                  <img src={foto} alt={`Foto ${i + 1}`} className="h-14 w-14 rounded-lg border border-slate-200 object-cover" />
+                  <button
+                    type="button"
+                    aria-label={`Remover foto ${i + 1}`}
+                    onClick={() => setFotos((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute -right-1.5 -top-1.5 rounded-full bg-white p-0.5 text-slate-500 shadow-sm ring-1 ring-slate-200 hover:text-red-600"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            {erroFoto && <span className="mt-1 block text-xs text-red-600">{erroFoto}</span>}
           </Field>
 
           {feedback && (

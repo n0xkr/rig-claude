@@ -10,6 +10,8 @@ import {
 import { useArmazensList, useEnderecosList } from '../hooks/useEnderecosArmazem.js';
 import { useProdutosList } from '../hooks/useProdutosArmazenados.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
+import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
 
 type TipoMovimentacao = 'ENDERECAMENTO' | 'SEPARACAO' | 'TRANSFERENCIA';
 
@@ -40,7 +42,7 @@ export default function EstoqueListPage() {
   const [movimento, setMovimento] = useState<Movimento | null>(null);
   const { state, saldos, error, reload } = useSaldosEstoque({ armazemId, q: filtro });
   const historico = useMovimentacoesEstoque();
-  const { produtos } = useProdutosList();
+  const { produtos, reload: reloadProdutos } = useProdutosList();
 
   useEffect(() => {
     if (!armazemId && armazens.length > 0) setArmazemId(armazens[0]!.id);
@@ -53,6 +55,7 @@ export default function EstoqueListPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Boxes className="h-6 w-6 text-rigabras-500" />
@@ -113,6 +116,7 @@ export default function EstoqueListPage() {
           tipoInicial={movimento.modo === 'linha' ? movimento.tipo : 'ENDERECAMENTO'}
           saldo={movimento.modo === 'linha' ? movimento.saldo : undefined}
           produtos={produtos}
+          onProdutoCriado={reloadProdutos}
           armazemId={armazemId}
           onConcluido={() => {
             setMovimento(null);
@@ -260,6 +264,7 @@ function MovimentacaoForm({
   tipoInicial,
   saldo,
   produtos,
+  onProdutoCriado,
   armazemId,
   onConcluido,
   onCancelar,
@@ -268,12 +273,14 @@ function MovimentacaoForm({
   tipoInicial: TipoMovimentacao;
   saldo?: SaldoEstoque;
   produtos: ProdutoArmazenado[];
+  onProdutoCriado?: () => unknown;
   armazemId: string;
   onConcluido: () => void;
   onCancelar: () => void;
 }) {
-  const { enderecos } = useEnderecosList(armazemId);
+  const { enderecos, reload: reloadEnderecos } = useEnderecosList(armazemId);
   const { movimentar, submitting, error } = useMovimentarEstoque();
+  const novo = useCadastroRapido();
   const [tipo, setTipo] = useState<TipoMovimentacao>(tipoInicial);
   const [produtoId, setProdutoId] = useState(saldo?.produto_id ?? '');
   const [quantidade, setQuantidade] = useState('');
@@ -347,7 +354,7 @@ function MovimentacaoForm({
             aria-label="Produto"
             className="input col-span-1"
             value={produtoId}
-            onChange={(e) => setProdutoId(e.target.value)}
+            onChange={novo.aoMudar('produto', setProdutoId, onProdutoCriado)}
             data-testid="movimentacao-produto"
           >
             <option value="">Produto...</option>
@@ -356,6 +363,7 @@ function MovimentacaoForm({
                 {p.sku} — {p.descricao}
               </option>
             ))}
+            <OpcaoAdicionarNovo />
           </select>
         </>
       )}
@@ -383,41 +391,47 @@ function MovimentacaoForm({
       />
 
       {!ehEntrada && (
-        <select
-          required
-          aria-label="Endereço de origem"
-          className="input"
-          value={enderecoOrigem}
-          onChange={(e) => setEnderecoOrigem(e.target.value)}
-          data-testid="movimentacao-origem"
-        >
-          <option value="">Origem...</option>
-          {enderecos.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.area}-{e.rua}-{e.prateleira}-{e.posicao}
-            </option>
-          ))}
-        </select>
-      )}
-
-      {!ehSaida && (
-        <select
-          required
-          aria-label="Endereço de destino"
-          className="input"
-          value={enderecoDestino}
-          onChange={(e) => setEnderecoDestino(e.target.value)}
-          data-testid="movimentacao-destino"
-        >
-          <option value="">Destino...</option>
-          {enderecos
-            .filter((e) => e.id !== (enderecoOrigem || saldo?.endereco_id))
-            .map((e) => (
+          <select
+            required
+            aria-label="Endereço de origem"
+            className="input"
+            value={enderecoOrigem}
+            onChange={novo.aoMudar('endereco', setEnderecoOrigem, reloadEnderecos, {
+              armazem_id: armazemId,
+            })}
+            data-testid="movimentacao-origem"
+          >
+            <option value="">Origem...</option>
+            {enderecos.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.area}-{e.rua}-{e.prateleira}-{e.posicao}
               </option>
             ))}
-        </select>
+            <OpcaoAdicionarNovo rotulo="+ Novo endereço..." />
+          </select>
+      )}
+
+      {!ehSaida && (
+          <select
+            required
+            aria-label="Endereço de destino"
+            className="input"
+            value={enderecoDestino}
+            onChange={novo.aoMudar('endereco', setEnderecoDestino, reloadEnderecos, {
+              armazem_id: armazemId,
+            })}
+            data-testid="movimentacao-destino"
+          >
+            <option value="">Destino...</option>
+            {enderecos
+              .filter((e) => e.id !== (enderecoOrigem || saldo?.endereco_id))
+              .map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.area}-{e.rua}-{e.prateleira}-{e.posicao}
+                </option>
+              ))}
+            <OpcaoAdicionarNovo rotulo="+ Novo endereço..." />
+          </select>
       )}
 
       <input
@@ -446,6 +460,7 @@ function MovimentacaoForm({
         </button>
         {error && <p className="self-center text-sm text-red-600">{error}</p>}
       </div>
+      {novo.modal}
     </form>
   );
 }

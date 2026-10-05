@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, WifiOff } from 'lucide-react';
 import type { CreateDepositanteInput } from '@rigabras/shared';
 import { useCreateDepositante } from '../hooks/useDepositantes.js';
+import { WmsSubNav } from '../components/WmsSubNav.js';
 
 /** Formulário de cadastro de depositante (Módulo 5, WMS — Armazém Geral). */
 export default function DepositanteFormPage() {
@@ -45,6 +46,7 @@ export default function DepositanteFormPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8">
+      <WmsSubNav />
       <Link
         to="/wms/depositantes"
         className="mb-4 inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"

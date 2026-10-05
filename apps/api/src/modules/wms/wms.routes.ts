@@ -9,6 +9,7 @@ import { AvariasController } from './avarias.controller.js';
 import { InventariosController } from './inventarios.controller.js';
 import { KpisController } from './kpis.controller.js';
 import { EstoqueController } from './estoque.controller.js';
+import { RedesController } from './redes.controller.js';
 
 const LEITURA_TODOS = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE');
 const ESCRITA_OPERACIONAL = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR');
@@ -222,5 +223,21 @@ export async function wmsRoutes(app: FastifyInstance): Promise<void> {
     '/movimentacoes/:movimentacaoId/rastreio',
     { preHandler: LEITURA_TODOS },
     KpisController.rastrearMovimentacao,
+  );
+
+  // ------------------------------------------------------------------
+  // Redes dos veículos (painel de controle do WMS)
+  // ------------------------------------------------------------------
+  app.get('/redes', { preHandler: LEITURA_TODOS }, RedesController.list);
+  app.get('/redes/kpis', { preHandler: LEITURA_TODOS }, RedesController.kpis);
+  app.get('/redes/movimentacoes', { preHandler: LEITURA_TODOS }, RedesController.listMovimentacoes);
+  app.post('/redes', { preHandler: ESCRITA_OPERACIONAL }, RedesController.create);
+  app.get('/redes/:id', { preHandler: LEITURA_TODOS }, RedesController.getById);
+  app.patch('/redes/:id', { preHandler: ESCRITA_OPERACIONAL }, RedesController.update);
+  app.delete('/redes/:id', { preHandler: ESCRITA_ADMIN }, RedesController.remove);
+  app.post(
+    '/redes/:id/movimentacoes',
+    { preHandler: ESCRITA_OPERACIONAL },
+    RedesController.movimentar,
   );
 }
