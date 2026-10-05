@@ -105,3 +105,18 @@ export async function reenfileirarMutation(id: string): Promise<void> {
   existing.attempts = 0;
   await db.put('mutationQueue', existing);
 }
+
+/**
+ * Remove da fila as mutações de um usuário (chamado no logout para não deixar
+ * payload de outro usuário no mesmo browser). Sem `uid`, remove as do usuário
+ * autenticado no momento.
+ */
+export async function purgeQueueDoUsuario(uid?: string | null): Promise<void> {
+  const alvo = uid === undefined ? getCurrentUserId() : uid;
+  if (!alvo) return;
+  const db = await getOfflineDb();
+  const minhas = (await db.getAllFromIndex('mutationQueue', 'by-createdAt')).filter(
+    (m) => m.userId === alvo,
+  );
+  await Promise.all(minhas.map((m) => db.delete('mutationQueue', m.id)));
+}

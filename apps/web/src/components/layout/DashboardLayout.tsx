@@ -28,11 +28,13 @@ import {
 import type { ModuloKey, UserRole } from '@rigabras/shared';
 import logo from '../../assets/logo-rigabras.jpg';
 import type { Perfil } from '@rigabras/shared';
-import { api, getCurrentUserRole } from '../../lib/apiClient.js';
+import { api, getCurrentUserId, getCurrentUserRole } from '../../lib/apiClient.js';
 import { useResumoSolicitacoesIa } from '../../hooks/useSolicitacoesIa.js';
 import { haptic } from '../../lib/haptics.js';
 import { podeAcessar } from '../../lib/permissoes.js';
 import { ThemeToggle } from '../theme/ThemeToggle.js';
+import { OfflineQueueIndicator } from './OfflineQueueIndicator.js';
+import { purgeQueueDoUsuario } from '../../offline/db.js';
 
 interface NavItem {
   to: string;
@@ -209,7 +211,14 @@ export function DashboardLayout({
 
   function logout() {
     haptic('warning');
+    // Captura o dono antes de apagar o token: a fila só é purgada do usuário
+    // que sai, preservando mutações offline de contas diferentes no mesmo browser.
+    const uid = getCurrentUserId();
     localStorage.removeItem('rigabras_access_token');
+    // Mutações não sincronizadas são descartadas junto com a sessão: sair com
+    // trabalho offline pendente é decisão consciente, e deixar payload de outro
+    // usuário no browser não é aceitável.
+    void purgeQueueDoUsuario(uid).catch(() => undefined);
     // Descarta respostas da API guardadas pelo service worker: o próximo usuário deste
     // navegador não pode enxergar dados do anterior (ex.: motoristas, fretes) offline.
     if ('caches' in window) {
@@ -262,6 +271,7 @@ export function DashboardLayout({
             {current?.label ?? 'Rigabras TMS'}
           </p>
           <div className="ml-auto flex items-center gap-3">
+            <OfflineQueueIndicator />
             <ThemeToggle />
             <Link
               to="/perfil"
