@@ -20,6 +20,14 @@ export default defineConfig({
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   timeout: 90_000,
+  expect: {
+    // Cold-start do Vite dev server: navegar para uma rota com lazy-load
+    // (ex.: /viagens/nova) pode levar ~9s antes do componente montar e o
+    // hook disparar a busca; com o default de 5s o expect estourava ANTES de
+    // a opção/chave aparecer no DOM (falhas intermitentes de 04/09 que não
+    // reproduzem com o servidor já aquecido).
+    timeout: 15_000,
+  },
   use: {
     baseURL: 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',

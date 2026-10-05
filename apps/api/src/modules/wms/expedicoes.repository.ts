@@ -90,6 +90,27 @@ export class ExpedicoesRepository {
     return data as Expedicao;
   }
 
+  /**
+   * Claim atômico: atualiza somente se o status ainda for o esperado
+   * (UPDATE condicional). Devolve null quando outra requisição venceu a
+   * corrida — o service então responde 409 em vez de sobrescrever o estado.
+   */
+  async updateIfStatus(
+    id: string,
+    statusEsperado: Expedicao['status'],
+    patch: Partial<Expedicao>,
+  ): Promise<Expedicao | null> {
+    const { data, error } = await supabaseAdmin
+      .from(TABLE)
+      .update(patch)
+      .eq('id', id)
+      .eq('status', statusEsperado)
+      .select('*')
+      .maybeSingle();
+    if (error) throw mapPgError(error);
+    return (data as Expedicao | null) ?? null;
+  }
+
   async softDelete(id: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(TABLE)

@@ -81,6 +81,24 @@ function genId(): string {
   return globalThis.crypto.randomUUID();
 }
 
+/**
+ * Constraints UNIQUE realmente existentes no Postgres real (migrations 0001–0017),
+ * emuladas no insert: sem elas o banco falso aceitava reenvios que o PostgREST
+ * rejeitaria com 23505, descarregando qualquer código que depende de unique
+ * (ex.: `primary key (user_id, key)` de `idempotency_keys` — sem 23505 o
+ * middleware de idempotência nunca detecta reuso da chave e a fila offline
+ * cria duplicatas; bug real no E2E 09-offline-queue).
+ */
+const UNIQUE_CONSTRAINTS: Record<string, string[][]> = {
+  idempotency_keys: [['user_id', 'key']],
+};
+
+function uniqueViolation(all: Row[], input: Row, cols: string[]): Row | null {
+  return (
+    all.find((row) => cols.every((c) => row[c] !== undefined && row[c] === input[c])) ?? null
+  );
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -308,6 +326,21 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown; error: unknown }>
 
     if (this.mode === 'insert') {
       const inputRows = Array.isArray(this.writePayload) ? this.writePayload : [this.writePayload!];
+      const uniques = UNIQUE_CONSTRAINTS[this.table] ?? [];
+      for (const r of inputRows) {
+        for (const cols of uniques) {
+          const dup = uniqueViolation(all, r, cols);
+          if (dup) {
+            return {
+              data: null,
+              error: {
+                code: '23505',
+                message: `duplicate key value violates unique constraint "${this.table}_${cols.join('_')}_key"`,
+              },
+            };
+          }
+        }
+      }
       const defaults = TABLE_COLUMN_DEFAULTS[this.table];
       const created = inputRows.map((r) => ({
         id: genId(),
@@ -398,6 +431,21 @@ class FakeQueryBuilder implements PromiseLike<{ data: unknown; error: unknown }>
 
 export interface FakeSupabaseClient {
   from(table: string): FakeQueryBuilder;
+  /**
+   * O banco falso não executa funções SQL (migration 0017: RPCs atômicas
+   * `registrar_movimentacao_estoque` / `registrar_pagamento_frete`), então
+   * devolve o mesmo erro "function not found" que o PostgREST retornaria
+   * (`PGRST202`). Ambos os call sites tratam esse código explicitamente e
+   * caem no caminho sequencial legado documentado em cada repository — que
+   * é o caminho que o fake sabe emular (inserts/updates em memória).
+   * Sem este método a chamada `supabaseAdmin.rpc(...)` lançava
+   * `TypeError: supabaseAdmin.rpc is not a function` (500) e quebrava a
+   * conferência de recebimento e o registro de pagamento de frete nos E2E.
+   */
+  rpc(
+    fn: string,
+    args?: Record<string, unknown>,
+  ): Promise<{ data: null; error: { code: string; message: string } }>;
   auth: {
     signInWithPassword(creds: {
       email: string;
@@ -421,6 +469,15 @@ export function createFakeSupabaseClient(store: FakeSupabaseStore): FakeSupabase
   return {
     from(table: string) {
       return new FakeQueryBuilder(store, table);
+    },
+    async rpc(fn: string) {
+      return {
+        data: null,
+        error: {
+          code: 'PGRST202',
+          message: `Function public.${fn} does not exist (banco falso em memória não executa funções SQL)`,
+        },
+      };
     },
     auth: {
       async signInWithPassword({ email, password }) {

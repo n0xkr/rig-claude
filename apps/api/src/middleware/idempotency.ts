@@ -12,7 +12,7 @@ const UUID_OU_TOKEN = /^[A-Za-z0-9._:-]{8,128}$/;
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Idempotência de mutações (POST/PATCH com `Idempotency-Key`): a primeira requisição
+ * Idempotência de mutações (POST/PATCH/PUT com `Idempotency-Key`): a primeira requisição
  * reserva a chave; reenvios (ex.: fila offline após falha de rede) recebem a resposta
  * original em vez de executar de novo. Chave em andamento → 409. Sem a tabela
  * (migration 0017 pendente) o recurso é desativado silenciosamente.
@@ -23,7 +23,8 @@ export function registerIdempotency(app: FastifyInstance): void {
   app.addHook('preHandler', async (request, reply) => {
     const key = request.headers['idempotency-key'];
     if (!disponivel || typeof key !== 'string' || !UUID_OU_TOKEN.test(key)) return;
-    if (request.method !== 'POST' && request.method !== 'PATCH') return;
+    if (request.method !== 'POST' && request.method !== 'PATCH' && request.method !== 'PUT')
+      return;
     const userId = request.user?.sub;
     if (!userId) return;
 

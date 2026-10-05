@@ -9,6 +9,7 @@ import { registerCorrelationId } from './middleware/correlationId.js';
 import { registerRoutes } from './routes/index.js';
 import { Problems, sendProblem } from './lib/problemDetails.js';
 import { pgErrorToProblem } from './lib/pgErrors.js';
+import { DomainError } from './lib/errors.js';
 import { isGroqConfigured } from './config/env.js';
 import { registerIdempotency } from './middleware/idempotency.js';
 
@@ -122,6 +123,16 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   app.setErrorHandler((error: Error, request, reply) => {
     if (reply.sent) return;
+    // Erros de domínio que escaparem do handler local de um controller chegam aqui:
+    // devolve o status problem+json do DomainError em vez de 500 genérico.
+    if (error instanceof DomainError) {
+      logger.warn(
+        { err: error, correlationId: request.id, url: request.url },
+        'Erro de domínio não tratado pelo controller',
+      );
+      sendProblem(reply, error.status, error.message, error.detail);
+      return;
+    }
     // Violações de unique/FK/check e uuid inválido vindas do Postgres chegam aqui
     // como PostgrestError (não é `Error`): devolve 409/422/400 em vez de 500.
     const pgProblem = pgErrorToProblem(error);
