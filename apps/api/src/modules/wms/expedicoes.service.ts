@@ -105,7 +105,11 @@ export class ExpedicoesService {
     if (!expedicao) throw new NotFoundError('expedicao', id);
     this.assertTransicao(expedicao.status, novoStatus);
 
-    const updated = await this.repo.update(id, { status: novoStatus, ...extra });
+    const updated = await this.repo.updateIfStatus(id, expedicao.status, {
+      status: novoStatus,
+      ...extra,
+    });
+    if (!updated) throw new ConflictError('A expedição foi alterada por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',
@@ -327,10 +331,11 @@ export class ExpedicoesService {
       }
     }
 
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.updateIfStatus(id, expedicao.status, {
       status: 'EXPEDIDA',
       data_expedicao: new Date().toISOString(),
     });
+    if (!updated) throw new ConflictError('A expedição foi alterada por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',

@@ -152,7 +152,11 @@ export class RecebimentosService {
     if (!recebimento) throw new NotFoundError('recebimento', id);
     this.assertTransicao(recebimento.status, 'EM_CONFERENCIA');
 
-    const updated = await this.repo.update(id, { status: 'EM_CONFERENCIA' });
+    const updated = await this.repo.updateIfStatus(id, recebimento.status, {
+      status: 'EM_CONFERENCIA',
+    });
+    if (!updated)
+      throw new ConflictError('O recebimento foi alterado por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',
@@ -256,10 +260,12 @@ export class RecebimentosService {
         ? 'ENDERECADO'
         : 'CONFERIDO';
 
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.updateIfStatus(id, recebimento.status, {
       status: novoStatus,
       data_recebimento: new Date().toISOString(),
     });
+    if (!updated)
+      throw new ConflictError('O recebimento foi alterado por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',

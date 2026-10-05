@@ -164,4 +164,24 @@ export class RecebimentosRepository {
     if (error) throw mapPgError(error);
     return data as RecebimentoItem;
   }
+
+  /**
+   * Claim atômico da conferência: só escreve se o item ainda não foi
+   * conferido. Devolve null se outra requisição venceu a corrida — evita
+   * movimentação de estoque duplicada no ledger.
+   */
+  async claimItemConferencia(
+    itemId: string,
+    patch: Partial<RecebimentoItem>,
+  ): Promise<RecebimentoItem | null> {
+    const { data, error } = await supabaseAdmin
+      .from(ITENS_TABLE)
+      .update(patch)
+      .eq('id', itemId)
+      .is('quantidade_conferida', null)
+      .select('*')
+      .maybeSingle();
+    if (error) throw mapPgError(error);
+    return (data as RecebimentoItem | null) ?? null;
+  }
 }

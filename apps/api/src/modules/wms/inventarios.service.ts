@@ -9,7 +9,7 @@ import { InventariosRepository, type ListInventariosFilter } from './inventarios
 import { EnderecosRepository } from './enderecos.repository.js';
 import { EstoqueRepository } from './estoque.repository.js';
 import { calcularAjustesInventario } from './estoqueLedger.js';
-import { InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
+import { ConflictError, InvalidStateTransitionError, NotFoundError } from '../../lib/errors.js';
 import { writeAuditLog } from '../../lib/auditLog.js';
 
 /**
@@ -82,7 +82,11 @@ export class InventariosService {
     if (!inventario) throw new NotFoundError('inventario', id);
     this.assertTransicao(inventario.status, 'EM_CONTAGEM');
 
-    const updated = await this.repo.update(id, { status: 'EM_CONTAGEM' });
+    const updated = await this.repo.updateIfStatus(id, inventario.status, {
+      status: 'EM_CONTAGEM',
+    });
+    if (!updated)
+      throw new ConflictError('O inventário foi alterado por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',
@@ -180,7 +184,11 @@ export class InventariosService {
       await this.repo.updateItem(item.id, { ajustado: true });
     }
 
-    const updated = await this.repo.update(id, { status: 'RECONCILIADO' });
+    const updated = await this.repo.updateIfStatus(id, inventario.status, {
+      status: 'RECONCILIADO',
+    });
+    if (!updated)
+      throw new ConflictError('O inventário foi alterado por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',
@@ -198,10 +206,12 @@ export class InventariosService {
     if (!inventario) throw new NotFoundError('inventario', id);
     this.assertTransicao(inventario.status, 'ENCERRADO');
 
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.updateIfStatus(id, inventario.status, {
       status: 'ENCERRADO',
       data_encerramento: new Date().toISOString(),
     });
+    if (!updated)
+      throw new ConflictError('O inventário foi alterado por outro usuário; recarregue e tente novamente.');
     await writeAuditLog({
       userId,
       action: 'STATUS_CHANGE',
