@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Package, Plus, ArrowLeft } from 'lucide-react';
-import { useProdutosList, useCreateProduto } from '../hooks/useProdutosArmazenados.js';
+import { Package, Plus, ArrowLeft, Pencil } from 'lucide-react';
+import type { ProdutoArmazenado } from '@rigabras/shared';
+import {
+  useProdutosList,
+  useCreateProduto,
+  useUpdateProduto,
+} from '../hooks/useProdutosArmazenados.js';
 import { useDepositantesList } from '../hooks/useDepositantes.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
 import { OpcaoAdicionarNovo, useCadastroRapido } from '../components/CadastroRapido.js';
@@ -13,6 +18,7 @@ export default function ProdutosListPage() {
   const { state, produtos, error, reload } = useProdutosList(depositanteId);
   const { depositantes, reload: reloadDepositantes } = useDepositantesList();
   const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState<ProdutoArmazenado | null>(null);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
@@ -54,6 +60,17 @@ export default function ProdutosListPage() {
         </select>
       </div>
 
+      {editando && (
+        <ProdutoEditForm
+          produto={editando}
+          onSalvo={() => {
+            setEditando(null);
+            reload();
+          }}
+          onCancelar={() => setEditando(null)}
+        />
+      )}
+
       {showForm && (
         <ProdutoForm
           depositantes={depositantes}
@@ -85,17 +102,149 @@ export default function ProdutosListPage() {
                   {p.volume_m3 != null && ` · ${p.volume_m3} m³`}
                 </p>
               </div>
-              <Link
-                to={`/wms/produtos/${p.id}/rastreio`}
-                className="text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
-              >
-                Rastreio
-              </Link>
+              <div className="flex items-center gap-4">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    p.ativo === false
+                      ? 'bg-slate-100 text-slate-500'
+                      : 'bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  {p.ativo === false ? 'Inativo' : 'Ativo'}
+                </span>
+                <button
+                  type="button"
+                  data-testid={`editar-produto-${p.sku}`}
+                  onClick={() => setEditando(p)}
+                  className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
+                >
+                  <Pencil className="h-4 w-4" /> Editar
+                </button>
+                <Link
+                  to={`/wms/produtos/${p.id}/rastreio`}
+                  className="text-sm text-slate-500 hover:text-slate-900 transition-all duration-200"
+                >
+                  Rastreio
+                </Link>
+              </div>
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function ProdutoEditForm({
+  produto,
+  onSalvo,
+  onCancelar,
+}: {
+  produto: ProdutoArmazenado;
+  onSalvo: () => void;
+  onCancelar: () => void;
+}) {
+  const { update, submitting, error } = useUpdateProduto();
+  const [form, setForm] = useState({
+    sku: produto.sku,
+    descricao: produto.descricao,
+    unidade_medida: produto.unidade_medida ?? 'UN',
+    peso_kg: produto.peso_kg != null ? String(produto.peso_kg) : '',
+    volume_m3: produto.volume_m3 != null ? String(produto.volume_m3) : '',
+    ativo: produto.ativo !== false,
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    await update(produto.id, {
+      sku: form.sku,
+      descricao: form.descricao,
+      unidade_medida: form.unidade_medida,
+      peso_kg: form.peso_kg ? Number(form.peso_kg) : undefined,
+      volume_m3: form.volume_m3 ? Number(form.volume_m3) : undefined,
+      ativo: form.ativo,
+    });
+    onSalvo();
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      data-testid="produto-edit-form"
+      className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-blue-200 bg-blue-50/50 p-6 sm:grid-cols-5"
+    >
+      <p className="col-span-full text-sm font-semibold text-slate-900">
+        Editando {produto.sku}
+      </p>
+      <input
+        required
+        placeholder="SKU"
+        aria-label="SKU"
+        className="input"
+        value={form.sku}
+        onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
+      />
+      <input
+        required
+        placeholder="Descrição"
+        aria-label="Descrição"
+        className="input col-span-2 sm:col-span-2"
+        value={form.descricao}
+        onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+      />
+      <input
+        placeholder="Unidade"
+        aria-label="Unidade"
+        className="input"
+        value={form.unidade_medida}
+        onChange={(e) => setForm((f) => ({ ...f, unidade_medida: e.target.value }))}
+      />
+      <input
+        placeholder="Peso (kg)"
+        aria-label="Peso (kg)"
+        type="number"
+        min={0}
+        step="0.01"
+        className="input"
+        value={form.peso_kg}
+        onChange={(e) => setForm((f) => ({ ...f, peso_kg: e.target.value }))}
+      />
+      <input
+        placeholder="Volume (m³)"
+        aria-label="Volume (m³)"
+        type="number"
+        min={0}
+        step="0.001"
+        className="input"
+        value={form.volume_m3}
+        onChange={(e) => setForm((f) => ({ ...f, volume_m3: e.target.value }))}
+      />
+      <label className="flex items-center gap-2 text-sm text-slate-600">
+        <input
+          type="checkbox"
+          checked={form.ativo}
+          onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))}
+        />
+        Ativo
+      </label>
+      <div className="col-span-2 flex gap-2 sm:col-span-3">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
+        >
+          {submitting ? 'Salvando...' : 'Salvar alterações'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancelar}
+          className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-all duration-200"
+        >
+          Cancelar
+        </button>
+        {error && <p className="self-center text-sm text-red-600">{error}</p>}
+      </div>
+    </form>
   );
 }
 

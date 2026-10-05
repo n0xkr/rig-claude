@@ -1,7 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import {
+  AddRecebimentoItemSchema,
   ConferirRecebimentoItemSchema,
   CreateRecebimentoSchema,
+  UpdateRecebimentoItemSchema,
   type StatusRecebimento,
 } from '@rigabras/shared';
 import { RecebimentosService } from './recebimentos.service.js';
@@ -58,6 +60,43 @@ export const RecebimentosController = {
     try {
       const created = await service.create(body, request.user?.sub ?? null, request.ip);
       return reply.status(201).send(created);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async addItem(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const body = parseOrProblem(AddRecebimentoItemSchema, request.body, reply);
+    if (!body) return;
+    try {
+      const result = await service.addItem(id, body, request.user?.sub ?? null, request.ip);
+      return reply.status(201).send(result);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async updateItem(request: FastifyRequest, reply: FastifyReply) {
+    const { id, itemId } = request.params as { id: string; itemId: string };
+    const body = parseOrProblem(UpdateRecebimentoItemSchema, request.body, reply);
+    if (!body) return;
+    try {
+      const result = await service.updateItem(id, itemId, body, request.user?.sub ?? null, request.ip);
+      return reply.send(result);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async removeItem(request: FastifyRequest, reply: FastifyReply) {
+    const { id, itemId } = request.params as { id: string; itemId: string };
+    try {
+      const result = await service.removeItem(id, itemId, request.user?.sub ?? null, request.ip);
+      return reply.send(result);
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

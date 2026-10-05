@@ -22,6 +22,23 @@ export const CreateExpedicaoItemSchema = z.object({
 });
 export type CreateExpedicaoItemInput = z.infer<typeof CreateExpedicaoItemSchema>;
 
+/** Adiciona um item a uma expedição já criada (checklist de saída), enquanto o cabeçalho ainda está SOLICITADA. */
+export const AddExpedicaoItemSchema = z.object({
+  produto_id: z.string().uuid(),
+  quantidade_solicitada: z.number().positive(),
+});
+export type AddExpedicaoItemInput = z.infer<typeof AddExpedicaoItemSchema>;
+
+/** Edita um item ainda não separado de uma expedição (checklist de saída). */
+export const UpdateExpedicaoItemSchema = z
+  .object({
+    quantidade_solicitada: z.number().positive().optional(),
+  })
+  .refine((v) => v.quantidade_solicitada !== undefined, {
+    message: 'Informe ao menos um campo para atualizar',
+  });
+export type UpdateExpedicaoItemInput = z.infer<typeof UpdateExpedicaoItemSchema>;
+
 /** Cabeçalho de uma expedição — solicitação de saída de mercadoria (normal ou cross-docking), com fluxo de separação/reembalagem/etiquetagem até a expedição. `viagem_id` é preenchida pelo futuro Módulo 6 (integração TMS+WMS), nunca por este módulo. */
 export const ExpedicaoSchema = z.object({
   id: z.string().uuid(),

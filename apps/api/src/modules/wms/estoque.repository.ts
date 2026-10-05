@@ -249,17 +249,21 @@ export class EstoqueRepository {
     recebimentoId?: string;
     expedicaoId?: string;
     inventarioId?: string;
+    produtoId?: string;
     tipo?: MovimentacaoEstoque['tipo_movimentacao'];
     periodStart?: string;
     periodEnd?: string;
+    limit?: number;
   }): Promise<MovimentacaoEstoque[]> {
     let query = supabaseAdmin.from(MOVIMENTACOES_TABLE).select('*');
     if (filter.recebimentoId) query = query.eq('recebimento_id', filter.recebimentoId);
     if (filter.expedicaoId) query = query.eq('expedicao_id', filter.expedicaoId);
     if (filter.inventarioId) query = query.eq('inventario_id', filter.inventarioId);
+    if (filter.produtoId) query = query.eq('produto_id', filter.produtoId);
     if (filter.tipo) query = query.eq('tipo_movimentacao', filter.tipo);
     if (filter.periodStart) query = query.gte('created_at', filter.periodStart);
     if (filter.periodEnd) query = query.lte('created_at', filter.periodEnd);
+    if (filter.limit) query = query.limit(filter.limit);
     const { data, error } = await query.order('created_at', { ascending: true });
     if (error) throw mapPgError(error);
     return (data ?? []) as MovimentacaoEstoque[];

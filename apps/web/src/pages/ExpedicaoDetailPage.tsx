@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Truck } from 'lucide-react';
-import { useExpedicaoDetail, useExpedicaoWorkflow } from '../hooks/useExpedicoes.js';
+import { ArrowLeft, Plus, Pencil, Trash2, Truck } from 'lucide-react';
+import {
+  useExpedicaoDetail,
+  useExpedicaoWorkflow,
+  useExpedicaoItens,
+} from '../hooks/useExpedicoes.js';
+import { useProdutosList } from '../hooks/useProdutosArmazenados.js';
 import { useEnderecosList, useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, ErrorCard } from '../components/StateViews.js';
 import { ExpedicaoStatusBadge } from '../components/StatusBadge.js';
@@ -27,14 +32,21 @@ export default function ExpedicaoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { state, expedicao, error, reload } = useExpedicaoDetail(id);
   const workflow = useExpedicaoWorkflow();
+  const gestaoItens = useExpedicaoItens();
   const { armazens } = useArmazensList();
   const { enderecos } = useEnderecosList(armazens[0]?.id);
+  const { produtos } = useProdutosList(expedicao?.depositante_id);
 
   if (state === 'loading' || state === 'idle') return <LoadingSkeleton />;
   if (state === 'error' || !expedicao)
     return <ErrorCard message={error ?? 'Erro'} onRetry={reload} />;
 
   const proxima = PROXIMA_ACAO[expedicao.status ?? 'SOLICITADA'];
+  const editavel = expedicao.status === 'SOLICITADA';
+  const rotuloProduto = (produtoId: string) => {
+    const p = produtos.find((x) => x.id === produtoId);
+    return p ? `${p.sku} — ${p.descricao}` : produtoId.slice(0, 8);
+  };
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
@@ -72,7 +84,9 @@ export default function ExpedicaoDetailPage() {
           <ItemSeparacao
             key={item.id}
             item={item}
+            produtoRotulo={rotuloProduto(item.produto_id)}
             enderecos={enderecos}
+            editavel={editavel}
             podeSeparar={expedicao.status === 'SOLICITADA' || expedicao.status === 'EM_SEPARACAO'}
             onSeparar={async (input) => {
               await workflow.separarItem(expedicao.id, item.id, input);
@@ -82,9 +96,29 @@ export default function ExpedicaoDetailPage() {
               await workflow.marcarReembalagemEtiquetagem(expedicao.id, item.id, flags);
               reload();
             }}
+            onAtualizar={async (input) => {
+              await gestaoItens.updateItem(expedicao.id, item.id, input);
+              reload();
+            }}
+            onRemover={async () => {
+              await gestaoItens.removeItem(expedicao.id, item.id);
+              reload();
+            }}
           />
         ))}
       </div>
+
+      {editavel && (
+        <AdicionarItemExpedicaoForm
+          produtos={produtos}
+          submitting={gestaoItens.submitting}
+          error={gestaoItens.error}
+          onAdicionar={async (input) => {
+            await gestaoItens.addItem(expedicao.id, input);
+            reload();
+          }}
+        />
+      )}
 
       <div className="mt-6 flex gap-2">
         {proxima && (
@@ -118,31 +152,119 @@ export default function ExpedicaoDetailPage() {
   );
 }
 
+function AdicionarItemExpedicaoForm({
+  produtos,
+  submitting,
+  error,
+  onAdicionar,
+}: {
+  produtos: Array<{ id: string; sku: string; descricao: string }>;
+  submitting: boolean;
+  error: string | null;
+  onAdicionar: (input: { produto_id: string; quantidade_solicitada: number }) => Promise<void>;
+}) {
+  const [produtoId, setProdutoId] = useState('');
+  const [quantidade, setQuantidade] = useState('');
+
+  return (
+    <form
+      data-testid="adicionar-item-expedicao-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        await onAdicionar({ produto_id: produtoId, quantidade_solicitada: Number(quantidade) });
+        setProdutoId('');
+        setQuantidade('');
+      }}
+      className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-dashed border-slate-300 p-4 sm:grid-cols-3"
+    >
+      <select
+        required
+        aria-label="Produto"
+        className="input"
+        value={produtoId}
+        onChange={(e) => setProdutoId(e.target.value)}
+        data-testid="novo-item-expedicao-produto"
+      >
+        <option value="">Produto...</option>
+        {produtos.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.sku} — {p.descricao}
+          </option>
+        ))}
+      </select>
+      <input
+        required
+        type="number"
+        min={0.001}
+        step="0.001"
+        placeholder="Quantidade"
+        aria-label="Quantidade solicitada"
+        className="input"
+        value={quantidade}
+        onChange={(e) => setQuantidade(e.target.value)}
+        data-testid="novo-item-expedicao-quantidade"
+      />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="flex items-center justify-center gap-1 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
+        data-testid="adicionar-item-expedicao-btn"
+      >
+        <Plus className="h-4 w-4" /> {submitting ? 'Adicionando...' : 'Adicionar item'}
+      </button>
+      {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
+    </form>
+  );
+}
+
 function ItemSeparacao({
   item,
+  produtoRotulo,
   enderecos,
+  editavel,
   podeSeparar,
   onSeparar,
   onFlag,
+  onAtualizar,
+  onRemover,
 }: {
   item: {
     id: string;
+    produto_id: string;
     quantidade_solicitada: number;
     quantidade_separada?: number | null;
     reembalado?: boolean;
     etiquetado?: boolean;
   };
+  produtoRotulo: string;
   enderecos: Array<{ id: string; area: string; rua: string; prateleira: string; posicao: string }>;
+  editavel: boolean;
   podeSeparar: boolean;
   onSeparar: (input: { quantidade_separada: number; endereco_id: string }) => Promise<void>;
   onFlag: (flags: { reembalado?: boolean; etiquetado?: boolean }) => Promise<void>;
+  onAtualizar: (input: { quantidade_solicitada: number }) => Promise<void>;
+  onRemover: () => Promise<void>;
 }) {
   const [quantidade, setQuantidade] = useState(String(item.quantidade_solicitada));
   const [enderecoId, setEnderecoId] = useState('');
   const jaSeparado = item.quantidade_separada != null;
+  const alterado = Number(quantidade) !== item.quantidade_solicitada;
 
   return (
-    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm">
+    <div className="rounded-xl border border-slate-200 p-6 bg-white shadow-sm" data-testid="expedicao-item">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-slate-900">{produtoRotulo}</p>
+        {editavel && !jaSeparado && (
+          <button
+            type="button"
+            data-testid="remover-item-expedicao"
+            onClick={() => void onRemover()}
+            className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 transition-all duration-200"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Remover
+          </button>
+        )}
+      </div>
       <p className="mb-2 text-sm text-slate-600">
         Solicitado: <span className="font-medium text-slate-900">{item.quantidade_solicitada}</span>
         {jaSeparado && (
@@ -150,7 +272,30 @@ function ItemSeparacao({
         )}
       </p>
 
-      {!jaSeparado && (
+      {!jaSeparado && editavel && (
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="number"
+            min={0}
+            step="0.001"
+            aria-label="Quantidade solicitada"
+            className="input w-28"
+            value={quantidade}
+            onChange={(e) => setQuantidade(e.target.value)}
+          />
+          <button
+            type="button"
+            data-testid="salvar-item-expedicao"
+            disabled={!alterado || Number(quantidade) <= 0}
+            onClick={() => onAtualizar({ quantidade_solicitada: Number(quantidade) })}
+            className="flex items-center gap-1 rounded-xl bg-rigabras-500 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
+          >
+            <Pencil className="h-4 w-4" /> Salvar
+          </button>
+        </div>
+      )}
+
+      {!jaSeparado && !editavel && (
         <div className="flex flex-wrap gap-2">
           <input
             type="number"

@@ -134,6 +134,24 @@ export class RecebimentosRepository {
     return (data ?? []) as RecebimentoItem[];
   }
 
+  async createItem(
+    recebimentoId: string,
+    item: { produto_id: string; quantidade_esperada: number; observacoes?: string | null },
+  ): Promise<RecebimentoItem> {
+    const { data, error } = await supabaseAdmin
+      .from(ITENS_TABLE)
+      .insert({ ...item, recebimento_id: recebimentoId })
+      .select('*')
+      .single();
+    if (error) throw mapPgError(error);
+    return data as RecebimentoItem;
+  }
+
+  async deleteItem(itemId: string): Promise<void> {
+    const { error } = await supabaseAdmin.from(ITENS_TABLE).delete().eq('id', itemId);
+    if (error) throw mapPgError(error);
+  }
+
   async listItens(recebimentoId: string): Promise<RecebimentoItem[]> {
     const { data, error } = await supabaseAdmin
       .from(ITENS_TABLE)

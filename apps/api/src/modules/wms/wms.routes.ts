@@ -8,6 +8,7 @@ import { ExpedicoesController } from './expedicoes.controller.js';
 import { AvariasController } from './avarias.controller.js';
 import { InventariosController } from './inventarios.controller.js';
 import { KpisController } from './kpis.controller.js';
+import { EstoqueController } from './estoque.controller.js';
 
 const LEITURA_TODOS = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR', 'VISITANTE');
 const ESCRITA_OPERACIONAL = requireRole('SUPERADMIN', 'ADMIN', 'OPERADOR');
@@ -74,6 +75,21 @@ export async function wmsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/recebimentos/:id', { preHandler: LEITURA_TODOS }, RecebimentosController.getById);
   app.post('/recebimentos', { preHandler: ESCRITA_OPERACIONAL }, RecebimentosController.create);
   app.post(
+    '/recebimentos/:id/itens',
+    { preHandler: ESCRITA_OPERACIONAL },
+    RecebimentosController.addItem,
+  );
+  app.patch(
+    '/recebimentos/:id/itens/:itemId',
+    { preHandler: ESCRITA_OPERACIONAL },
+    RecebimentosController.updateItem,
+  );
+  app.delete(
+    '/recebimentos/:id/itens/:itemId',
+    { preHandler: ESCRITA_OPERACIONAL },
+    RecebimentosController.removeItem,
+  );
+  app.post(
     '/recebimentos/:id/iniciar-conferencia',
     { preHandler: ESCRITA_OPERACIONAL },
     RecebimentosController.iniciarConferencia,
@@ -95,6 +111,21 @@ export async function wmsRoutes(app: FastifyInstance): Promise<void> {
   app.get('/expedicoes', { preHandler: LEITURA_TODOS }, ExpedicoesController.list);
   app.get('/expedicoes/:id', { preHandler: LEITURA_TODOS }, ExpedicoesController.getById);
   app.post('/expedicoes', { preHandler: ESCRITA_OPERACIONAL }, ExpedicoesController.create);
+  app.post(
+    '/expedicoes/:id/itens',
+    { preHandler: ESCRITA_OPERACIONAL },
+    ExpedicoesController.addItem,
+  );
+  app.patch(
+    '/expedicoes/:id/itens/:itemId',
+    { preHandler: ESCRITA_OPERACIONAL },
+    ExpedicoesController.updateItem,
+  );
+  app.delete(
+    '/expedicoes/:id/itens/:itemId',
+    { preHandler: ESCRITA_OPERACIONAL },
+    ExpedicoesController.removeItem,
+  );
   app.post(
     '/expedicoes/:id/iniciar-separacao',
     { preHandler: ESCRITA_OPERACIONAL },
@@ -170,6 +201,17 @@ export async function wmsRoutes(app: FastifyInstance): Promise<void> {
     '/inventarios/:id/encerrar',
     { preHandler: ESCRITA_ADMIN },
     InventariosController.encerrar,
+  );
+
+  // ------------------------------------------------------------------
+  // Estoque: saldos, movimentações manuais (entrada/saída avulsa) e histórico
+  // ------------------------------------------------------------------
+  app.get('/estoque', { preHandler: LEITURA_TODOS }, EstoqueController.listSaldos);
+  app.get('/estoque/movimentacoes', { preHandler: LEITURA_TODOS }, EstoqueController.listMovimentacoes);
+  app.post(
+    '/estoque/movimentacoes',
+    { preHandler: ESCRITA_OPERACIONAL },
+    EstoqueController.movimentarManual,
   );
 
   // ------------------------------------------------------------------

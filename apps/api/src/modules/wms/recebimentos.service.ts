@@ -1,8 +1,10 @@
 import type {
+  AddRecebimentoItemInput,
   ConferirRecebimentoItemInput,
   CreateRecebimentoInput,
   Recebimento,
   RecebimentoDetalhe,
+  UpdateRecebimentoItemInput,
   Viagem,
 } from '@rigabras/shared';
 import { TRANSICOES_STATUS_RECEBIMENTO } from '@rigabras/shared';
@@ -50,8 +52,7 @@ export class RecebimentosService {
     const depositante = await this.depositantesRepo.findById(input.depositante_id);
     if (!depositante) throw new NotFoundError('depositante', input.depositante_id);
     for (const item of input.itens) {
-      const produto = await this.produtosRepo.findById(item.produto_id);
-      if (!produto) throw new NotFoundError('produto_armazenado', item.produto_id);
+      await this.validarProdutoDoRecebimento(input.depositante_id, item.produto_id);
     }
 
     const created = await this.repo.create(
@@ -141,6 +142,115 @@ export class RecebimentosService {
     if (!validos.includes(proximo!)) {
       throw new InvalidStateTransitionError(atual ?? 'AGUARDANDO', proximo ?? '');
     }
+  }
+
+  /** Checklist de entrada: só editável enquanto o recebimento está AGUARDANDO (antes da conferência). */
+  private async exigirEditavel(id: string): Promise<Recebimento> {
+    const recebimento = await this.repo.findById(id);
+    if (!recebimento) throw new NotFoundError('recebimento', id);
+    if ((recebimento.status ?? 'AGUARDANDO') !== 'AGUARDANDO') {
+      throw new ConflictError(
+        'Os itens só podem ser alterados enquanto o recebimento está aguardando conferência',
+      );
+    }
+    return recebimento;
+  }
+
+  private async validarProdutoDoRecebimento(
+    depositanteId: string,
+    produtoId: string,
+  ): Promise<void> {
+    const produto = await this.produtosRepo.findById(produtoId);
+    if (!produto) throw new NotFoundError('produto_armazenado', produtoId);
+    if (produto.depositante_id !== depositanteId) {
+      throw new ConflictError(
+        'O produto pertence a outro depositante que não o deste recebimento',
+      );
+    }
+  }
+
+  async addItem(
+    id: string,
+    input: AddRecebimentoItemInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<RecebimentoDetalhe> {
+    const recebimento = await this.exigirEditavel(id);
+    await this.validarProdutoDoRecebimento(recebimento.depositante_id, input.produto_id);
+
+    const item = await this.repo.createItem(id, input);
+    await writeAuditLog({
+      userId,
+      action: 'CREATE',
+      entity: 'recebimento_itens',
+      entityId: item.id,
+      changes: { after: item, recebimento_id: id },
+      ip,
+    });
+    const itens = await this.repo.listItens(id);
+    return { ...recebimento, itens };
+  }
+
+  async updateItem(
+    id: string,
+    itemId: string,
+    input: UpdateRecebimentoItemInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<RecebimentoDetalhe> {
+    const recebimento = await this.exigirEditavel(id);
+    const item = await this.repo.findItemById(itemId);
+    if (!item || item.recebimento_id !== id) throw new NotFoundError('recebimento_item', itemId);
+    if (item.quantidade_conferida != null) {
+      throw new ConflictError('Um item já conferido não pode ser alterado');
+    }
+
+    const updated = await this.repo.updateItem(itemId, {
+      ...(input.quantidade_esperada !== undefined
+        ? { quantidade_esperada: input.quantidade_esperada }
+        : {}),
+      ...(input.observacoes !== undefined ? { observacoes: input.observacoes } : {}),
+    });
+    await writeAuditLog({
+      userId,
+      action: 'UPDATE',
+      entity: 'recebimento_itens',
+      entityId: itemId,
+      changes: { before: item, after: updated },
+      ip,
+    });
+    const itens = await this.repo.listItens(id);
+    return { ...recebimento, itens };
+  }
+
+  async removeItem(
+    id: string,
+    itemId: string,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<RecebimentoDetalhe> {
+    const recebimento = await this.exigirEditavel(id);
+    const item = await this.repo.findItemById(itemId);
+    if (!item || item.recebimento_id !== id) throw new NotFoundError('recebimento_item', itemId);
+    if (item.quantidade_conferida != null) {
+      throw new ConflictError('Um item já conferido não pode ser removido');
+    }
+
+    const itensRestantes = (await this.repo.listItens(id)).filter((i) => i.id !== itemId);
+    if (itensRestantes.length === 0) {
+      throw new ConflictError('O recebimento deve manter pelo menos um item');
+    }
+
+    await this.repo.deleteItem(itemId);
+    await writeAuditLog({
+      userId,
+      action: 'DELETE',
+      entity: 'recebimento_itens',
+      entityId: itemId,
+      changes: { before: item },
+      ip,
+    });
+    return { ...recebimento, itens: itensRestantes };
   }
 
   async iniciarConferencia(

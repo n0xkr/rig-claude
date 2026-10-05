@@ -22,6 +22,25 @@ export const CreateRecebimentoItemSchema = z.object({
 });
 export type CreateRecebimentoItemInput = z.infer<typeof CreateRecebimentoItemSchema>;
 
+/** Adiciona um item a um recebimento já criado (checklist de entrada), enquanto o cabeçalho ainda está AGUARDANDO. */
+export const AddRecebimentoItemSchema = z.object({
+  produto_id: z.string().uuid(),
+  quantidade_esperada: z.number().positive(),
+  observacoes: z.string().max(500).nullable().optional(),
+});
+export type AddRecebimentoItemInput = z.infer<typeof AddRecebimentoItemSchema>;
+
+/** Edita um item ainda não conferido de um recebimento (checklist de entrada). */
+export const UpdateRecebimentoItemSchema = z
+  .object({
+    quantidade_esperada: z.number().positive().optional(),
+    observacoes: z.string().max(500).nullable().optional(),
+  })
+  .refine((v) => v.quantidade_esperada !== undefined || v.observacoes !== undefined, {
+    message: 'Informe ao menos um campo para atualizar',
+  });
+export type UpdateRecebimentoItemInput = z.infer<typeof UpdateRecebimentoItemSchema>;
+
 /** Cabeçalho de um recebimento — entrada de mercadoria de um depositante, com fluxo de conferência e endereçamento. */
 export const RecebimentoSchema = z.object({
   id: z.string().uuid(),

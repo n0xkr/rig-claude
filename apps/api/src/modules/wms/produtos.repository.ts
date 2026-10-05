@@ -47,6 +47,21 @@ export class ProdutosRepository {
     return (data as ProdutoArmazenado | null) ?? null;
   }
 
+  /** Lote de produtos (consulta em pedaços para não estourar a URL do PostgREST). */
+  async findByIds(ids: string[]): Promise<ProdutoArmazenado[]> {
+    const resultado: ProdutoArmazenado[] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data, error } = await supabaseAdmin
+        .from(TABLE)
+        .select('*')
+        .in('id', ids.slice(i, i + 100))
+        .is('deleted_at', null);
+      if (error) throw mapPgError(error);
+      resultado.push(...((data ?? []) as ProdutoArmazenado[]));
+    }
+    return resultado;
+  }
+
   async create(
     input: CreateProdutoArmazenadoInput,
     createdBy: string | null,

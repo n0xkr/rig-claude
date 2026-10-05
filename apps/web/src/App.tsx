@@ -29,6 +29,7 @@ const DepositanteFormPage = lazy(() => import('./pages/DepositanteFormPage.js'))
 const ProdutosListPage = lazy(() => import('./pages/ProdutosListPage.js'));
 const RastreioProdutoPage = lazy(() => import('./pages/RastreioProdutoPage.js'));
 const ArmazemMapaPage = lazy(() => import('./pages/ArmazemMapaPage.js'));
+const EstoqueListPage = lazy(() => import('./pages/EstoqueListPage.js'));
 const RecebimentosListPage = lazy(() => import('./pages/RecebimentosListPage.js'));
 const RecebimentoFormPage = lazy(() => import('./pages/RecebimentoFormPage.js'));
 const RecebimentoDetailPage = lazy(() => import('./pages/RecebimentoDetailPage.js'));
@@ -280,6 +281,14 @@ export default function App() {
           element={
             <AuthGate modulo="wms">
               <ArmazemMapaPage />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/wms/estoque"
+          element={
+            <AuthGate modulo="wms">
+              <EstoqueListPage />
             </AuthGate>
           }
         />

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type {
+  AddExpedicaoItemInput,
   CreateExpedicaoInput,
   Expedicao,
   ExpedicaoDetalhe,
   SepararExpedicaoItemInput,
+  UpdateExpedicaoItemInput,
 } from '@rigabras/shared';
 import { api, ApiError } from '../lib/apiClient.js';
 import type { LoadState } from './useViagens.js';
@@ -89,6 +91,49 @@ export function useCreateExpedicao() {
   }, []);
 
   return { create, submitting, error };
+}
+
+/** Gestão do checklist de saída: adicionar/editar/remover itens enquanto a expedição está SOLICITADA. */
+export function useExpedicaoItens() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = useCallback(async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      return await fn();
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+      );
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  const addItem = useCallback(
+    (expedicaoId: string, input: AddExpedicaoItemInput) =>
+      run(() => api.post<ExpedicaoDetalhe>(`/wms/expedicoes/${expedicaoId}/itens`, input)),
+    [run],
+  );
+
+  const updateItem = useCallback(
+    (expedicaoId: string, itemId: string, input: UpdateExpedicaoItemInput) =>
+      run(() =>
+        api.patch<ExpedicaoDetalhe>(`/wms/expedicoes/${expedicaoId}/itens/${itemId}`, input),
+      ),
+    [run],
+  );
+
+  const removeItem = useCallback(
+    (expedicaoId: string, itemId: string) =>
+      run(() => api.delete<ExpedicaoDetalhe>(`/wms/expedicoes/${expedicaoId}/itens/${itemId}`)),
+    [run],
+  );
+
+  return { addItem, updateItem, removeItem, submitting, error };
 }
 
 /** Ações do fluxo de separação/reembalagem/etiquetagem/expedição. */

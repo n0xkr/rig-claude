@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Warehouse, PackageCheck, Truck, AlertOctagon, ClipboardList } from 'lucide-react';
+import { Warehouse, PackageCheck, Truck, AlertOctagon, ClipboardList, Boxes } from 'lucide-react';
 import { useWmsKpis } from '../hooks/useWmsKpis.js';
 import { useArmazensList } from '../hooks/useEnderecosArmazem.js';
 import { LoadingSkeleton, ErrorCard, EmptyState } from '../components/StateViews.js';
@@ -61,6 +61,7 @@ export default function WmsKpiPage() {
           label="Recebimentos"
         />
         <NavLink to="/wms/expedicoes" icon={<Truck className="h-4 w-4" />} label="Expedições" />
+        <NavLink to="/wms/estoque" icon={<Boxes className="h-4 w-4" />} label="Estoque" />
         <NavLink to="/wms/avarias" icon={<AlertOctagon className="h-4 w-4" />} label="Avarias" />
       </div>
 

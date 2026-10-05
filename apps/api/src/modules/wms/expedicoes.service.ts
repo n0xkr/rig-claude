@@ -1,8 +1,10 @@
 import type {
+  AddExpedicaoItemInput,
   CreateExpedicaoInput,
   Expedicao,
   ExpedicaoDetalhe,
   SepararExpedicaoItemInput,
+  UpdateExpedicaoItemInput,
 } from '@rigabras/shared';
 import {
   STATUS_VIAGEM_COMPATIVEIS_COM_WMS_PRONTA,
@@ -56,8 +58,7 @@ export class ExpedicoesService {
     const depositante = await this.depositantesRepo.findById(input.depositante_id);
     if (!depositante) throw new NotFoundError('depositante', input.depositante_id);
     for (const item of input.itens) {
-      const produto = await this.produtosRepo.findById(item.produto_id);
-      if (!produto) throw new NotFoundError('produto_armazenado', item.produto_id);
+      await this.validarProdutoDaExpedicao(input.depositante_id, item.produto_id);
     }
     if (input.viagem_id) {
       const viagem = await this.viagensRepo.findById(input.viagem_id);
@@ -92,6 +93,114 @@ export class ExpedicoesService {
     if (!validos.includes(proximo!)) {
       throw new InvalidStateTransitionError(atual ?? 'SOLICITADA', proximo ?? '');
     }
+  }
+
+  /** Checklist de saída: só editável enquanto a expedição está SOLICITADA (antes da separação). */
+  private async exigirEditavel(id: string): Promise<Expedicao> {
+    const expedicao = await this.repo.findById(id);
+    if (!expedicao) throw new NotFoundError('expedicao', id);
+    if ((expedicao.status ?? 'SOLICITADA') !== 'SOLICITADA') {
+      throw new ConflictError(
+        'Os itens só podem ser alterados enquanto a expedição está solicitada (antes da separação)',
+      );
+    }
+    return expedicao;
+  }
+
+  private async validarProdutoDaExpedicao(
+    depositanteId: string,
+    produtoId: string,
+  ): Promise<void> {
+    const produto = await this.produtosRepo.findById(produtoId);
+    if (!produto) throw new NotFoundError('produto_armazenado', produtoId);
+    if (produto.depositante_id !== depositanteId) {
+      throw new ConflictError(
+        'O produto pertence a outro depositante que não o desta expedição',
+      );
+    }
+  }
+
+  async addItem(
+    id: string,
+    input: AddExpedicaoItemInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<ExpedicaoDetalhe> {
+    const expedicao = await this.exigirEditavel(id);
+    await this.validarProdutoDaExpedicao(expedicao.depositante_id, input.produto_id);
+
+    const item = await this.repo.createItem(id, input);
+    await writeAuditLog({
+      userId,
+      action: 'CREATE',
+      entity: 'expedicao_itens',
+      entityId: item.id,
+      changes: { after: item, expedicao_id: id },
+      ip,
+    });
+    const itens = await this.repo.listItens(id);
+    return { ...expedicao, itens };
+  }
+
+  async updateItem(
+    id: string,
+    itemId: string,
+    input: UpdateExpedicaoItemInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<ExpedicaoDetalhe> {
+    const expedicao = await this.exigirEditavel(id);
+    const item = await this.repo.findItemById(itemId);
+    if (!item || item.expedicao_id !== id) throw new NotFoundError('expedicao_item', itemId);
+    if (item.quantidade_separada != null) {
+      throw new ConflictError('Um item já separado não pode ser alterado');
+    }
+
+    const updated = await this.repo.updateItem(itemId, {
+      ...(input.quantidade_solicitada !== undefined
+        ? { quantidade_solicitada: input.quantidade_solicitada }
+        : {}),
+    });
+    await writeAuditLog({
+      userId,
+      action: 'UPDATE',
+      entity: 'expedicao_itens',
+      entityId: itemId,
+      changes: { before: item, after: updated },
+      ip,
+    });
+    const itens = await this.repo.listItens(id);
+    return { ...expedicao, itens };
+  }
+
+  async removeItem(
+    id: string,
+    itemId: string,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<ExpedicaoDetalhe> {
+    const expedicao = await this.exigirEditavel(id);
+    const item = await this.repo.findItemById(itemId);
+    if (!item || item.expedicao_id !== id) throw new NotFoundError('expedicao_item', itemId);
+    if (item.quantidade_separada != null) {
+      throw new ConflictError('Um item já separado não pode ser removido');
+    }
+
+    const itensRestantes = (await this.repo.listItens(id)).filter((i) => i.id !== itemId);
+    if (itensRestantes.length === 0) {
+      throw new ConflictError('A expedição deve manter pelo menos um item');
+    }
+
+    await this.repo.deleteItem(itemId);
+    await writeAuditLog({
+      userId,
+      action: 'DELETE',
+      entity: 'expedicao_itens',
+      entityId: itemId,
+      changes: { before: item },
+      ip,
+    });
+    return { ...expedicao, itens: itensRestantes };
   }
 
   private async transicionar(

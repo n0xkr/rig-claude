@@ -164,4 +164,22 @@ export class ExpedicoesRepository {
     if (error) throw mapPgError(error);
     return data as ExpedicaoItem;
   }
+
+  async createItem(
+    expedicaoId: string,
+    item: { produto_id: string; quantidade_solicitada: number },
+  ): Promise<ExpedicaoItem> {
+    const { data, error } = await supabaseAdmin
+      .from(ITENS_TABLE)
+      .insert({ ...item, expedicao_id: expedicaoId })
+      .select('*')
+      .single();
+    if (error) throw mapPgError(error);
+    return data as ExpedicaoItem;
+  }
+
+  async deleteItem(itemId: string): Promise<void> {
+    const { error } = await supabaseAdmin.from(ITENS_TABLE).delete().eq('id', itemId);
+    if (error) throw mapPgError(error);
+  }
 }

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { CreateProdutoArmazenadoInput, ProdutoArmazenado } from '@rigabras/shared';
+import type {
+  CreateProdutoArmazenadoInput,
+  ProdutoArmazenado,
+  UpdateProdutoArmazenadoInput,
+} from '@rigabras/shared';
 import { api, ApiError } from '../lib/apiClient.js';
 import type { LoadState } from './useViagens.js';
 
@@ -57,4 +61,27 @@ export function useCreateProduto() {
   }, []);
 
   return { create, submitting, error };
+}
+
+/** Edita um SKU do catálogo (edição de item do estoque). */
+export function useUpdateProduto() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const update = useCallback(async (id: string, input: UpdateProdutoArmazenadoInput) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      return await api.patch<ProdutoArmazenado>(`/wms/produtos/${id}`, input);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+      );
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  return { update, submitting, error };
 }

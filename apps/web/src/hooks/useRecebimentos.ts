@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type {
+  AddRecebimentoItemInput,
   ConferirRecebimentoItemInput,
   CreateRecebimentoInput,
   Recebimento,
   RecebimentoDetalhe,
+  UpdateRecebimentoItemInput,
 } from '@rigabras/shared';
 import { api, ApiError } from '../lib/apiClient.js';
 import type { LoadState } from './useViagens.js';
@@ -89,6 +91,51 @@ export function useCreateRecebimento() {
   }, []);
 
   return { create, submitting, error };
+}
+
+/** Gestão do checklist de entrada: adicionar/editar/remover itens enquanto o recebimento está AGUARDANDO. */
+export function useRecebimentoItens() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = useCallback(async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      return await fn();
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+      );
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  const addItem = useCallback(
+    (recebimentoId: string, input: AddRecebimentoItemInput) =>
+      run(() => api.post<RecebimentoDetalhe>(`/wms/recebimentos/${recebimentoId}/itens`, input)),
+    [run],
+  );
+
+  const updateItem = useCallback(
+    (recebimentoId: string, itemId: string, input: UpdateRecebimentoItemInput) =>
+      run(() =>
+        api.patch<RecebimentoDetalhe>(`/wms/recebimentos/${recebimentoId}/itens/${itemId}`, input),
+      ),
+    [run],
+  );
+
+  const removeItem = useCallback(
+    (recebimentoId: string, itemId: string) =>
+      run(() =>
+        api.delete<RecebimentoDetalhe>(`/wms/recebimentos/${recebimentoId}/itens/${itemId}`),
+      ),
+    [run],
+  );
+
+  return { addItem, updateItem, removeItem, submitting, error };
 }
 
 /** Ações do fluxo de conferência: iniciar, conferir item, concluir. */
