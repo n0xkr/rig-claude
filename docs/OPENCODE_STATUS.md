@@ -7,7 +7,7 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 | Comando | Resultado |
 |---|---|
 | `pnpm -r run typecheck` | **verde** (shared, api, web) |
-| `pnpm -r run lint` | placeholder (ESLint real = Fase 16, pendente) |
+| `pnpm lint` | **verde** — ESLint 10 flat config (`eslint.config.mjs`): 0 erros, 29 warnings aceitáveis (no-console em scripts, escapes/regex de sanitização) |
 | `pnpm --filter @rigabras/api run test` | **137 passed** (13 arquivos) |
 | `pnpm exec playwright test` | **45 specs**: 42 passed na suíte completa; 3 timeouts de carga (`10`, `11`, `12`) passam isolados (flaky, não é regressão da leva 0.5) |
 | Scan `U+FFFD` nas fontes | **negativo** |
@@ -30,8 +30,8 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 | 12 — RLS real | BLOQUEADO (ambiente) |
 | 13 — Migration 0018 | REQUER DECISÃO (AUDIT R1) |
 | 14 — ERP export | CONCLUÍDO\* |
-| 15 — CI E2E | PENDENTE (custo de runner) |
-| 16 — Lint real | PENDENTE |
+| 15 — CI E2E | **CONCLUÍDO** — job `e2e` no `ci.yml` (`needs: verify`, chromium `--with-deps`, `--retries=1`, env dummy + `USE_FAKE_DB`, upload do report em falha) |
+| 16 — Lint real | **CONCLUÍDO** — `eslint.config.mjs` + devDeps ESLint 10 na raiz + scripts `lint` reais + step **Lint** no CI |
 | 17 — Docs OPENCODE | **CONCLUÍDO** (AUDIT, EXECUTION_PLAN, CHANGELOG, STATUS) |
 
 ## Evolução do módulo de estoque/WMS (pedido do usuário)

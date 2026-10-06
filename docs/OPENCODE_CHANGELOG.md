@@ -87,6 +87,19 @@ Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQ
 | Comentários `/** ... */` com U+FFFD/acentos quebrados reescritos (5 páginas do WMS) | CORRIGIDO | `AvariasListPage`, `DepositantesListPage`, `ExpedicoesListPage`, `RastreioProdutoPage`, `RecebimentosListPage` |
 | Scan `U+FFFD` no repositório (fontes, excluindo binários): **negativo** | VERIFICADO | — |
 
+## Ferramentas / CI (Fases 15–16)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| ESLint real em flat config (ESLint 10 + `typescript-eslint` + `eslint-plugin-react-hooks` + `globals` como devDependencies da raiz): `js.configs.recommended` + `tseslint.configs.recommended`, regras clássicas de React Hooks só em `apps/web`, ignores de `dist`/`docs`/protótipo legado `gestão-de-frotas-&-viagens/`/`*.cjs` | ADICIONADO | `eslint.config.mjs` |
+| Scripts `lint` reais no lugar dos placeholders (`pnpm lint` → `eslint .` na raiz; `eslint src` em api/web/shared) | CORRIGIDO | `package.json`, `apps/api/package.json`, `apps/web/package.json`, `packages/shared/package.json` |
+| Ajustes de código apontados pelo lint (sem mudança de comportamento): `let` sem inicialização inútil em `idempotency.ts` e `consolidacao.ts`; 2 `eslint-disable` não usados removidos em `env.ts` | CORRIGIDO | `apps/api` |
+| Step **Lint** no job `verify` da CI | ADICIONADO | `.github/workflows/ci.yml` |
+| Job **`e2e`** na CI: `needs: verify` (não gasta runner se typecheck/build já falharam), Playwright chromium com `--with-deps`, suíte com `--retries=1` (absorve o flaky 10/11/12), env dummy para o Zod do `env.ts` + `USE_FAKE_DB=true`, upload de `playwright-report/` e `test-results/` em falha | ADICIONADO | `.github/workflows/ci.yml` |
+| `pnpm lint` verde: **0 erros, 29 warnings** (aceitáveis: `no-console` em scripts, escapes/regex de sanitização, whitespace em strings de importação) | VERIFICADO | — |
+
+> O job `e2e` usa banco em memória (sem Docker no runner) e envs dummy — mesmas ressalvas do E2E local: RLS/migrations continuam sem verificação contra Postgres real.
+
 ## Testes
 
 | O quê | Tipo | Onde |
@@ -98,6 +111,7 @@ Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQ
 ## Regressão (estado final desta execução)
 
 - `pnpm -r run typecheck` · **verde** (shared, api, web)
+- `pnpm lint` · **verde** (0 erros, 29 warnings)
 - `pnpm --filter @rigabras/api run test` · **137 passed** (13 arquivos)
 - `pnpm exec playwright test` · **45 specs**: 42 passed na suíte completa (~17 min); as 3 falhas (`10-acompanhamento`, `11-importacao-planilha-completa`, `12-usuarios-categorias`) são **flaky de tempo limite sob carga** — cada uma passa isolada (reexecução individual **2–4 passed**) e não regridem comportamento da leva 0.5.
 

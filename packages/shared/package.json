@@ -15,7 +15,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "echo \"(lint placeholder - configure eslint)\""
+    "lint": "eslint src"
   },
   "dependencies": {
     "zod": "^3.23.8"

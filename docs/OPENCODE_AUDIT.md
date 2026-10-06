@@ -15,8 +15,8 @@ Legenda: `IMPLEMENTADO` · `PARCIAL` · `QUEBRADO` · `REQUER DECISÃO` · `REQU
 | Build (`pnpm -r run build`) | IMPLEMENTADO | verde em 2026-10-05 |
 | Testes API (Vitest) | IMPLEMENTADO | 12 arquivos, **131 testes verdes** |
 | E2E (Playwright, fake DB) | IMPLEMENTADO | **41/41 verdes**, 16 specs |
-| CI (GitHub Actions) | PARCIAL | `.github/workflows/ci.yml`: typecheck+vitest+build+secret scan; **sem job E2E** |
-| Lint | QUEBRADO | placeholder `echo "(lint placeholder - configure eslint)"` em api/web/shared |
+| CI (GitHub Actions) | IMPLEMENTADO | `.github/workflows/ci.yml`: lint + typecheck + vitest + build + secret scan **+ job `e2e`** (`needs: verify`, fake DB, `--retries=1`) |
+| Lint | IMPLEMENTADO | ESLint 10 flat config (`eslint.config.mjs`), `pnpm lint` verde (0 erros) — placeholder removido |
 | Postgres real / migrations aplicadas | NÃO VALIDADO | sem Docker neste ambiente |
 | RLS efetiva | NÃO VALIDADO | SQL inspecionado, nunca executado |
 | Concorrência real (claims WMS) | NÃO VALIDADO | depende de Postgres real |
@@ -69,7 +69,7 @@ LOC verificados: api 26.798 · web 18.404 · shared 4.685 · 17 migrations (0001
 2. **Fila offline opaca** — confiabilidade offline declarada no README, sem observabilidade nem recuperação de falhas.
 3. **WMS sem atomicidade** — perda de estoque/duplicação de movimentos sob corrida.
 4. **RBAC VISITANTE ambíguo** — política documentada ≠ RLS ≠ API.
-5. **CI sem E2E e sem lint real** — barreira de qualidade abaixo do tamanho do codebase.
+5. ~~**CI sem E2E e sem lint real**~~ — **RESOLVIDO**: ESLint flat config + step Lint + job `e2e` no `ci.yml` (Fases 15/16).
 6. **8 controllers sem `handleDomainError`** — 500s inconsistentes até P0-3 ser corrigido globalmente.
 
 ## 7. Riscos

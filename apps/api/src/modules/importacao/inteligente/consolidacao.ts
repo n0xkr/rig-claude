@@ -710,7 +710,7 @@ export function consolidar(
     if (externas) cargas = mesclarCargas(cargas, externas);
 
     // Status: regras sobre status -> localização -> observação -> cliente; depois a IA; depois Sim/Não.
-    let status: StatusViagem | null = null;
+    let status: StatusViagem | null;
     const textoStatus = typeof c.status_texto === 'string' ? c.status_texto : null;
     const textoObs = typeof c.observacoes === 'string' ? c.observacoes : null;
     const doDetalhe = statusViagemDeTexto(c.localizacao) ?? statusViagemDeTexto(textoObs);

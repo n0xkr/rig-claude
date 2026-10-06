@@ -256,10 +256,10 @@ export type Env = z.infer<typeof EnvSchema>;
 function loadEnv(): Env {
   const parsed = EnvSchema.safeParse(process.env);
   if (!parsed.success) {
-    // eslint-disable-next-line no-console
+     
     console.error('Falha ao validar variáveis de ambiente na inicialização:');
     for (const issue of parsed.error.issues) {
-      // eslint-disable-next-line no-console
+       
       console.error(`  - ${issue.path.join('.')}: ${issue.message}`);
     }
     process.exit(1);

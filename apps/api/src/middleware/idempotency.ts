@@ -74,7 +74,7 @@ export function registerIdempotency(app: FastifyInstance): void {
       await supabaseAdmin.from('idempotency_keys').delete().eq('user_id', userId).eq('key', key);
       return payload;
     }
-    let response: unknown = null;
+    let response: unknown;
     try {
       response = typeof payload === 'string' && payload ? JSON.parse(payload) : null;
     } catch {

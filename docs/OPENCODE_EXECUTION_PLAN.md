@@ -57,10 +57,10 @@ Estado: **REQUER DECISÃO** (R1 do AUDIT). Critério de saída: deduplicação s
 Estado: **CONCLUÍDO\*** (pré-existente).
 
 ## Fase 15 — CI E2E
-Estado: PENDENTE. Job `e2e` no `ci.yml` (build + `playwright install --with-deps` + `pnpm e2e`), após decisão sobre custo de runner.
+Estado: **CONCLUÍDO**. Job `e2e` no `ci.yml`: `needs: verify` (economia de runner quando verify já falhou), Playwright chromium via `playwright install --with-deps`, suíte com `--retries=1` (absorve o flaky 10/11/12), env dummy para o Zod de `env.ts` + `USE_FAKE_DB=true`/`WEB_ORIGIN`, upload de `playwright-report/`+`test-results/` em falha, `timeout-minutes: 45`.
 
 ## Fase 16 — Lint real
-Estado: PENDENTE. Substituir placeholder por ESLint flat config + `pnpm lint` no CI.
+Estado: **CONCLUÍDO**. ESLint 10 flat config em `eslint.config.mjs` (devDeps na raiz: `eslint`, `@eslint/js`, `typescript-eslint`, `eslint-plugin-react-hooks`, `globals`); scripts `lint` reais (`pnpm lint` → `eslint .`; `eslint src` em api/web/shared); step **Lint** no job `verify`. Resultado: **0 erros / 29 warnings**. Fora do lint: protótipo legado `gestão-de-frotas-&-viagens/` (não é workspace) e `*.cjs`.
 
 ## Fase 17 — Docs/entregáveis OPENCODE
 Estado: **CONCLUÍDO**. `OPENCODE_AUDIT.md`, este arquivo, `OPENCODE_CHANGELOG.md`, `OPENCODE_STATUS.md`.
@@ -81,11 +81,11 @@ Estado: **CONCLUÍDO**.
 ---
 
 ## Ordem de execução recomendada
-1. ~~Fase 1~~ · ~~Fase 17~~ · ~~Fase 18~~ · ~~Fase 19~~ · commit + `git push origin master`.
+1. ~~Fase 1~~ · ~~Fase 15~~ · ~~Fase 16~~ · ~~Fase 17~~ · ~~Fase 18~~ · ~~Fase 19~~ · commit + `git push origin master`.
 2. Usuário: aplicar migrations `0019`/`0020` no SQL editor do Supabase + redeploy no Coolify.
-3. Fora deste ambiente: Fases 11–13, 15–16, decisões 1/2/3 do AUDIT §8.
+3. Fora deste ambiente: Fases 11–13, decisões 1/2/3 do AUDIT §8.
 
 ## Critérios de aceite globais
-- `pnpm -r run typecheck` verde · `pnpm --filter @rigabras/api run test` **137 verdes** · E2E **45 specs** (42 verdes na suíte completa + 3 flaky de timeout que passam isolados).
+- `pnpm -r run typecheck` verde · `pnpm lint` verde (0 erros) · `pnpm --filter @rigabras/api run test` **137 verdes** · E2E **45 specs** (42 verdes na suíte completa + 3 flaky de timeout que passam isolados; CI com `--retries=1`).
 - Nenhum contrato de rota/Zod alterado sem nota no CHANGELOG.
 - Achados `REQUER DECISÃO`/`REQUER VALIDAÇÃO EXTERNA` nunca marcados como concluídos.

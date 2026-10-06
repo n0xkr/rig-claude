@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter=./apps/* run dev",
     "build": "pnpm --filter=./packages/* run build && pnpm --filter=./apps/* run build",
-    "lint": "pnpm --recursive run lint",
+    "lint": "eslint .",
     "typecheck": "pnpm --recursive run typecheck",
     "test": "pnpm --recursive run test",
     "dev:api": "pnpm --filter @rigabras/api run dev",
@@ -21,8 +21,13 @@
     "test:e2e:report": "playwright show-report"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "prettier": "^3.3.3",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.71.1"
   }
 }
