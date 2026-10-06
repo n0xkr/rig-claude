@@ -14,6 +14,8 @@ const TABLE_MOV = 'rede_movimentacoes';
 export interface ListRedesFilter {
   status?: string;
   condicao?: string;
+  /** 'CONCLUIDO' | 'PENDENTE' — filtro do checklist de conferência. */
+  checklist?: string;
   q?: string;
   cursor?: string;
   limit: number;
@@ -35,6 +37,8 @@ export class RedesRepository {
       .limit(filter.limit + 1);
     if (filter.status) query = query.eq('status', filter.status);
     if (filter.condicao) query = query.eq('condicao_uso', filter.condicao);
+    if (filter.checklist === 'CONCLUIDO') query = query.not('checklist_concluido_em', 'is', null);
+    if (filter.checklist === 'PENDENTE') query = query.is('checklist_concluido_em', null);
     if (filter.q) query = query.ilike('codigo', `%${filter.q}%`);
     if (filter.cursor) query = query.lt('id', filter.cursor);
 

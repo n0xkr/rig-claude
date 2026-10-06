@@ -20,6 +20,7 @@ export const RedesController = {
     const query = request.query as {
       status?: string;
       condicao?: string;
+      checklist?: string;
       q?: string;
       cursor?: string;
       limit?: string;
@@ -29,6 +30,7 @@ export const RedesController = {
       const result = await service.list({
         status: query.status,
         condicao: query.condicao,
+        checklist: query.checklist,
         q: query.q,
         cursor: query.cursor,
         limit,

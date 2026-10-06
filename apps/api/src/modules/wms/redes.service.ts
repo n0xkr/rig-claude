@@ -27,11 +27,65 @@ function diasAte(data: string): number {
 
 /**
  * Serviço das redes de veículos: cadastro com código sequencial RED-######,
- * movimentação (retirada/devolução) com máquina de estados e agregação do
+ * movimentação (retirada/devolução) com máquina de estados, checklist de
+ * conferência (rede OK / lacre / catracas OK — tudo-ou-nada) e agregação do
  * relatório em tempo real exibido no painel.
  */
 export class RedesService {
   constructor(private readonly repo: RedesRepository = new RedesRepository()) {}
+
+  /**
+   * Deriva o estado final do checklist (WMS > Checklist > Redes). Os três
+   * critérios juntos marcam a conclusão (data + operador); nenhum deles limpa
+   * a conclusão; estado parcial é recusado (422) — a migration 0021 impõe a
+   * mesma regra no banco. `atual` é a linha existente (vazia na criação).
+   */
+  private normalizarChecklist(
+    atual: Partial<Rede>,
+    input: Partial<CreateRedeInput>,
+    userId: string | null,
+  ): Partial<Rede> {
+    const estado = {
+      checklist_rede_ok:
+        'checklist_rede_ok' in input ? (input.checklist_rede_ok ?? null) : (atual.checklist_rede_ok ?? null),
+      checklist_lacre:
+        'checklist_lacre' in input ? (input.checklist_lacre?.trim() || null) : (atual.checklist_lacre ?? null),
+      checklist_catracas_ok:
+        'checklist_catracas_ok' in input
+          ? (input.checklist_catracas_ok ?? null)
+          : (atual.checklist_catracas_ok ?? null),
+    };
+    const preenchidos =
+      (estado.checklist_rede_ok !== null ? 1 : 0) +
+      (estado.checklist_lacre !== null ? 1 : 0) +
+      (estado.checklist_catracas_ok !== null ? 1 : 0);
+
+    if (preenchidos === 0) {
+      return { ...estado, checklist_concluido_em: null, checklist_concluido_por: null };
+    }
+    if (preenchidos === 3) {
+      const alterado = (
+        ['checklist_rede_ok', 'checklist_lacre', 'checklist_catracas_ok'] as const
+      ).some((campo) => campo in input);
+      if (!alterado && atual.checklist_concluido_em) {
+        return {
+          ...estado,
+          checklist_concluido_em: atual.checklist_concluido_em,
+          checklist_concluido_por: atual.checklist_concluido_por ?? null,
+        };
+      }
+      return {
+        ...estado,
+        checklist_concluido_em: new Date().toISOString(),
+        checklist_concluido_por: userId,
+      };
+    }
+    throw new DomainError(
+      'Checklist incompleto',
+      422,
+      'Preencha os três critérios: rede OK sem danos, lacre e catracas OK',
+    );
+  }
 
   list(filter: ListRedesFilter) {
     return this.repo.list(filter);
@@ -44,11 +98,12 @@ export class RedesService {
   }
 
   async create(input: CreateRedeInput, userId: string | null, ip: string | null): Promise<Rede> {
+    const checklist = this.normalizarChecklist({}, input, userId);
     let tentativas = 0;
     for (;;) {
       const codigo = await this.proximoCodigo(tentativas);
       try {
-        const created = await this.repo.create({ ...input, codigo }, userId);
+        const created = await this.repo.create({ ...input, ...checklist, codigo }, userId);
         await writeAuditLog({
           userId,
           action: 'CREATE',
@@ -84,7 +139,8 @@ export class RedesService {
   ): Promise<Rede> {
     const before = await this.getById(id);
     if (Object.keys(input).length === 0) return before;
-    const updated = await this.repo.update(id, input);
+    const checklist = this.normalizarChecklist(before, input, userId);
+    const updated = await this.repo.update(id, { ...input, ...checklist });
     await writeAuditLog({
       userId,
       action: 'UPDATE',
@@ -184,6 +240,8 @@ export class RedesService {
       vencendo,
       vencidas,
       padrao_cliente: redes.filter((r) => r.padrao_cliente).length,
+      checklist_concluidos: redes.filter((r) => r.checklist_concluido_em).length,
+      checklist_pendentes: redes.filter((r) => !r.checklist_concluido_em).length,
     };
   }
 }

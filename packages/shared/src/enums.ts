@@ -556,6 +556,14 @@ export type StatusRede = z.infer<typeof StatusRedeSchema>;
 export const TipoMovimentacaoRedeSchema = z.enum(['RETIRADA', 'DEVOLUCAO']);
 export type TipoMovimentacaoRede = z.infer<typeof TipoMovimentacaoRedeSchema>;
 
+/**
+ * Situação do checklist de conferência da rede (WMS > Checklist > Redes):
+ * `CONCLUIDO` quando os três critérios (rede OK, lacre, catracas OK) estão
+ * preenchidos — derivado no servidor a partir de `checklist_concluido_em`.
+ */
+export const StatusChecklistRedeSchema = z.enum(['PENDENTE', 'CONCLUIDO']);
+export type StatusChecklistRede = z.infer<typeof StatusChecklistRedeSchema>;
+
 // ============================================================================
 // Módulo 6 — Integração TMS + WMS
 // ============================================================================
