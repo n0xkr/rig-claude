@@ -1,22 +1,29 @@
 import { useState } from 'react';
-import { Plus, RefreshCw, Share2, Trash2 } from 'lucide-react';
+import { Pencil, Plus, RefreshCw, Share2, Trash2 } from 'lucide-react';
 import type {
   CondicaoUsoRede,
   CreateRedeInput,
   Rede,
   StatusRede,
+  UpdateRedeInput,
 } from '@rigabras/shared';
+import { CATRACAS_POR_REDE, CINTAS_POR_REDE } from '@rigabras/shared';
 import {
   useCreateRede,
   useDeleteRede,
   useMovimentarRede,
   useRedesKpis,
   useRedesList,
+  useUpdateRede,
 } from '../hooks/useRedes.js';
 import { useVeiculosList } from '../hooks/useVeiculos.js';
 import { formatDateOnly } from '../lib/dateOnly.js';
 import { LoadingSkeleton, EmptyState, ErrorCard } from '../components/StateViews.js';
-import { RedeCondicaoBadge, RedeStatusBadge } from '../components/StatusBadge.js';
+import {
+  RedeChecklistBadge,
+  RedeCondicaoBadge,
+  RedeStatusBadge,
+} from '../components/StatusBadge.js';
 import { WmsSubNav } from '../components/WmsSubNav.js';
 
 const CONDICOES: CondicaoUsoRede[] = ['NOVA', 'BOA', 'REGULAR', 'RUIM'];
@@ -24,6 +31,11 @@ const STATUS: Array<{ valor: StatusRede | ''; rotulo: string }> = [
   { valor: '', rotulo: 'Todos os status' },
   { valor: 'DISPONIVEL', rotulo: 'Disponíveis' },
   { valor: 'EM_TRANSITO', rotulo: 'Em trânsito' },
+];
+const CHECKLIST_FILTROS: Array<{ valor: string; rotulo: string }> = [
+  { valor: '', rotulo: 'Todo o checklist' },
+  { valor: 'CONCLUIDO', rotulo: 'Checklist concluído' },
+  { valor: 'PENDENTE', rotulo: 'Checklist pendente' },
 ];
 
 const KPI_CARDS: Array<{ chave: 'total' | 'disponiveis' | 'em_transito' | 'vencendo' | 'vencidas' | 'padrao_cliente'; rotulo: string }> = [
@@ -35,18 +47,26 @@ const KPI_CARDS: Array<{ chave: 'total' | 'disponiveis' | 'em_transito' | 'vence
   { chave: 'padrao_cliente', rotulo: 'Padrão cliente' },
 ];
 
-/** Painel exclusivo das redes transportadas pela frota (Módulo 5 — WMS). */
+function checklistCompleto(rede: Rede): boolean {
+  return !!rede.checklist_concluido_em;
+}
+
+/** Painel das redes de contenção das carretas (WMS > Checklist > Redes). */
 export default function RedesListPage() {
-  const [filtro, setFiltro] = useState<{ status: string; condicao: string; q: string }>({
-    status: '',
-    condicao: '',
-    q: '',
-  });
+  const [filtro, setFiltro] = useState<{ status: string; condicao: string; checklist: string; q: string }>(
+    {
+      status: '',
+      condicao: '',
+      checklist: '',
+      q: '',
+    },
+  );
   const { state, redes, error, reload } = useRedesList(filtro);
   const { kpis } = useRedesKpis();
   const { veiculos } = useVeiculosList();
   const { remove } = useDeleteRede();
   const [showForm, setShowForm] = useState(false);
+  const [editando, setEditando] = useState<Rede | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const placaDe = (veiculoId: string | null | undefined): string | null =>
@@ -59,6 +79,10 @@ export default function RedesListPage() {
     else setFeedback('Não foi possível excluir a rede (está em trânsito?).');
   }
 
+  const percentualChecklist = kpis && kpis.total > 0
+    ? Math.round((kpis.checklist_concluidos / kpis.total) * 100)
+    : 0;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <WmsSubNav />
@@ -66,9 +90,10 @@ export default function RedesListPage() {
         <div className="flex items-center gap-2">
           <Share2 className="h-6 w-6 text-rigabras-600" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Redes dos veículos</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Redes de contenção</h1>
             <p className="text-sm text-slate-500">
-              Cadastro, condição, validade e relatório em tempo real das redes.
+              Checklist das redes das carretas: {CINTAS_POR_REDE} cintas × {CINTAS_POR_REDE} ·{' '}
+              {CATRACAS_POR_REDE} catracas, lacre e condição.
             </p>
           </div>
         </div>
@@ -82,12 +107,36 @@ export default function RedesListPage() {
             <RefreshCw className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setShowForm((v) => !v)}
+            onClick={() => {
+              setEditando(null);
+              setShowForm((v) => !v);
+            }}
             data-testid="nova-rede"
             className="flex items-center gap-2 rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
           >
             <Plus className="h-4 w-4" /> Nova rede
           </button>
+        </div>
+      </div>
+
+      <div
+        data-testid="progresso-checklist"
+        className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="font-medium text-slate-700">Progresso do checklist</span>
+          <span className="text-slate-500" data-testid="progresso-checklist-texto">
+            {kpis
+              ? `${kpis.checklist_concluidos}/${kpis.total} redes conferidas (${percentualChecklist}%)`
+              : '—'}
+          </span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-2 rounded-full bg-rigabras-500 transition-all duration-500"
+            style={{ width: `${percentualChecklist}%` }}
+            data-testid="progresso-checklist-barra"
+          />
         </div>
       </div>
 
@@ -110,13 +159,23 @@ export default function RedesListPage() {
         ))}
       </div>
 
-      {showForm && (
+      {editando ? (
         <RedeForm
+          rede={editando}
           onCreated={() => {
-            setShowForm(false);
+            setEditando(null);
             reload();
           }}
         />
+      ) : (
+        showForm && (
+          <RedeForm
+            onCreated={() => {
+              setShowForm(false);
+              reload();
+            }}
+          />
+        )
       )}
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -153,6 +212,18 @@ export default function RedesListPage() {
             </option>
           ))}
         </select>
+        <select
+          className="input"
+          value={filtro.checklist}
+          onChange={(e) => setFiltro((f) => ({ ...f, checklist: e.target.value }))}
+          data-testid="filtro-checklist-rede"
+        >
+          {CHECKLIST_FILTROS.map((c) => (
+            <option key={c.valor} value={c.valor}>
+              {c.rotulo}
+            </option>
+          ))}
+        </select>
       </div>
 
       {feedback && (
@@ -184,6 +255,12 @@ export default function RedesListPage() {
                   </span>
                   <RedeCondicaoBadge condicao={r.condicao_uso} />
                   <RedeStatusBadge status={r.status} />
+                  <RedeChecklistBadge concluido={checklistCompleto(r)} />
+                  {r.checklist_lacre && (
+                    <span className="text-xs text-slate-500" data-testid={`lacre-${r.codigo}`}>
+                      lacre {r.checklist_lacre}
+                    </span>
+                  )}
                   {r.padrao_cliente && (
                     <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
                       Padrão cliente
@@ -202,6 +279,18 @@ export default function RedesListPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <MovimentarRedeForm rede={r} onDone={reload} placa={placaDe(r.veiculo_id)} />
+                  <button
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditando(r);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    title="Editar rede e checklist"
+                    data-testid={`editar-rede-${r.codigo}`}
+                    className="rounded-xl border border-slate-200 p-2 text-slate-400 shadow-sm hover:text-rigabras-600 transition-all duration-200"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => void excluir(r)}
                     disabled={r.status === 'EM_TRANSITO'}
@@ -239,17 +328,44 @@ function validadeAlerta(validade: string): string {
   return '';
 }
 
-function RedeForm({ onCreated }: { onCreated: () => void }) {
-  const { create, submitting, error } = useCreateRede();
+/**
+ * Formulário de cadastro (sem `rede`) e de edição (com `rede`) da rede — nos
+ * dois casos com os três critérios do checklist: rede OK sem danos, número do
+ * lacre e as catracas OK. Os três são obrigatórios para concluir.
+ */
+function RedeForm({ rede, onCreated }: { rede?: Rede; onCreated: () => void }) {
+  const { create, submitting: submittingCreate, error: errorCreate } = useCreateRede();
+  const { update, submitting: submittingUpdate, error: errorUpdate } = useUpdateRede();
   const [form, setForm] = useState<CreateRedeInput>({
-    condicao_uso: 'BOA',
-    validade: null,
-    padrao_cliente: false,
-    observacoes: null,
+    condicao_uso: rede?.condicao_uso ?? 'BOA',
+    validade: rede?.validade ?? null,
+    padrao_cliente: rede?.padrao_cliente ?? false,
+    observacoes: rede?.observacoes ?? null,
+    checklist_rede_ok: rede?.checklist_rede_ok ?? null,
+    checklist_lacre: rede?.checklist_lacre ?? '',
+    checklist_catracas_ok: rede?.checklist_catracas_ok ?? null,
   });
+
+  const submitting = submittingCreate || submittingUpdate;
+  const error = errorCreate || errorUpdate;
+  const edicao = !!rede;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (edicao && rede) {
+      const patch: UpdateRedeInput = {
+        condicao_uso: form.condicao_uso,
+        validade: form.validade,
+        padrao_cliente: form.padrao_cliente,
+        observacoes: form.observacoes,
+        checklist_rede_ok: form.checklist_rede_ok ?? null,
+        checklist_lacre: form.checklist_lacre ?? '',
+        checklist_catracas_ok: form.checklist_catracas_ok ?? null,
+      };
+      const ok = await update(rede.id, patch);
+      if (ok) onCreated();
+      return;
+    }
     await create(form);
     onCreated();
   }
@@ -260,6 +376,60 @@ function RedeForm({ onCreated }: { onCreated: () => void }) {
       data-testid="rede-form"
       className="mb-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-4"
     >
+      <p className="col-span-full text-sm font-semibold text-slate-700" data-testid="checklist-titulo">
+        Checklist da rede — {CINTAS_POR_REDE} cintas × {CINTAS_POR_REDE} · {CATRACAS_POR_REDE}{' '}
+        catracas
+      </p>
+      <label className="flex flex-col gap-1 text-sm text-slate-700">
+        Rede OK sem danos?*
+        <select
+          className="input"
+          required
+          value={form.checklist_rede_ok === null || form.checklist_rede_ok === undefined ? '' : String(form.checklist_rede_ok)}
+          onChange={(e) =>
+            setForm((f) => ({
+              ...f,
+              checklist_rede_ok: e.target.value === '' ? null : e.target.value === 'true',
+            }))
+          }
+          data-testid="checklist-rede-ok"
+        >
+          <option value="">—</option>
+          <option value="true">Sim, sem danos</option>
+          <option value="false">Não, com danos</option>
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-slate-700">
+        Lacre da rede (número)*
+        <input
+          className="input"
+          required
+          maxLength={60}
+          placeholder="Ex.: 004512"
+          value={form.checklist_lacre ?? ''}
+          onChange={(e) => setForm((f) => ({ ...f, checklist_lacre: e.target.value }))}
+          data-testid="checklist-lacre"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-slate-700">
+        Catracas OK ({CATRACAS_POR_REDE})?*
+        <select
+          className="input"
+          required
+          value={form.checklist_catracas_ok === null || form.checklist_catracas_ok === undefined ? '' : String(form.checklist_catracas_ok)}
+          onChange={(e) =>
+            setForm((f) => ({
+              ...f,
+              checklist_catracas_ok: e.target.value === '' ? null : e.target.value === 'true',
+            }))
+          }
+          data-testid="checklist-catracas-ok"
+        >
+          <option value="">—</option>
+          <option value="true">Sim, todas as {CATRACAS_POR_REDE} OK</option>
+          <option value="false">Não, com problema</option>
+        </select>
+      </label>
       <select
         className="input"
         value={form.condicao_uso}
@@ -302,7 +472,7 @@ function RedeForm({ onCreated }: { onCreated: () => void }) {
         data-testid="salvar-rede"
         className="col-span-2 rounded-xl bg-rigabras-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200 sm:col-span-4"
       >
-        {submitting ? 'Salvando...' : 'Cadastrar rede'}
+        {submitting ? 'Salvando...' : edicao ? 'Salvar alterações' : 'Cadastrar rede'}
       </button>
       {error && <p className="col-span-full text-sm text-red-600">{error}</p>}
     </form>
@@ -392,7 +562,7 @@ function MovimentarRedeForm({
         type="submit"
         disabled={submitting}
         data-testid={`confirmar-mov-${rede.codigo}`}
-        className="rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 transition-all duration-200"
+        className="rounded-xl bg-rigabras-500 px-3 py-2 text-sm font-medium text-white hover:opacity-90 transition-all duration-200"
       >
         {submitting ? 'Salvando...' : 'Confirmar'}
       </button>

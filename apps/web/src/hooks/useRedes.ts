@@ -4,6 +4,7 @@ import type {
   CreateRedeMovimentacaoInput,
   Rede,
   RedesKpi,
+  UpdateRedeInput,
 } from '@rigabras/shared';
 import { api, ApiError } from '../lib/apiClient.js';
 import type { LoadState } from './useViagens.js';
@@ -11,6 +12,7 @@ import type { LoadState } from './useViagens.js';
 export interface FiltroRedes {
   status?: string;
   condicao?: string;
+  checklist?: string;
   q?: string;
 }
 
@@ -23,22 +25,25 @@ function montarQuery(filtro: FiltroRedes): string {
   const params = new URLSearchParams({ limit: '100' });
   if (filtro.status) params.set('status', filtro.status);
   if (filtro.condicao) params.set('condicao', filtro.condicao);
+  if (filtro.checklist) params.set('checklist', filtro.checklist);
   if (filtro.q) params.set('q', filtro.q);
   return params.toString();
 }
 
-/** Painel de redes: lista com filtros (código/condição/status). */
+/** Painel de redes: lista com filtros (código/condição/status/checklist). */
 export function useRedesList(filtro: FiltroRedes) {
   const [state, setState] = useState<LoadState>('idle');
   const [redes, setRedes] = useState<Rede[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { status, condicao, q } = filtro;
+  const { status, condicao, checklist, q } = filtro;
 
   const load = useCallback(async () => {
     setState('loading');
     setError(null);
     try {
-      const result = await api.get<ListResponse>(`/wms/redes?${montarQuery({ status, condicao, q })}`);
+      const result = await api.get<ListResponse>(
+        `/wms/redes?${montarQuery({ status, condicao, checklist, q })}`,
+      );
       setRedes(result.data);
       setState('success');
     } catch (err) {
@@ -47,7 +52,7 @@ export function useRedesList(filtro: FiltroRedes) {
       );
       setState('error');
     }
-  }, [status, condicao, q]);
+  }, [status, condicao, checklist, q]);
 
   useEffect(() => {
     void load();
@@ -110,6 +115,32 @@ export function useCreateRede() {
   }, []);
 
   return { create, submitting, error };
+}
+
+/** Edição de rede (cadastro + checklist de conferência). */
+export function useUpdateRede() {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const update = useCallback(
+    async (redeId: string, input: UpdateRedeInput): Promise<Rede | null> => {
+      setSubmitting(true);
+      setError(null);
+      try {
+        return await api.patch<Rede>(`/wms/redes/${redeId}`, input);
+      } catch (err) {
+        setError(
+          err instanceof ApiError ? (err.problem.detail ?? err.problem.title) : 'Erro inesperado',
+        );
+        return null;
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [],
+  );
+
+  return { update, submitting, error };
 }
 
 /** Retirada/devolução de rede (movimentação do painel). */

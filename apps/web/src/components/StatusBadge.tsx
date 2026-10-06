@@ -342,3 +342,17 @@ export function RedeCondicaoBadge({ condicao }: { condicao: CondicaoUsoRede }) {
     </span>
   );
 }
+
+/** Badge do checklist de conferência da rede (concluído x pendente). */
+export function RedeChecklistBadge({ concluido }: { concluido: boolean }) {
+  return (
+    <span
+      data-testid="rede-checklist-badge"
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+        concluido ? 'bg-teal-50 text-teal-700' : 'bg-amber-50 text-amber-700'
+      }`}
+    >
+      {concluido ? 'Checklist OK' : 'Checklist pendente'}
+    </span>
+  );
+}

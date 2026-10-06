@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthGate, RotaInicial } from './components/AuthGate.js';
 import { DashboardLayout } from './components/layout/DashboardLayout.js';
 import { LoadingSkeleton } from './components/StateViews.js';
@@ -376,13 +376,14 @@ export default function App() {
           }
         />
         <Route
-          path="/wms/redes"
+          path="/wms/checklist/redes"
           element={
             <AuthGate modulo="wms">
               <RedesListPage />
             </AuthGate>
           }
         />
+        <Route path="/wms/redes" element={<Navigate to="/wms/checklist/redes" replace />} />
         <Route
           path="/exportacoes"
           element={
