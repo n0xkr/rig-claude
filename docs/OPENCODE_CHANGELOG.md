@@ -164,3 +164,5 @@ Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQ
 | O quê | Tipo | Onde |
 |---|---|---|
 | E2E `18-wms-redes.spec.ts` atualizado: rota nova, heading "Redes de contenção", criação com checklist, **edição do lacre**, progresso e filtro de checklist | MELHORADO | `tests/e2e/18-wms-redes.spec.ts` |
+| Helper `novaPlaca` do E2E: retry até 10× em `409` de placa duplicada (banco falso em memória é reaproveitado entre execuções — colisão aleatória derrubava a spec 18 na suíte completa) | CORRIGIDO | `tests/e2e/helpers.ts` |
+| Suíte E2E completa (`pnpm exec playwright test`): **45/45 passed** (~10 min) após a leva | VERIFICADO | — |

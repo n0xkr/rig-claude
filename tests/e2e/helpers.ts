@@ -104,16 +104,27 @@ export function randomPlaca(): string {
  * Cadastra (via API) um veículo com placa aleatória e devolve a placa: o
  * formulário de viagem só aceita placas já cadastradas (FK para `veiculos`),
  * então o veículo precisa existir ANTES de abrir `/viagens/nova`.
+ *
+ * O banco falso é em memória e reaproveitado entre execuções
+ * (`reuseExistingServer`), então uma placa aleatória pode colidir com um
+ * veículo já criado numa rodada anterior (409 "Já existe um veículo com a
+ * placa"): tenta de novo com outra placa até 10x antes de falhar.
  */
 export async function novaPlaca(page: Page): Promise<string> {
   const token = await apiLogin(page.request, 'OPERADOR');
-  const placa = randomPlaca();
-  const response = await page.request.post(`${API_BASE_URL}/veiculos`, {
-    headers: { Authorization: `Bearer ${token}` },
-    data: { placa, tipo: 'CAVALO', frota_propria: true, ativo: true },
-  });
-  expect(response.ok(), await response.text()).toBeTruthy();
-  return placa;
+  for (let tentativa = 0; tentativa < 10; tentativa += 1) {
+    const placa = randomPlaca();
+    const response = await page.request.post(`${API_BASE_URL}/veiculos`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { placa, tipo: 'CAVALO', frota_propria: true, ativo: true },
+    });
+    if (response.ok()) return placa;
+    expect(
+      response.status(),
+      `falha ao cadastrar placa ${placa}: ${await response.text()}`,
+    ).toBe(409);
+  }
+  throw new Error('não foi possível gerar uma placa única em 10 tentativas');
 }
 
 /**
