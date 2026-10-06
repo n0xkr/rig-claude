@@ -121,3 +121,46 @@ Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQ
 - RBAC × RLS de VISITANTE — **REQUER DECISÃO** (AUDIT §8.2).
 - RPCs `SECURITY DEFINER`/concorrência/RLS real — **REQUER VALIDAÇÃO EXTERNA** (Postgres real).
 - `concluirConferencia` transiciona sem `assertTransicao` (incoerência conhecida, não alterada).
+
+---
+
+## Leva CHECKLIST DE REDES (WMS > Checklist > Redes — pedido direto do usuário, prazo 15/10)
+
+### Shared (`packages/shared`)
+
+| O quê | Tipo | Arquivo |
+|---|---|---|
+| Constantes `CINTAS_POR_REDE = 11` e `CATRACAS_POR_REDE = 6` (especificação da rede de contenção, exibida no form) | ADICIONADO | `entities/rede.ts` |
+| Campos do checklist em `RedeSchema`/`CreateRedeSchema`: `checklist_rede_ok` (boolean), `checklist_lacre` (texto ≤60), `checklist_catracas_ok` (boolean) + derivados `checklist_concluido_em`/`_por` (omitidos do Create) | ADICIONADO | `entities/rede.ts` |
+| `RedesKpiSchema` += `checklist_concluidos` / `checklist_pendentes` | ADICIONADO | `entities/rede.ts` |
+| Enum `StatusChecklistRedeSchema` (`PENDENTE`/`CONCLUIDO`) | ADICIONADO | `enums.ts` |
+
+### API (`apps/api`)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| `RedesService.normalizarChecklist`: checklist **tudo-ou-nada** — 3 critérios preenchidos ⇒ grava `checklist_concluido_em`/`_por`; nenhum ⇒ limpa; parcial ⇒ `DomainError` 422 (regra da constraint da migration 0021) | ADICIONADO | `wms/redes.service.ts` |
+| KPIs += contagem de checklists concluídos/pendentes | ADICIONADO | `wms/redes.service.ts` |
+| Filtro `?checklist=CONCLUIDO\|PENDENTE` na listagem | ADICIONADO | `wms/redes.repository.ts`, `wms/redes.controller.ts` |
+| Fake DB: defaults `NULL` das 5 colunas do checklist em `redes` | ADICIONADO | `config/fakeSupabase.ts` |
+
+### Web (`apps/web`)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| Seção **Checklist** no submenu do WMS com sub-item **Redes** (hierarquia WMS > Checklist > Redes, grupo com pills aninhadas) | ADICIONADO | `components/WmsSubNav.tsx` |
+| Rota `/wms/checklist/redes` + redirect `/wms/redes` (compatibilidade) | ADICIONADO/CORRIGIDO | `App.tsx` |
+| Página renomeada **"Redes de contenção"** com painel **Progresso do checklist** (X/Y conferidas + barra de %, auto-refresh 20s), badge `RedeChecklistBadge` (Checklist OK/pendente), exibição do lacre na linha e filtro "Checklist concluído/pendente" | ADICIONADO | `pages/RedesListPage.tsx`, `components/StatusBadge.tsx` |
+| Formulário (cadastro **e** edição) com os 3 critérios obrigatórios: rede OK sem danos?, lacre (número) e catracas OK (6); botão **Editar** por linha (`editar-rede-<codigo>`) | ADICIONADO | `pages/RedesListPage.tsx`, `hooks/useRedes.ts` (`useUpdateRede`) |
+
+### Migrations (REQUER VALIDAÇÃO EXTERNA — sem Postgres local)
+
+| Migration | Conteúdo |
+|---|---|
+| `0021_redes_checklist.sql` | `alter table redes`: `checklist_rede_ok`/`checklist_lacre`/`checklist_catracas_ok`/`checklist_concluido_em`/`checklist_concluido_por` + constraint `chk_redes_checklist_completo` (tudo-ou-nada) + índice parcial de progresso; herda as policies da migration 0020 |
+
+### Testes
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| E2E `18-wms-redes.spec.ts` atualizado: rota nova, heading "Redes de contenção", criação com checklist, **edição do lacre**, progresso e filtro de checklist | MELHORADO | `tests/e2e/18-wms-redes.spec.ts` |

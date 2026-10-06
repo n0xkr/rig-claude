@@ -577,6 +577,38 @@ viagem_id` já existe (nullable, preenchida apenas pelo Módulo 6) para casar
   migrations e RLS revisadas por leitura cuidadosa, não executadas contra um
   Supabase real.
 
+### WMS > Checklist > Redes (redes de contenção das carretas)
+
+Seção dedicada ao cadastro e à conferência das **redes de contenção** usadas
+nas carretas (cada rede tem **11 cintas × 11** e **6 catracas** — constantes
+`CINTAS_POR_REDE`/`CATRACAS_POR_REDE` em `packages/shared`, exibidas como
+referência no formulário). O submenu do WMS ganhou o grupo **Checklist** com o
+sub-item **Redes** (rota `/wms/checklist/redes`; `/wms/redes` redireciona
+para lá).
+
+- **Checklist por rede** — ao adicionar ou editar uma rede, o operador
+  preenche os três critérios obrigatórios: **rede OK sem danos?**, **lacre da
+  rede (número)** e **catracas OK (6)?**. A regra é **tudo-ou-nada**: os três
+  juntos fecham o checklist (servidor grava `checklist_concluido_em`/`_por`),
+  nenhum limpa a conclusão e estado parcial retorna `422` (constraint
+  `chk_redes_checklist_completo` da migration `0021`, mesma regra no banco).
+- **Acompanhamento do gestor** — painel **Progresso do checklist** no topo da
+  página (`X/Y redes conferidas (Z%)` + barra, auto-refresh de 20 s junto dos
+  KPIs), badge `Checklist OK`/`Checklist pendente` por linha e filtro
+  "Checklist concluído/pendente" (`?checklist=CONCLUIDO|PENDENTE`). Qualquer
+  papel com leitura no WMS enxerga o progresso (não há papel "GESTOR" —
+  ADMIN/SUPERADMIN têm visão completa).
+- **CRUD completo** — ver, editar (botão **Editar** por linha: cadastro +
+  checklist) e excluir (soft delete, bloqueado enquanto `EM_TRANSITO`), além
+  da movimentação retirada/devolução já existente. Código `RED-######` segue
+  gerado no servidor.
+- **Migration** `0021_redes_checklist.sql` (**REQUER VALIDAÇÃO EXTERNA** —
+  mesma ressalva das demais: sem Postgres local neste ambiente, revisar no
+  SQL editor do Supabase).
+- **Testes**: `tests/e2e/18-wms-redes.spec.ts` cobre criação com checklist,
+  edição do lacre, progresso, filtro de checklist, movimentação e exclusão
+  bloqueada.
+
 ## Módulo 6 — Integração TMS + WMS
 
 Liga o TMS (Módulos 1–4) ao WMS (Módulo 5) nos dois sentidos pedidos pelo
