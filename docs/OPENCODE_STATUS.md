@@ -51,6 +51,15 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 - **Migrations prontas**: `0019` (produtos + manutenções) e `0020` (redes + RLS no padrão da 0006) — **aguardam aplicação no SQL editor do Supabase** (REQUER VALIDAÇÃO EXTERNA); `0018` intocada.
 - **Ação do usuário**: aplicar `supabase/migrations/0019_*` e `0020_*` no Supabase e fazer redeploy no Coolify (repositório atualizado via `git push origin master`).
 
+## Leva CHECKLIST DE REDES (WMS > Checklist > Redes — entregue, prazo 15/10)
+
+- **Seção Redes no submenu Checklist**: `WmsSubNav` ganhou o grupo "Checklist" com sub-item "Redes"; rota `/wms/checklist/redes` (o antigo `/wms/redes` redireciona).
+- **Checklist da rede (3 critérios obrigatórios)**: rede OK sem danos?, lacre (número) e catracas OK (6)? — regra **tudo-ou-nada** imposta no serviço (422 se parcial) e na constraint da migration; `11 cintas × 11` e `6 catracas` exibidos como especificação (`CINTAS_POR_REDE`/`CATRACAS_POR_REDE`).
+- **Acompanhamento do gestor**: painel "Progresso do checklist" (`X/Y redes conferidas (%)` + barra, auto-refresh 20s), badge `Checklist OK`/`pendente` por linha e filtro concluído/pendente (`?checklist=`).
+- **CRUD**: edição por linha (`useUpdateRede`/`PATCH /wms/redes/:id`) além do cadastro/exclusão/movimentação já existentes.
+- **Migration**: `0021_redes_checklist.sql` — **aguarda aplicação no SQL editor do Supabase** (REQUER VALIDAÇÃO EXTERNA).
+- **Validação local**: `pnpm typecheck` verde · `pnpm lint` 0 erros · `pnpm --filter @rigabras/api test` 137 passed · E2E `18-wms-redes.spec.ts` 2 passed.
+
 ## Decisões pendentes do usuário (AUDIT §8)
 
 1. **Migration 0018** (UNIQUE `recebimentos.viagem_id`): deduplicação + índice + teste de corrida. Não escrita por risco de falha em dados existentes.
