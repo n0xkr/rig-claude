@@ -38,3 +38,5 @@ backup-*.json
 !docs/**/*.pdf
 gestão-de-frotas-&-viagens/
 legacy/
+
+apps/web/vite.config.ts.timestamp-*.mjs
