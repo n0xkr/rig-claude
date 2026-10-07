@@ -11,7 +11,7 @@ export function registerCorrelationId(app: FastifyInstance): void {
   app.addHook('onRequest', async (request, reply) => {
     const incoming = request.headers['x-correlation-id'];
     const correlationId =
-      typeof incoming === 'string' && incoming.length > 0 ? incoming : randomUUID();
+      typeof incoming === 'string' && /^[\w.:-]{1,100}$/.test(incoming) ? incoming : randomUUID();
     request.id = correlationId;
     reply.header('x-correlation-id', correlationId);
   });

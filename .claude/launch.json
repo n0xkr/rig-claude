@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "api-fake",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rigabras/api", "dev"],
+      "env": { "USE_FAKE_DB": "true", "WEB_ORIGIN": "http://127.0.0.1:5173" },
+      "port": 3333
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@rigabras/web", "dev"],
+      "port": 5173
+    }
+  ]
+}

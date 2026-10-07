@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Rigabras - Gestão Logística',
         short_name: 'Rigabras TMS',
         description: 'Ecossistema Integrado de Gestão Logística (TMS + WMS) - Rigabras Transportes',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#f8fafc',
+        background_color: '#f8fafc',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -22,6 +22,10 @@ export default defineConfig({
         ],
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
@@ -37,5 +41,24 @@ export default defineConfig({
       },
     }),
   ],
-  server: { port: 5173 },
+  build: {
+    rollupOptions: {
+      output: {
+        // Só o framer-motion (usado em todo o app) ganha chunk próprio. `three`/r3f ficam de fora de
+        // propósito: declará-los em manualChunks arrastava helpers compartilhados para o chunk 3D e o
+        // index.html passava a pré-carregar ~1,2 MB de WebGL até na tela de login.
+        manualChunks: {
+          motion: ['framer-motion'],
+        },
+      },
+    },
+  },
+  // `host: '127.0.0.1'` (em vez do padrão do Vite, que só faz bind em `::1`
+  // nesta máquina Windows): sem isso, qualquer cliente que resolva
+  // `localhost`/`127.0.0.1` para IPv4 primeiro (curl neste sandbox,
+  // Playwright/Chromium) recebia "connection refused" mesmo com o dev
+  // server rodando — encontrado ao tentar acessar a app pela primeira vez
+  // nesta sessão de testes.
+  server: { port: 5173, host: '127.0.0.1' },
+  preview: { port: 5173, host: '127.0.0.1' },
 });

@@ -56,8 +56,15 @@ export class MotoristasService {
     return updated;
   }
 
-  async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
-    await this.getById(id);
+  /** `superadmin`: o SUPERADMIN pode remover mesmo com viagem em andamento. */
+  async softDelete(id: string, userId: string | null, ip: string | null, superadmin = false): Promise<void> {
+    const motorista = await this.getById(id);
+    const viagensAtivas = await this.repo.countViagensAtivas(id);
+    if (viagensAtivas > 0 && !superadmin) {
+      throw new ConflictError(
+        `Motorista ${motorista.nome_completo} está em ${viagensAtivas} viagem(ns) em andamento; encerre ou cancele antes de removê-lo`,
+      );
+    }
     await this.repo.softDelete(id);
     await writeAuditLog({
       userId,

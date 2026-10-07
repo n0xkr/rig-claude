@@ -1,5 +1,6 @@
 import type { CreateEventoRiscoInput, EventoRisco, UpdateEventoRiscoInput } from '@rigabras/shared';
 import { supabaseAdmin } from '../../config/supabase.js';
+import { fromPgError } from '../../lib/pgConstraintErrors.js';
 
 const TABLE = 'eventos_risco';
 
@@ -11,7 +12,7 @@ export class EventosRiscoRepository {
       .eq('viagem_id', viagemId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data ?? []) as EventoRisco[];
   }
 
@@ -22,7 +23,7 @@ export class EventosRiscoRepository {
       .eq('id', id)
       .is('deleted_at', null)
       .maybeSingle();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return (data as EventoRisco | null) ?? null;
   }
 
@@ -32,7 +33,7 @@ export class EventosRiscoRepository {
       .insert({ ...input, created_by: createdBy })
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as EventoRisco;
   }
 
@@ -44,7 +45,7 @@ export class EventosRiscoRepository {
       .is('deleted_at', null)
       .select('*')
       .single();
-    if (error) throw error;
+    if (error) throw fromPgError(error);
     return data as EventoRisco;
   }
 
@@ -53,6 +54,6 @@ export class EventosRiscoRepository {
       .from(TABLE)
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) throw error;
+    if (error) throw fromPgError(error);
   }
 }

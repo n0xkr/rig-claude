@@ -1,3 +1,4 @@
+import { getCurrentUserId } from '../lib/apiClient.js';
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 /**
@@ -8,12 +9,26 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
  */
 export interface QueuedMutation {
   id: string; // uuid gerado no cliente, dobra como chave de idempotência
-  kind: 'create-viagem' | 'update-viagem';
+  kind:
+    | 'create-viagem'
+    | 'update-viagem'
+    | 'create-evento-fronteira'
+    | 'create-frete'
+    | 'update-frete'
+    | 'create-manutencao-veiculo'
+    | 'update-quilometragem-viagem'
+    | 'create-registro-jornada'
+    | 'create-depositante'
+    | 'create-avaria';
   payload: Record<string, unknown>;
-  targetId?: string; // usado em update-viagem
+  targetId?: string; // usado em update-viagem/create-evento-fronteira (viagemId), update-frete/create-frete (viagemId/freteId) e update-quilometragem-viagem (viagemId)
   createdAt: string;
   attempts: number;
   lastError?: string;
+  /** Dono da operação: a fila nunca sincroniza mutações de outro usuário. */
+  userId?: string | null;
+  /** PENDING = aguardando envio; FAILED = erro permanente; CONFLICT = 409 do servidor. */
+  status?: 'PENDING' | 'FAILED' | 'CONFLICT';
 }
 
 interface RigabrasOfflineDB extends DBSchema {
@@ -40,7 +55,11 @@ export function getOfflineDb(): Promise<IDBPDatabase<RigabrasOfflineDB>> {
 
 export async function enqueueMutation(mutation: QueuedMutation): Promise<void> {
   const db = await getOfflineDb();
-  await db.put('mutationQueue', mutation);
+  await db.put('mutationQueue', {
+    ...mutation,
+    userId: mutation.userId ?? getCurrentUserId(),
+    status: mutation.status ?? 'PENDING',
+  });
 }
 
 export async function listQueuedMutations(): Promise<QueuedMutation[]> {
@@ -60,4 +79,44 @@ export async function updateMutationAttempt(id: string, error: string): Promise<
   existing.attempts += 1;
   existing.lastError = error;
   await db.put('mutationQueue', existing);
+}
+
+/** Marca a mutação como erro permanente/conflito (não será reenviada automaticamente). */
+export async function marcarMutationFalha(
+  id: string,
+  status: 'FAILED' | 'CONFLICT',
+  error: string,
+): Promise<void> {
+  const db = await getOfflineDb();
+  const existing = await db.get('mutationQueue', id);
+  if (!existing) return;
+  existing.status = status;
+  existing.attempts += 1;
+  existing.lastError = error;
+  await db.put('mutationQueue', existing);
+}
+
+/** Recoloca uma mutação com erro na fila para nova tentativa manual. */
+export async function reenfileirarMutation(id: string): Promise<void> {
+  const db = await getOfflineDb();
+  const existing = await db.get('mutationQueue', id);
+  if (!existing) return;
+  existing.status = 'PENDING';
+  existing.attempts = 0;
+  await db.put('mutationQueue', existing);
+}
+
+/**
+ * Remove da fila as mutações de um usuário (chamado no logout para não deixar
+ * payload de outro usuário no mesmo browser). Sem `uid`, remove as do usuário
+ * autenticado no momento.
+ */
+export async function purgeQueueDoUsuario(uid?: string | null): Promise<void> {
+  const alvo = uid === undefined ? getCurrentUserId() : uid;
+  if (!alvo) return;
+  const db = await getOfflineDb();
+  const minhas = (await db.getAllFromIndex('mutationQueue', 'by-createdAt')).filter(
+    (m) => m.userId === alvo,
+  );
+  await Promise.all(minhas.map((m) => db.delete('mutationQueue', m.id)));
 }

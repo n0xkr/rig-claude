@@ -30,3 +30,17 @@ export class InvalidStateTransitionError extends DomainError {
     );
   }
 }
+
+/**
+ * Transição de máquina de estados que é estruturalmente válida (existe no
+ * grafo de transições), mas que o papel (role) do usuário autenticado não
+ * está autorizado a executar — ex: um OPERADOR tentando aprovar
+ * financeiramente um frete (Módulo 3, critério #4). Diferente de
+ * `InvalidStateTransitionError` (422, transição inexistente), este é um 403
+ * (permissão), reforçando o RBAC já aplicado nas policies de RLS.
+ */
+export class ForbiddenTransitionError extends DomainError {
+  constructor(detail: string) {
+    super('Ação não permitida para o seu perfil', 403, detail);
+  }
+}

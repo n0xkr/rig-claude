@@ -2,14 +2,20 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { CreateVeiculoSchema, UpdateVeiculoSchema } from '@rigabras/shared';
 import { VeiculosService } from './veiculos.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
-import { Problems } from '../../lib/problemDetails.js';
+import { sendProblem } from '../../lib/problemDetails.js';
 import { DomainError } from '../../lib/errors.js';
 
 const service = new VeiculosService();
 
+/**
+ * Envia o status real do erro de domínio (404/409/422/...) via `sendProblem`,
+ * em vez do padrão antigo `Problems.badRequest(reply, ...).status(error.status)`,
+ * que sempre respondia 400 pois `.status()` não tem efeito depois de `.send()`
+ * já ter sido chamado (bug corrigido a partir do padrão do Módulo 3).
+ */
 function handleDomainError(error: unknown, reply: FastifyReply): boolean {
   if (error instanceof DomainError) {
-    void Problems.badRequest(reply, error.detail ?? error.message).status(error.status);
+    sendProblem(reply, error.status, error.message, error.detail);
     return true;
   }
   return false;
@@ -18,7 +24,8 @@ function handleDomainError(error: unknown, reply: FastifyReply): boolean {
 export const VeiculosController = {
   async list(request: FastifyRequest, reply: FastifyReply) {
     const query = request.query as { cursor?: string; limit?: string };
-    const result = await service.list(query.limit ? Number(query.limit) : 20, query.cursor);
+    const limite = Math.min(Math.max(Number(query.limit) || 20, 1), 1000);
+    const result = await service.list(limite, query.cursor);
     return reply.send(result);
   },
   async getById(request: FastifyRequest, reply: FastifyReply) {
@@ -56,7 +63,7 @@ export const VeiculosController = {
   async remove(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     try {
-      await service.softDelete(id, request.user?.sub ?? null, request.ip);
+      await service.softDelete(id, request.user?.sub ?? null, request.ip, request.user?.role === 'SUPERADMIN');
       return reply.status(204).send();
     } catch (error) {
       if (handleDomainError(error, reply)) return;

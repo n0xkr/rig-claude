@@ -3,10 +3,23 @@ import { AuthController } from './auth.controller.js';
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post(
+    '/register',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    AuthController.register,
+  );
+  app.post(
     '/login',
     { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
     AuthController.login,
   );
-  app.post('/refresh', AuthController.refresh);
-  app.post('/logout', AuthController.logout);
+  app.post(
+    '/refresh',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    AuthController.refresh,
+  );
+  app.post(
+    '/logout',
+    { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } },
+    AuthController.logout,
+  );
 }

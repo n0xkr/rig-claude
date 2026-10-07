@@ -1,15 +1,26 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { ChangeStatusViagemSchema, CreateViagemSchema, UpdateViagemSchema } from '@rigabras/shared';
+import {
+  ChangeStatusViagemSchema,
+  CreateViagemSchema,
+  TrocarMotoristaViagemSchema,
+  UpdateViagemSchema,
+} from '@rigabras/shared';
 import { ViagensService } from './viagens.service.js';
 import { parseOrProblem } from '../../middleware/validate.js';
-import { Problems } from '../../lib/problemDetails.js';
+import { sendProblem } from '../../lib/problemDetails.js';
 import { DomainError } from '../../lib/errors.js';
 
 const service = new ViagensService();
 
+/**
+ * Envia o status real do erro de domínio (404/409/422/...) via `sendProblem`,
+ * em vez do padrão antigo `Problems.badRequest(reply, ...).status(error.status)`,
+ * que sempre respondia 400 pois `.status()` não tem efeito depois de `.send()`
+ * já ter sido chamado (bug corrigido a partir do padrão do Módulo 3).
+ */
 function handleDomainError(error: unknown, reply: FastifyReply): boolean {
   if (error instanceof DomainError) {
-    void Problems.badRequest(reply, error.detail ?? error.message).status(error.status);
+    sendProblem(reply, error.status, error.message, error.detail);
     return true;
   }
   return false;
@@ -19,14 +30,28 @@ export const ViagensController = {
   async list(request: FastifyRequest, reply: FastifyReply) {
     const query = request.query as { status?: string; cursor?: string; limit?: string };
     const limit = query.limit ? Number(query.limit) : 20;
-    const result = await service.list({ status: query.status, cursor: query.cursor, limit });
-    return reply.send(result);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      return sendProblem(
+        reply,
+        422,
+        'Parâmetro inválido',
+        'limit deve ser um inteiro entre 1 e 200',
+      );
+    }
+    try {
+      // `status` inválido (fora do enum do banco) vira DomainError 422 no repository.
+      const result = await service.list({ status: query.status, cursor: query.cursor, limit });
+      return reply.send(result);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
   },
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
     try {
-      const viagem = await service.getById(id);
+      const viagem = await service.getDetalhe(id);
       return reply.send(viagem);
     } catch (error) {
       if (handleDomainError(error, reply)) return;
@@ -69,8 +94,63 @@ export const ViagensController = {
         body.status,
         request.user?.sub ?? null,
         request.ip,
+        body.observacoes,
+        request.user?.role,
       );
       return reply.send(updated);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  /** Troca de motorista com motivo obrigatório (fica no histórico da viagem). */
+  async trocarMotorista(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const body = parseOrProblem(TrocarMotoristaViagemSchema, request.body, reply);
+    if (!body) return;
+    try {
+      const updated = await service.trocarMotorista(
+        id,
+        body.motorista_id,
+        body.motivo,
+        request.user?.sub ?? null,
+        request.ip,
+      );
+      return reply.send(updated);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async getMotoristaHistorico(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    try {
+      return reply.send(await service.listMotoristaHistorico(id));
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  async getStatusHistory(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    try {
+      const history = await service.getStatusHistory(id);
+      return reply.send(history);
+    } catch (error) {
+      if (handleDomainError(error, reply)) return;
+      throw error;
+    }
+  },
+
+  /** Módulo 6 (Integração TMS+WMS): expedição/recebimento do armazém vinculados a esta viagem. */
+  async getWmsStatus(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    try {
+      const status = await service.getWmsStatus(id);
+      return reply.send(status);
     } catch (error) {
       if (handleDomainError(error, reply)) return;
       throw error;

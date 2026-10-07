@@ -16,6 +16,10 @@ export const GroqController = {
    */
   async analyzeViagem(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string };
+    // viagens.id é uuid: um id malformado causaria erro 22P02 no banco (antes virava 404 falso).
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return Problems.badRequest(reply, `Id de viagem inválido: ${id}`);
+    }
 
     const { data: viagem, error: viagemError } = await supabaseAdmin
       .from('viagens')
@@ -26,17 +30,28 @@ export const GroqController = {
       .is('deleted_at', null)
       .maybeSingle();
 
-    if (viagemError || !viagem) {
+    if (viagemError) {
+      logger.error(
+        { err: viagemError, viagemId: id },
+        'Falha ao consultar a viagem para análise de risco',
+      );
+      return Problems.internal(reply, 'Falha ao consultar a viagem');
+    }
+    if (!viagem) {
       return Problems.notFound(reply, `Viagem ${id} não encontrada`);
     }
 
-    const { data: eventos } = await supabaseAdmin
+    const { data: eventos, error: eventosError } = await supabaseAdmin
       .from('eventos_risco')
       .select('tipo, severidade, descricao')
       .eq('viagem_id', id)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(10);
+    if (eventosError) {
+      logger.error({ err: eventosError, viagemId: id }, 'Falha ao consultar eventos de risco');
+      return Problems.internal(reply, 'Falha ao consultar os eventos de risco da viagem');
+    }
 
     const context: ViagemRiskContext = {
       numeroCrt: viagem.numero_crt,

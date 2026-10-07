@@ -1,0 +1,78 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Build shared
+        run: pnpm --filter @rigabras/shared build
+      - name: Typecheck
+        run: pnpm -r run typecheck
+      - name: Unit/integration tests (API)
+        run: pnpm --filter @rigabras/api exec vitest run
+      - name: Build
+        run: pnpm -r build
+      - name: Secret scan
+        run: |
+          if git grep -nE "(sbp_[A-Za-z0-9]{20,}|gsk_[A-Za-z0-9]{20,}|eyJ[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{30,})" -- . ':!pnpm-lock.yaml' ':!docs'; then
+            echo "Possível segredo versionado — DEPLOY BLOCKED"; exit 1
+          fi
+
+  # E2E Playwright com o banco em memória (USE_FAKE_DB=true): não há Docker
+  # no runner da GitHub, então a API usa o cliente Supabase falso
+  # (apps/api/src/config/fakeSupabase.ts) e os webServer do playwright.config.ts
+  # sobem API + web. As variáveis abaixo são dummy e servem só para o Zod de
+  # apps/api/src/config/env.ts passar (o `.env` real nunca é versionado).
+  # `needs: verify` evita gastar minutos de runner quando typecheck/build já
+  # falharam; `--retries=1` absorve o flaky conhecido de 10/11/12 (timeouts de
+  # carga na suíte completa — cada spec passa isolada).
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: http://127.0.0.1:54321
+      SUPABASE_ANON_KEY: e2e-anon-key-0123456789
+      SUPABASE_SERVICE_ROLE_KEY: e2e-service-role-key-0123456789
+      JWT_ACCESS_SECRET: e2e-access-secret-0123456789abcdefghijklmnop
+      JWT_REFRESH_SECRET: e2e-refresh-secret-0123456789abcdefghijklmnop
+      COOKIE_SECRET: e2e-cookie-secret-0123456789abcdefghijklmn
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build shared
+        run: pnpm --filter @rigabras/shared build
+      - name: Install Playwright (chromium)
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E (fake DB)
+        run: pnpm exec playwright test --retries=1
+        env:
+          USE_FAKE_DB: 'true'
+          WEB_ORIGIN: http://127.0.0.1:5173
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore

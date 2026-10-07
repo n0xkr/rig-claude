@@ -1,0 +1,106 @@
+import type {
+  CreateProdutoArmazenadoInput,
+  ProdutoArmazenado,
+  UpdateProdutoArmazenadoInput,
+} from '@rigabras/shared';
+import { ProdutosRepository, type ListProdutosFilter } from './produtos.repository.js';
+import { DepositantesRepository } from './depositantes.repository.js';
+import { EstoqueRepository } from './estoque.repository.js';
+import { ConflictError, NotFoundError } from '../../lib/errors.js';
+import { writeAuditLog } from '../../lib/auditLog.js';
+
+export class ProdutosService {
+  constructor(
+    private readonly repo: ProdutosRepository = new ProdutosRepository(),
+    private readonly depositantesRepo: DepositantesRepository = new DepositantesRepository(),
+    private readonly estoqueRepo: EstoqueRepository = new EstoqueRepository(),
+  ) {}
+
+  list(filter: ListProdutosFilter) {
+    return this.repo.list(filter);
+  }
+
+  async getById(id: string): Promise<ProdutoArmazenado> {
+    const produto = await this.repo.findById(id);
+    if (!produto) throw new NotFoundError('produto_armazenado', id);
+    return produto;
+  }
+
+  async create(
+    input: CreateProdutoArmazenadoInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<ProdutoArmazenado> {
+    const depositante = await this.depositantesRepo.findById(input.depositante_id);
+    if (!depositante) throw new NotFoundError('depositante', input.depositante_id);
+
+    // Código sequencial PROD-###### gerado no servidor: o índice único parcial
+    // (migration 0019) é a autoridade; em corrida o 23505 vira um novo tentativa.
+    let tentativas = 0;
+    for (;;) {
+      const codigo = await this.proximoCodigo(tentativas);
+      try {
+        const created = await this.repo.create({ ...input, codigo }, userId);
+        await writeAuditLog({
+          userId,
+          action: 'CREATE',
+          entity: 'produtos_armazenados',
+          entityId: created.id,
+          changes: { after: created },
+          ip,
+        });
+        return created;
+      } catch (error) {
+        tentativas += 1;
+        const detalhe = error instanceof ConflictError ? (error.detail ?? '') : '';
+        const codigoEmUso = detalhe.includes('código') || detalhe.includes('unicidade');
+        if (!(error instanceof ConflictError) || !codigoEmUso || tentativas >= 5) throw error;
+      }
+    }
+  }
+
+  private async proximoCodigo(deslocamento: number): Promise<string> {
+    const maximo = await this.repo.findMaxCodigo();
+    const sequencia = (maximo ? Number(maximo.slice('PROD-'.length)) : 0) + 1 + deslocamento;
+    if (!Number.isFinite(sequencia) || sequencia <= 0) {
+      throw new ConflictError('Não foi possível gerar o código do produto');
+    }
+    return `PROD-${String(sequencia).padStart(6, '0')}`;
+  }
+
+  async update(
+    id: string,
+    input: UpdateProdutoArmazenadoInput,
+    userId: string | null,
+    ip: string | null,
+  ): Promise<ProdutoArmazenado> {
+    const before = await this.getById(id);
+    const updated = await this.repo.update(id, input);
+    await writeAuditLog({
+      userId,
+      action: 'UPDATE',
+      entity: 'produtos_armazenados',
+      entityId: id,
+      changes: { before, after: updated },
+      ip,
+    });
+    return updated;
+  }
+
+  async softDelete(id: string, userId: string | null, ip: string | null): Promise<void> {
+    await this.getById(id);
+    // Excluir um produto com saldo deixaria estoque "órfão" (e fora do rastreio).
+    if ((await this.estoqueRepo.listSaldoTotalPorProduto(id)) > 0) {
+      throw new ConflictError('Não é possível excluir um produto que ainda possui estoque');
+    }
+    await this.repo.softDelete(id);
+    await writeAuditLog({
+      userId,
+      action: 'DELETE',
+      entity: 'produtos_armazenados',
+      entityId: id,
+      changes: null,
+      ip,
+    });
+  }
+}
