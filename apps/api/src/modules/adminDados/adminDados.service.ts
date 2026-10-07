@@ -25,6 +25,8 @@ export const TABELAS: Array<{ tabela: string; rotulo: string; grupo: string }> =
     grupo: 'Operação',
   },
   { tabela: 'eventos_risco', rotulo: 'Eventos de risco', grupo: 'Operação' },
+  { tabela: 'redes', rotulo: 'Redes de contenção (WMS)', grupo: 'WMS' },
+  { tabela: 'rede_movimentacoes', rotulo: 'Movimentações de redes', grupo: 'WMS' },
   { tabela: 'documentos_embarque', rotulo: 'Documentos de embarque', grupo: 'Operação' },
   { tabela: 'eventos_fronteira', rotulo: 'Eventos de fronteira', grupo: 'Operação' },
   { tabela: 'validacoes_pre_embarque', rotulo: 'Validações pré-embarque', grupo: 'Operação' },

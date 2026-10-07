@@ -17,6 +17,9 @@ const SUGESTOES = [
   'Quanto de frete está pendente de aprovação?',
   'Qual a ocupação do armazém?',
   'Quais motoristas têm alertas de jornada?',
+  'Quantas redes de contenção estão disponíveis?',
+  'Quantas redes estão com checklist pendente?',
+  'Como está o gerenciamento de risco?',
 ];
 
 /** RIGABRAS AI (Módulo 10) — assistente operacional conversacional, respostas sempre baseadas em dados reais consultados na hora. */
