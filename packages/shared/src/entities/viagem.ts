@@ -81,6 +81,14 @@ export const ViagemSchema = z.object({
   pesquisa_ok: z.boolean().optional(),
   checklist_ok: z.boolean().optional(),
   smp_ok: z.boolean().optional(),
+  /** OK perfil segurança: consulta de antecedentes do motorista concluída (gerenciamento de risco). */
+  perfil_seguranca_ok: z.boolean().optional(),
+  /** OK conjunto validado: cavalo + carreta conferidos para a viagem. */
+  conjunto_validado_ok: z.boolean().optional(),
+  /** OK autorização de embarque: liberação da carga emitida. */
+  autorizacao_embarque_ok: z.boolean().optional(),
+  /** Autorização de embarque já enviada ao motorista (evidência p/ ISO 9001). */
+  autorizacao_motorista_enviada: z.boolean().optional(),
   /** Data/hora prevista de início. No futuro = viagem agendada. */
   data_programacao: z.string().datetime().optional(),
   data_ordem_coleta: z.string().datetime().nullable().optional(),
@@ -94,6 +102,8 @@ export const ViagemSchema = z.object({
   valor_frete: z.number().nonnegative().nullable().optional(),
   valor_mercadoria: z.number().nonnegative().nullable().optional(),
   observacoes: z.string().nullable().optional(),
+  /** Rota do motorista: link de navegação/observação da rota (pedágios). */
+  rota_motorista: z.string().max(2000).nullable().optional(),
   /** Informações da planilha sem campo próprio (guardadas, nunca descartadas). */
   dados_extras: z.record(z.unknown()).nullable().optional(),
   /**
