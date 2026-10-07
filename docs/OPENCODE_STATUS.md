@@ -8,8 +8,8 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 |---|---|
 | `pnpm -r run typecheck` | **verde** (shared, api, web) |
 | `pnpm lint` | **verde** — ESLint 10 flat config (`eslint.config.mjs`): 0 erros, 29 warnings aceitáveis (no-console em scripts, escapes/regex de sanitização) |
-| `pnpm --filter @rigabras/api run test` | **137 passed** (13 arquivos) |
-| `pnpm exec playwright test` | **45 specs**: 42 passed na suíte completa; 3 timeouts de carga (`10`, `11`, `12`) passam isolados (flaky, não é regressão da leva 0.5) |
+| `pnpm --filter @rigabras/api run test` | **141 passed** (14 arquivos — +4 do registry de fontes da IA) |
+| `pnpm exec playwright test` | **47/47 passed** (19 specs, ~11 min). Flakes históricos de carga sob suíte completa (10/11/12; nesta leva a 09 numa execução) passam isolados e na re-execução — não são regressão |
 | Scan `U+FFFD` nas fontes | **negativo** |
 
 ## Fases do plano
@@ -59,6 +59,14 @@ Estado final da execução do `OPENCODE_EXECUTION_PLAN.md` (auditoria em `docs/O
 - **CRUD**: edição por linha (`useUpdateRede`/`PATCH /wms/redes/:id`) além do cadastro/exclusão/movimentação já existentes.
 - **Migration**: `0021_redes_checklist.sql` — **aguarda aplicação no SQL editor do Supabase** (REQUER VALIDAÇÃO EXTERNA).
 - **Validação local**: `pnpm typecheck` verde · `pnpm lint` 0 erros · `pnpm --filter @rigabras/api test` 137 passed · E2E `18-wms-redes.spec.ts` 2 passed.
+
+## Leva IA + GERENCIAMENTO DE RISCO (entregue)
+
+- **IA usa TODOS os registros**: snapshot da RIGABRAS AI agora é montado por um registry de fontes (`modules/chatbot/fontes.ts`) com fontes dedicadas (viagens, fretes, portaria, frota, WMS, jornada, **redes**, **eventos de risco**, **cadastros**) + **cobertura automática** de qualquer tabela nova do catálogo `TABELAS` (amostra das 3 linhas mais recentes) — menu/tab novo já aparece para a IA sem mexer em código. `fontesDados` é derivado do registry (fim da lista hardcoded); falha de fonte é isolada (`Promise.allSettled` → `fontesComErro`).
+- **Menu Gerenciamento de Risco** (`/riscos`, módulo `viagens`): viagens com as **5 marcações de liberação** (perfil segurança, conjunto validado, checklist, autorização de embarque, autorização enviada ao motorista), KPIs liberadas/pendentes (X/5 por viagem) e **rota do motorista** (link colado ou Google Maps origem→destino). Mesmos campos no formulário (seção "Liberação (gerenciamento de risco)" + campo de rota), no detalhe e nos chips da lista.
+- **ISO 9001 em vista**: toda marcação é `PATCH /viagens/:id` gravado em `audit_logs` (quem, quando, antes/depois) — evidência rastreável de liberação; documentado no README (Módulo 2) e na migration 0022.
+- **Migration**: `0022_viagens_gerenciamento_risco.sql` — **aguarda aplicação no SQL editor do Supabase** (REQUER VALIDAÇÃO EXTERNA); `0018` segue intocada.
+- **Validação local**: `pnpm typecheck` verde · `pnpm lint` 0 erros (29 warnings de baseline) · `pnpm --filter @rigabras/api test` **141 passed** (14 arquivos, +4 do chatbot) · suíte E2E completa **47/47 passed** (19 specs, ~11 min; uma execução intermediária teve flake de timeout na `09-offline-queue` — passou isolada e na re-execução completa, mesmo padrão de flake de carga já documentado para 10/11/12).
 
 ## Decisões pendentes do usuário (AUDIT §8)
 

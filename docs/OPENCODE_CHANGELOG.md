@@ -166,3 +166,45 @@ Legenda: `ADICIONADO` · `CORRIGIDO` · `MELHORADO` · `REQUER DECISÃO` · `REQ
 | E2E `18-wms-redes.spec.ts` atualizado: rota nova, heading "Redes de contenção", criação com checklist, **edição do lacre**, progresso e filtro de checklist | MELHORADO | `tests/e2e/18-wms-redes.spec.ts` |
 | Helper `novaPlaca` do E2E: retry até 10× em `409` de placa duplicada (banco falso em memória é reaproveitado entre execuções — colisão aleatória derrubava a spec 18 na suíte completa) | CORRIGIDO | `tests/e2e/helpers.ts` |
 | Suíte E2E completa (`pnpm exec playwright test`): **45/45 passed** (~10 min) após a leva | VERIFICADO | — |
+
+---
+
+## Leva IA + GERENCIAMENTO DE RISCO (pedido do usuário: "IA usa todos os registros + menu de risco de viagens + ISO 9001 em vista")
+
+### Shared (`packages/shared`)
+
+| O quê | Tipo | Arquivo |
+|---|---|---|
+| `ViagemSchema` += `perfil_seguranca_ok`, `conjunto_validado_ok`, `autorizacao_embarque_ok`, `autorizacao_motorista_enviada` (booleans opcionais) + `rota_motorista` (texto ≤2000, link da rota com pedágios) — entram automaticamente em `CreateViagemSchema`/`UpdateViagemSchema` (derivados de `baseEscrita`) | ADICIONADO | `entities/viagem.ts` |
+
+### API (`apps/api`)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| **Registry de fontes do snapshot da RIGABRAS AI**: `criarFontes()` com fontes dedicadas (viagens, fretes, portaria, frota, WMS, jornada, **redes**, **riscos**, **cadastros**) + fonte de **cobertura automática** `demaisTabelas` (amostra das 3 linhas mais recentes de toda tabela do catálogo `TABELAS` não coberta por fonte dedicada) | ADICIONADO | `modules/chatbot/fontes.ts` |
+| `montarSnapshot()` refatorada: `Promise.allSettled` por fonte (falha isolada → `fontesComErro`, rótulo sai de `fontesDados`); `fontesDados` derivado do registry (fim da lista hardcoded) | MELHORADO | `modules/chatbot/chatbot.service.ts` |
+| `ChatbotRepository`: `getEventosRiscoResumo()` (contagens por status/severidade + 10 últimos), `contarTabela()` (count exato com fallback para o fake) e `getLinhasRecentes()` (amostra de tabela, sem erro se não existir `created_at`) | ADICIONADO | `modules/chatbot/chatbot.repository.ts` |
+| Catálogo `TABELAS` (adminDados) += `redes` e `rede_movimentacoes` (a IA e o Gerenciar dados enxergam as tabelas novas) | ADICIONADO | `modules/adminDados/adminDados.service.ts` |
+
+### Web (`apps/web`)
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| Menu **Gerenciamento de Risco** (ícone `ShieldAlert`, módulo `viagens`) + rota `/riscos` com `AuthGate` | ADICIONADO | `DashboardLayout.tsx`, `App.tsx` |
+| `GerenciamentoRiscoPage`: lista de viagens (filtros abertas/todas + busca), KPIs (total/liberadas 5/5/pendentes), card por viagem com motorista, conjunto, mercadoria, **link Rota/pedágios** (rota cadastrada ou Google Maps origem→destino) e as **5 marcações** toggle (`PATCH /viagens/:id`) | ADICIONADO | `pages/GerenciamentoRiscoPage.tsx` |
+| Formulário de viagem: 4 marcações novas + campo **"Rota do motorista (link da rota com pedágios)"** na seção "Liberação (gerenciamento de risco)" | ADICIONADO | `pages/ViagemFormPage.tsx` |
+| Detalhe da viagem (checagens) e chips da lista estendidos para as 7 marcações | MELHORADO | `pages/ViagemDetailPage.tsx`, `pages/ViagensListPage.tsx` |
+| Sugestões da IA += "Quantas redes de contenção estão disponíveis?", "Quantas redes estão com checklist pendente?", "Como está o gerenciamento de risco?" | ADICIONADO | `pages/RigabrasAiPage.tsx` |
+
+### Migrations (REQUER VALIDAÇÃO EXTERNA — sem Postgres local)
+
+| Migration | Conteúdo |
+|---|---|
+| `0022_viagens_gerenciamento_risco.sql` | `alter table viagens`: 4 booleans `not null default false` (`perfil_seguranca_ok`, `conjunto_validado_ok`, `autorizacao_embarque_ok`, `autorizacao_motorista_enviada`) + `rota_motorista text`; sem policies novas (mesma tabela); rastreabilidade ISO 9001 via `audit_logs` do `PATCH /viagens/:id` |
+
+### Testes
+
+| O quê | Tipo | Onde |
+|---|---|---|
+| `chatbot.service.test.ts` (4 testes): fonte redes no snapshot e nos rótulos, fontes históricas + cobertura automática, `demaisTabelas` com amostras, isolamento de falha de fonte | ADICIONADO | `modules/chatbot/chatbot.service.test.ts` |
+| E2E `19-gerenciamento-risco.spec.ts` (2 testes): menu visível, marca/desmarca as 5 liberações com persistência após reload, KPIs, rota automática Google Maps e rota personalizada salva no formulário | ADICIONADO | `tests/e2e/19-gerenciamento-risco.spec.ts` |

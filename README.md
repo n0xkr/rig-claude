@@ -215,7 +215,7 @@ A `playwright.config.ts` (raiz do repo) já sobe `apps/api` (com
 um servidor já rodando se houver um de pé, e roda com 1 worker (as specs
 compartilham o mesmo banco falso em memória dentro de uma execução).
 
-### Cobertura: 19/19 specs Playwright passando, cobrindo os 7 módulos
+### Cobertura: 19/19 specs Playwright passando (47 testes), cobrindo os 7 módulos
 
 `tests/e2e/*.spec.ts` — todas rodam num Chromium real, contra a API e o web
 reais (não mocks de rede):
@@ -223,7 +223,7 @@ reais (não mocks de rede):
 - `01-auth-rbac.spec.ts` (8 testes): login como ADMIN e OPERADOR, senha
   errada, rota protegida sem sessão, logout, RBAC ocultando/mostrando a
   tela de Exportações por papel, e a mesma checagem 403/200 direto na API.
-- `02-modulo1-viagens.spec.ts` (2): cria viagem → aparece na lista → abre o
+- `02-modulo1-viagens.spec.ts` (3): cria viagem → aparece na lista → abre o
   detalhe; estado vazio de um filtro sem resultados.
 - `03-modulo2-ciclo-vida-fronteira.spec.ts` (2): transição de status pela
   UI + linha do tempo atualizando; registro de etapa de fronteira + KPIs
@@ -244,6 +244,28 @@ reais (não mocks de rede):
   (emulação real do Playwright), confirma o enfileiramento local, volta a
   ficar online e confirma que `apps/web/src/offline/syncManager.ts`
   sincronizou de verdade com a API.
+- `10-acompanhamento.spec.ts` (4): painel de acompanhamento de veículos
+  (KPIs, insights, CRUD de veículos no painel).
+- `11-importacao-planilha-completa.spec.ts` (1): fluxo completo de importação
+  de planilha de viagens.
+- `12-usuarios-categorias.spec.ts` (1): SUPERADMIN cria categoria com
+  módulos, cria usuário nela e confirma RBAC por módulo (ver/editar permissões,
+  excluir).
+- `13-motoristas.spec.ts` (1): cadastro de motorista pela tela.
+- `14-importacao-padronizada.spec.ts` (4): importação inteligente com etapa
+  de padronização (uma linha por lote, vários CRTs, datas "22.mai.2024" etc.).
+- `15-cadastro-rapido.spec.ts` (7): "+ Adicionar novo" nos seletores (modal
+  de cadastro rápido sem sair do formulário).
+- `16-gerenciar-dados.spec.ts` (3): CRUD genérico SUPERADMIN (adicionar,
+  editar, lixeira, restaurar, apagar) + 403 para ADMIN/OPERADOR.
+- `17-wms-estoque-manual.spec.ts` (2): lançamento manual de entrada/saída no
+  ledger de estoque e saldo materializado por endereço.
+- `18-wms-redes.spec.ts` (2): redes de contenção com checklist (tudo-ou-
+  nada), progresso, edição do lacre, movimentação retirada/devolução e
+  exclusão bloqueada em trânsito.
+- `19-gerenciamento-risco.spec.ts` (2): menu **Gerenciamento de Risco** —
+  as 5 marcações de liberação da viagem (marca/desmarca/persiste) + rota do
+  motorista salva no formulário e exibida no card.
 
 Pré-requisitos honestos, sem tela própria no app (criados via API dentro do
 teste, nunca simulados): motoristas, endereços de armazém e o vínculo
@@ -327,6 +349,20 @@ LIBERACAO`, cada uma timestampada, com tempo parado, motivo de retenção,
   `useViagemStatusHistory`, `useFronteiraTravessia`, `useFronteiraKpis`,
   `useValidacaoPreEmbarque` — reaproveitando a mesma fila offline
   (IndexedDB) do Módulo 1 para o registro de etapas de fronteira sem rede.
+- **Gerenciamento de Risco** (menu próprio, rota `/riscos`) — registro das
+  viagens com as **5 marcações de liberação**: OK perfil segurança, OK
+  conjunto validado, OK checklist, OK autorização de embarque e autorização
+  **enviada ao motorista**, mais a **rota do motorista** (link da rota com
+  pedágios: colado no formulário ou gerado automaticamente
+  Google Maps origem→destino quando vazio). Cada marcação é um
+  `PATCH /viagens/:id` comprovado por `audit_logs` (quem marcou, quando,
+  antes/depois) — rastreabilidade **ISO 9001** (evidências de liberação da
+  operação). A tela soma por viagem (X/5) e mostra KPIs de
+  liberadas/pendentes; os mesmos campos aparecem nos chips da lista de
+  viagens, no detalhe (checagens) e no formulário ("Liberação
+  (gerenciamento de risco)"). Colunas novas em `viagens` via migration
+  `0022_viagens_gerenciamento_risco.sql` (**REQUER VALIDAÇÃO EXTERNA** —
+  mesma ressalva das demais: aplicar no SQL editor do Supabase).
 - **Migration** `0003_modulo2_tms_operacional.sql` — estende o enum
   `status_viagem` (`ALTER TYPE ... ADD VALUE`), cria `status_viagem_historico`,
   promove `eventos_fronteira` e `documentos_embarque` de stub para tabelas
@@ -713,6 +749,37 @@ nenhuma mudança em rota/controller/service.
   migration a verificar; a lógica de mapeamento (a parte determinística) tem
   cobertura de teste unitário, mas o `internalCsvJsonAdapter.ts` (I/O
   Supabase) não foi exercitado contra um banco real.
+
+## RIGABRAS AI (Módulo 10) — cobertura de TODOS os registros
+
+A IA (`/rigabras-ai`, `POST /rigabras-ai/perguntar`) responde só a partir de
+um **snapshot ao vivo** montado no backend (regra de ouro: o modelo nunca vê o
+banco diretamente). O snapshot é montado por um **registry de fontes**
+(`apps/api/src/modules/chatbot/fontes.ts`) — a lista de "Fontes:" exibida
+sob a resposta é derivada do próprio registry, nunca de uma lista hardcoded
+separada:
+
+- **Fontes dedicadas** (agregados por módulo): viagens (TMS), fretes,
+  portaria, frota, WMS (endereços/avarias/recebimentos/expedições), jornada,
+  **redes de contenção** (KPIs + checklist), **eventos de risco**
+  (gerenciamento de risco) e **cadastros** (depositantes, produtos,
+  clientes, motoristas, veículos).
+- **Cobertura automática** (`demaisTabelas`): toda tabela de negócio do
+  catálogo `TABELAS` (`adminDados`) que nenhuma fonte dedicada cobriu entra no
+  snapshot com amostra das 3 linhas mais recentes — então **qualquer menu/tab
+  novo lançado no sistema já aparece para a IA sem mexer em código**
+  (limitado pelo orçamento de poda do prompt; tabelas sem linhas ficam de
+  fora).
+- **Falha isolada**: `Promise.allSettled` por fonte — se uma fonte cair, ela
+  vai para `fontesComErro` no snapshot, fica de fora de `fontesDados` e a
+  pergunta continua respondendo com as demais.
+- **Para adicionar um módulo novo à IA**: um registro em
+  `criarFontes()` (`fontes.ts`) com `chave`/`rotulo`/`tabelas`/`coletar()` —
+  os rótulos exibidos ao usuário e o snapshot acompanham automaticamente.
+- **Tela**: `RigabrasAiPage` traz sugestões prontas (inclusive sobre redes e
+  gerenciamento de risco); testes em
+  `apps/api/src/modules/chatbot/chatbot.service.test.ts` (4 testes) cobrem
+  fonte redes, cobertura automática e isolamento de falha.
 
 ## Stack
 
