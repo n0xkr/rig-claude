@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
+  ShieldAlert,
   Sparkles,
   ShieldCheck,
   Truck,
@@ -53,6 +54,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/dashboard', label: 'Painel', icon: LayoutDashboard, modulo: 'painel' },
   { to: '/viagens', label: 'Viagens', icon: Truck, modulo: 'viagens' },
+  { to: '/riscos', label: 'Gerenciamento de Risco', icon: ShieldAlert, modulo: 'viagens' },
   { to: '/motoristas', label: 'Motoristas', icon: IdCard, modulo: 'motoristas' },
   { to: '/rigabras-ai', label: 'RIGABRAS AI', icon: Bot, modulo: 'rigabras_ai' },
   { to: '/portaria', label: 'Portaria', icon: ClipboardCheck, modulo: 'portaria' },

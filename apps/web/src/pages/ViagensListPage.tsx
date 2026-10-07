@@ -186,6 +186,10 @@ export default function ViagensListPage() {
                             ['pesquisa_ok', 'Pesquisa'],
                             ['checklist_ok', 'Checklist'],
                             ['smp_ok', 'SMP'],
+                            ['perfil_seguranca_ok', 'Perfil'],
+                            ['conjunto_validado_ok', 'Conjunto'],
+                            ['autorizacao_embarque_ok', 'Embarque'],
+                            ['autorizacao_motorista_enviada', 'Enviada'],
                           ] as const
                         ).map(([k, r]) => (
                           <span

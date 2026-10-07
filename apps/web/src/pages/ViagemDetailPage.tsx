@@ -218,6 +218,10 @@ export default function ViagemDetailPage() {
             ['pesquisa_ok', 'Pesquisa OK'],
             ['checklist_ok', 'Checklist OK'],
             ['smp_ok', 'SMP OK'],
+            ['perfil_seguranca_ok', 'OK perfil segurança'],
+            ['conjunto_validado_ok', 'OK conjunto validado'],
+            ['autorizacao_embarque_ok', 'OK autorização embarque'],
+            ['autorizacao_motorista_enviada', 'Autorização enviada'],
           ] as const
         ).map(([k, rotulo]) => {
           const ativo = !!viagem[k];

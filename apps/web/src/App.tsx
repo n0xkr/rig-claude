@@ -10,6 +10,8 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage.js'));
 const ViagensListPage = lazy(() => import('./pages/ViagensListPage.js'));
 const ViagemFormPage = lazy(() => import('./pages/ViagemFormPage.js'));
 const ViagemDetailPage = lazy(() => import('./pages/ViagemDetailPage.js'));
+
+const GerenciamentoRiscoPage = lazy(() => import('./pages/GerenciamentoRiscoPage.js'));
 const FronteiraTravessiaPage = lazy(() => import('./pages/FronteiraTravessiaPage.js'));
 const FronteiraKpiPage = lazy(() => import('./pages/FronteiraKpiPage.js'));
 const ValidacaoPage = lazy(() => import('./pages/ValidacaoPage.js'));
@@ -108,6 +110,14 @@ export default function App() {
           element={
             <AuthGate modulo="viagens">
               <ViagemFormPage />
+            </AuthGate>
+          }
+        />
+        <Route
+          path="/riscos"
+          element={
+            <AuthGate modulo="viagens">
+              <GerenciamentoRiscoPage />
             </AuthGate>
           }
         />

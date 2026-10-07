@@ -53,6 +53,11 @@ interface FormState {
   pesquisa_ok: boolean;
   checklist_ok: boolean;
   smp_ok: boolean;
+  perfil_seguranca_ok: boolean;
+  conjunto_validado_ok: boolean;
+  autorizacao_embarque_ok: boolean;
+  autorizacao_motorista_enviada: boolean;
+  rota_motorista: string;
   observacoes: string;
   cargas: CargaForm[];
 }
@@ -93,6 +98,11 @@ function doViagem(v: Viagem): FormState {
     pesquisa_ok: !!v.pesquisa_ok,
     checklist_ok: !!v.checklist_ok,
     smp_ok: !!v.smp_ok,
+    perfil_seguranca_ok: !!v.perfil_seguranca_ok,
+    conjunto_validado_ok: !!v.conjunto_validado_ok,
+    autorizacao_embarque_ok: !!v.autorizacao_embarque_ok,
+    autorizacao_motorista_enviada: !!v.autorizacao_motorista_enviada,
+    rota_motorista: v.rota_motorista ?? '',
     observacoes: v.observacoes ?? '',
     cargas:
       v.cargas && v.cargas.length > 0
@@ -128,6 +138,11 @@ const FORM_NOVO = (): FormState => ({
   pesquisa_ok: false,
   checklist_ok: false,
   smp_ok: false,
+  perfil_seguranca_ok: false,
+  conjunto_validado_ok: false,
+  autorizacao_embarque_ok: false,
+  autorizacao_motorista_enviada: false,
+  rota_motorista: '',
   observacoes: '',
   cargas: [{ ...CARGA_VAZIA }],
 });
@@ -241,6 +256,11 @@ export default function ViagemFormPage() {
       pesquisa_ok: form.pesquisa_ok,
       checklist_ok: form.checklist_ok,
       smp_ok: form.smp_ok,
+      perfil_seguranca_ok: form.perfil_seguranca_ok,
+      conjunto_validado_ok: form.conjunto_validado_ok,
+      autorizacao_embarque_ok: form.autorizacao_embarque_ok,
+      autorizacao_motorista_enviada: form.autorizacao_motorista_enviada,
+      rota_motorista: txt(form.rota_motorista),
       observacoes: txt(form.observacoes),
       cargas,
     };
@@ -581,6 +601,10 @@ export default function ViagemFormPage() {
                 ['pesquisa_ok', 'Pesquisa OK'],
                 ['checklist_ok', 'Checklist OK'],
                 ['smp_ok', 'SMP OK'],
+                ['perfil_seguranca_ok', 'OK perfil segurança'],
+                ['conjunto_validado_ok', 'OK conjunto validado'],
+                ['autorizacao_embarque_ok', 'OK autorização de embarque'],
+                ['autorizacao_motorista_enviada', 'Autorização enviada ao motorista'],
               ] as const
             ).map(([k, rotulo]) => (
               <label
@@ -600,6 +624,15 @@ export default function ViagemFormPage() {
               </label>
             ))}
           </div>
+          <Field label="Rota do motorista (link da rota com pedágios)">
+            <input
+              className="input"
+              value={form.rota_motorista}
+              placeholder="Cole aqui o link da rota (Google Maps/Waze) ou deixe em branco para gerar de origem → destino"
+              onChange={(e) => set('rota_motorista', e.target.value)}
+              data-testid="viagem-rota-motorista"
+            />
+          </Field>
         </Secao>
 
         <Secao titulo="Observações">
